@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.72
+// @version      1.0.73
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1308,7 +1308,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       const timeStr = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
       const jevScore = typeof item.jev?.overall === 'number' ? `${item.jev.overall}/10` : (item.jev?.badge || '?');
       const jevBadgeClass = item.jev?.overall === 10 ? 'high' : (item.jev?.overall >= 7 ? 'med' : 'low');
-      const llmScoreVal = typeof item.llm?.score === 'number' ? `${item.llm.score}/10` : '?';
+      const llmScoreVal = item.llm?.elapsedMs === 0 ? '10/10 (⚡ skipped)' : (typeof item.llm?.score === 'number' ? `${item.llm.score}/10` : '?');
       const divTag = isDiv ? `<span class="jpdb-ai-diag-badge-div" title="${escapeHtml(item.divergence?.reason || '')}">Δ ${item.divergence?.scoreDiff ?? '?'} pts</span>` : '';
 
       const mistakesList = (function() {
@@ -1343,7 +1343,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           ${mistakesList}
 
           <details class="jpdb-ai-diag-details">
-            <summary>View LLM Reasoning & Critique</summary>
+            <summary>${item.llm?.elapsedMs === 0 ? 'View Assessment Details (⚡ Fast-Pass)' : 'View LLM Reasoning & Critique'}</summary>
             <div class="jpdb-ai-diag-critique">${escapeHtml(item.llm?.text || '(no text)')}</div>
           </details>
         </div>
@@ -1984,97 +1984,62 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(0,0,0,.35)}
     const userPrompt = buildRateTranslationPrompt(info, userDraft);
     const userLabel = userDraft ? `Rate my translation: "${userDraft}"` : `Rate translation for this sentence`;
     addMsg('user', userLabel);
-    const thinking = addMsg('assistant', 'Thinking…', false, true);
+    const thinking = addMsg('assistant', 'Evaluating translation…', false, true);
     busy = true;
     setBusy(true);
 
-    let jevCardHtml = '';
-    let jevMetrics = null;
-    let jevElapsed = 0;
-    let jevFinished = false;
-    let jevAttached = false;
-    let diagnosticRecorded = false;
-    let reply = '';
-    let llmScore = null;
-    let llmElapsed = 0;
-    let logEntry = null;
-
-    // Launch fast System One evaluation (Jev-1.13) in parallel
-    const t0_jev = Date.now();
-    const jevPromise = callJevEvaluation(info, userDraft)
-      .then((res) => {
-        jevFinished = true;
-        if (res && res.cardHtml) {
-          jevCardHtml = res.cardHtml;
-          jevMetrics = res.metrics;
-          jevElapsed = res.elapsedMs || (Date.now() - t0_jev);
-          // If the LLM is still running, show instant Jev assessment immediately above thinking state
-          if (busy && thinking) {
-            thinking.innerHTML = jevCardHtml + '<div class="jpdb-ai-jev-waiting">Thinking… generating detailed analysis…</div>';
-          }
-        }
-        return res;
-      })
-      .catch((err) => {
-        console.warn('[JPDB AI] Jev evaluation error:', err);
-        jevFinished = true;
-        return null;
-      });
-
-    const t0_llm = Date.now();
+    const t0 = Date.now();
     try {
-      const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: userPrompt }];
-      reply = await callLLM(msgs);
-      llmElapsed = Date.now() - t0_llm;
+      // Step 1: Launch fast System One evaluation (Jev-1.13)
+      const jevPromise = callJevEvaluation(info, userDraft);
+      const jevTimeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+      const jevRes = await Promise.race([jevPromise, jevTimeoutPromise]);
+      const jevElapsed = jevRes?.elapsedMs || (Date.now() - t0);
+      const jevMetrics = jevRes?.metrics || null;
+      let jevCardHtml = jevRes?.cardHtml || '';
 
-      // If Jev hasn't settled yet, give it up to 600ms before first render
-      if (!jevFinished) {
-        await Promise.race([jevPromise, new Promise((r) => setTimeout(r, 600))]);
+      // Step 2: Fast-pass! If Jev confirms 10/10 (flawless), skip the LLM call entirely!
+      if (jevMetrics && jevMetrics.overall === 10) {
+        const flawlessReply = '**Score: 10/10 (Flawless)**\n\nYour translation accurately conveys the sentence meaning, tone, and grammatical intent with no errors.';
+        setMsgMarkdown(thinking, flawlessReply, jevCardHtml);
+        const logEntry = { role: 'assistant', text: flawlessReply, jevHtml: jevCardHtml, isErr: false };
+        msgLog.push(logEntry);
+        history.push({ role: 'user', content: userPrompt });
+        history.push({ role: 'assistant', content: flawlessReply });
+        saveSession();
+        recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, flawlessReply, 10, 0);
+        return;
       }
 
-      if (jevCardHtml) {
-        jevAttached = true;
+      // Step 3: If Jev detected mistakes/advisories (< 10/10) or timed out, display instant assessment and call LLM
+      if (thinking && jevCardHtml) {
+        thinking.innerHTML = jevCardHtml + '<div class="jpdb-ai-jev-waiting">Thinking… generating detailed analysis…</div>';
+      }
+
+      const t0_llm = Date.now();
+      const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: userPrompt }];
+      const reply = await callLLM(msgs);
+      const llmElapsed = Date.now() - t0_llm;
+      const llmScore = extractLlmScore(reply);
+
+      // In case Jev was slow (>1500ms) but finished while LLM was thinking
+      if (!jevCardHtml) {
+        try {
+          const lateRes = await Promise.race([jevPromise, Promise.resolve(null)]);
+          if (lateRes && lateRes.cardHtml) {
+            jevCardHtml = lateRes.cardHtml;
+          }
+        } catch {}
       }
 
       setMsgMarkdown(thinking, reply, jevCardHtml);
-      logEntry = { role: 'assistant', text: reply, jevHtml: jevCardHtml, isErr: false };
+      const logEntry = { role: 'assistant', text: reply, jevHtml: jevCardHtml, isErr: false };
       msgLog.push(logEntry);
       history.push({ role: 'user', content: userPrompt });
       history.push({ role: 'assistant', content: reply });
       saveSession();
 
-      llmScore = extractLlmScore(reply);
-
-      // In case Jev finished late (AFTER the 600ms race window):
-      // attach it cleanly to the rendered message, log entry, and record diagnostics.
-      jevPromise.then((lateRes) => {
-        if (lateRes && lateRes.cardHtml && !jevAttached) {
-          jevAttached = true;
-          jevCardHtml = lateRes.cardHtml;
-          jevMetrics = lateRes.metrics;
-          jevElapsed = lateRes.elapsedMs || (Date.now() - t0_jev);
-          if (logEntry) logEntry.jevHtml = jevCardHtml;
-          setMsgMarkdown(thinking, reply, jevCardHtml);
-          saveSession();
-        }
-        if (!diagnosticRecorded) {
-          diagnosticRecorded = true;
-          recordDiagnosticEntry(info, userDraft, lateRes?.metrics ?? jevMetrics, lateRes?.elapsedMs ?? jevElapsed, reply, llmScore, llmElapsed);
-        }
-      }).catch(() => {
-        if (!diagnosticRecorded) {
-          diagnosticRecorded = true;
-          recordDiagnosticEntry(info, userDraft, null, Date.now() - t0_jev, reply, llmScore, llmElapsed);
-        }
-      });
-
-      // Record diagnostics immediately if Jev has already settled
-      if (jevMetrics || jevFinished) {
-        if (!diagnosticRecorded) {
-          diagnosticRecorded = true;
-          recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, reply, llmScore, llmElapsed);
-        }
-      }
+      recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, reply, llmScore, llmElapsed);
     } catch (e) {
       msgLog.push({ role: 'assistant', text: 'Error: ' + (e.message || e), isErr: true });
       thinking.textContent = 'Error: ' + (e.message || e);
@@ -2085,8 +2050,6 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(0,0,0,.35)}
       setBusy(false);
     }
   }
-
-
 
   async function sendChat(text) {
     if (busy || !text.trim()) return;
