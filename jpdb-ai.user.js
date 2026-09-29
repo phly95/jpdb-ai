@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.71
+// @version      1.0.72
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1031,15 +1031,15 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           type: 'noul',
           instructions: {
             question: 'Is `user_translation` an accurate, faithful, natural, or idiomatic translation of `japanese_sentence` in context?',
-            focus: 'Translations that convey the natural communicative meaning, pragmatic tone, or idiomatic sense count as flawless (1.0). CRITICAL EXCEPTION: Confusing an indefinite pronoun like 何か ("something/anything") with an open wh-question word like 何 ("what"), turning a yes/no question into an open-ended wh-question, is a clear semantic error and MUST return 0.0 (false).'
+            focus: 'Translations that convey the natural communicative meaning, pragmatic tone, or idiomatic sense count as flawless (1.0). Minor English typos, phonetic homophones (e.g. their/there, its/it\'s, hear/here), or autocorrect slips do not disqualify a translation if Japanese comprehension is accurate. CRITICAL EXCEPTION: Confusing an indefinite pronoun like 何か ("something/anything") with an open wh-question word like 何 ("what"), turning a yes/no question into an open-ended wh-question, is a clear semantic error and MUST return 0.0 (false).'
           }
         },
         grade_bracket: {
           type: 'choice',
-          instructions: 'Grade this translation on the 10/10 scale considering contextual accuracy and natural English phrasing compared to `reference_translation`. Note: Idiomatic expressions, conversational softeners, and natural equivalents (e.g. "I\'m done with you" for もう知らない, "Do it like you were told" for 言われたようにそれをやりなさい, or "I don\'t want to think about this" for 考えたくないんだけど) capture the communicative intent perfectly and should receive 10_flawless.',
+          instructions: 'Grade this translation on the 10/10 scale considering contextual accuracy and natural English phrasing compared to `reference_translation`. Note: Idiomatic expressions, conversational softeners, natural equivalents, and obvious English typos/homophones (e.g. "their" for "there", "we\'ll" for "well") where Japanese meaning is understood capture the communicative intent perfectly and should receive 10_flawless.',
           options: ['10_flawless', '8_minor_nuance', '5_moderate_error', '3_major_error', '1_fatal_error'],
           criteria: {
-            '10_flawless': 'Flawless, natural, and contextually idiomatic translation. Conveys the communicative intent and tone with no deductions.',
+            '10_flawless': 'Flawless, natural, and contextually idiomatic translation (including minor English typos, punctuation slips, or phonetic homophones like their/there, we\'ll/well). Conveys the communicative intent and tone with no deductions.',
             '8_minor_nuance': 'Good translation that captures the overall meaning, but has a noticeable nuance gap, dropped modifier, or awkward phrasing.',
             '5_moderate_error': 'Noticeable grammatical or vocabulary error (e.g. potential vs intent, certainty vs possibility, wrong tense, or missed key grammar point).',
             '3_major_error': 'Major error: wrong core verb, reversed passive/active, inverted subject/object, or vital clause missing.',
@@ -1048,7 +1048,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         },
         severity: {
           type: 'score',
-          instructions: 'Rate overall accuracy on the 5-point severity scale from 0 (fatal error) to 4 (flawless). Flawless and natural idiomatic translations (e.g. communicative equivalents) must receive Level 4 (flawless).',
+          instructions: 'Rate overall accuracy on the 5-point severity scale from 0 (fatal error) to 4 (flawless). Flawless and natural idiomatic translations, as well as translations with minor English typos or homophones (e.g. their/there, we\'ll/well) where Japanese comprehension is accurate, must receive Level 4 (flawless).',
           legend: ['fatal_error', 'major_error', 'moderate_error', 'minor_nuance', 'flawless'],
           criteria: [
             'Fatal error (Level 0): completely wrong message, nonsense, or inverted meaning',
@@ -1072,7 +1072,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             'minor_nuance_or_word_choice_difference'
           ],
           criteria: {
-            no_flaws_accurate: 'Accurate, faithful, and natural translation with no notable errors (including idiomatic equivalents and conversational softeners).',
+            no_flaws_accurate: 'Accurate, faithful, and natural translation with no notable errors (including idiomatic equivalents, conversational softeners, and minor English typos or homophones where Japanese meaning is understood).',
             wrong_benefactive_or_recipient: 'Confused the recipient or beneficiary of the action (e.g. translated ~てやってくれ as doing a favor for "me" instead of a third party/pet, or confused give/receive direction).',
             agent_or_passive_reversed: 'Reversed who did the action to whom, or passive was translated as active.',
             wrong_verb_or_action: 'The core verb or action was mistranslated or misunderstood.',
@@ -1159,7 +1159,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       };
 
       const senseCriteria = {
-        natural_correct_sense: 'The word is translated with natural nuance, idiomatic equivalence, or the contextually correct meaning.',
+        natural_correct_sense: 'The word is translated with natural nuance, idiomatic equivalence, or contextually correct meaning (including obvious English typos or phonetic homophones like their/there).',
         awkward_or_literal_misfit: 'The translation picked a literal or secondary dictionary definition that does not fit this sentence context naturally (e.g. "this time" for 今度 instead of "next time").',
         mistranslated_or_wrong_meaning: 'The word was translated as an incorrect concept or completely wrong definition.',
         not_applicable_if_omitted: 'The word was not translated or omitted.'
@@ -1173,7 +1173,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         };
         questions['word_' + i + '_sense'] = {
           type: 'choice',
-          instructions: `Evaluate the meaning, idiomatic equivalence, and nuance of "${w}" in \`user_translation\` compared to \`japanese_sentence\` and \`reference_translation\`. (Note: Set phrases like もう知らない translated as "I'm done with you" count as natural_correct_sense. However, confusing 何か 'something' with 'what' is mistranslated_or_wrong_meaning).`,
+          instructions: `Evaluate the meaning, idiomatic equivalence, and nuance of "${w}" in \`user_translation\` compared to \`japanese_sentence\` and \`reference_translation\`. (Note: Set phrases like もう知らない translated as "I'm done with you", and obvious English homophones like 'their' for 'there', count as natural_correct_sense. However, confusing 何か 'something' with 'what' is mistranslated_or_wrong_meaning).`,
           options: ['natural_correct_sense', 'awkward_or_literal_misfit', 'mistranslated_or_wrong_meaning', 'not_applicable_if_omitted'],
           criteria: senseCriteria
         };
