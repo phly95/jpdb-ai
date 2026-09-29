@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.70
+// @version      1.0.71
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -22,7 +22,7 @@
   // ---------- Config (defaults from your request) ----------
   const DEFAULT_API_BASE = 'http://100.117.72.11:20128/v1';
   const DEFAULT_MODEL = 'ag/gemini-3.8-flash-low';
-  const DEFAULT_API_KEY = 'sk-32c602f2a3bf0a64-sc09zk-98456489';
+  const DEFAULT_API_KEY = '';
   // Keep reasoning cheap/fast: "minimal" thinking level for both APIs.
   const REASONING_EFFORT = 'low';
 
@@ -593,7 +593,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const isFlawlessProb = typeof answers.is_flawless?.noul === 'number' ? answers.is_flawless.noul : 0.5;
     const bracketChoice = answers.grade_bracket?.choice || '8_minor_nuance';
     const rawSeverity = answers.severity?.score;
-    const severityScore = (typeof rawSeverity === 'number' && Number.isFinite(rawSeverity)) ? rawSeverity : 2.5;
+    const severityScore = (typeof rawSeverity === 'number' && Number.isFinite(rawSeverity) && rawSeverity >= 0 && rawSeverity <= 4) ? rawSeverity : null;
 
     // 1. Sentence-level structural checks (tokenizer-independent, evaluated independently)
     const sentenceCritiques = [];
@@ -618,6 +618,12 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         severity: 'critical',
         label: 'Receiver/beneficiary mismatch: Confused who the action was done for (e.g. translated an action done for someone else or a pet as "me", or confused give/receive direction).'
       });
+    } else if (benefactiveChoice === 'benefactive_omitted') {
+      sentenceCritiques.push({
+        code: 'benefactive_omitted',
+        severity: 'moderate',
+        label: 'Benefactive nuance omitted: the translation does not convey that the action was performed for someone.'
+      });
     }
 
     if (predCheck === 'passive_vs_active_error') {
@@ -637,6 +643,12 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         code: 'tense_or_aspect_error',
         severity: 'moderate',
         label: 'Tense/aspect mismatch: Confused past tense with present/future, or continuous aspect.'
+      });
+    } else if (predCheck === 'predicate_omitted_or_wrong') {
+      sentenceCritiques.push({
+        code: 'wrong_verb_or_action',
+        severity: 'critical',
+        label: 'Core predicate mismatch: the main action was omitted or mistranslated.'
       });
     }
 
@@ -848,6 +860,22 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           description: 'affirmative vs negative polarity was inverted',
           confidence: answers.polarity_check?.confidence ?? 0
         });
+      } else if (sc.code === 'wrong_verb_or_action' && !mistakes.some((m) => m.type === 'wrong_verb_or_action' || m.type === 'omitted_or_missing')) {
+        mistakes.push({
+          tokenIndex: null,
+          word: '述語 (Predicate)',
+          type: 'wrong_verb_or_action',
+          description: 'the main action/verb was omitted or mistranslated',
+          confidence: answers.predicate_mood_and_voice?.confidence ?? 0
+        });
+      } else if (sc.code === 'benefactive_omitted' && !advisories.some((a) => a.type === 'benefactive_omitted') && !mistakes.some((m) => m.type === 'recipient_or_beneficiary_error')) {
+        advisories.push({
+          tokenIndex: null,
+          word: '授受・受益 (~てやる/~てくれる)',
+          type: 'benefactive_omitted',
+          description: 'benefactive nuance omitted: does not convey that the action was performed for someone',
+          confidence: answers.benefactive_direction?.confidence ?? 0
+        });
       }
     }
 
@@ -858,7 +886,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const hasModerateFault = sentenceCritiques.some((sc) => sc.severity === 'moderate');
     const hasAdvisory = advisories.length > 0 || summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference';
 
-    const isFlawlessCandidate = (isFlawlessProb >= 0.85 && bracketChoice === '10_flawless' && severityScore >= 3.5);
+    const isFlawlessCandidate = (isFlawlessProb >= 0.85 && bracketChoice === '10_flawless' && (severityScore === null || severityScore >= 3.5));
 
     let overall = 8;
     if (!hasCriticalFault && !hasModerateFault && !hasAdvisory && (isFlawlessCandidate || bracketChoice === '10_flawless' || isFlawlessProb >= 0.85)) {
@@ -867,15 +895,15 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       overall = 8;
     } else {
       if (bracketChoice === '10_flawless') {
-        overall = 8; // capped because structural faults exist
+        overall = hasCriticalFault ? 5 : 8; // capped because structural faults exist
       } else if (bracketChoice === '8_minor_nuance') {
-        overall = (mistakes.length === 0 && sentenceCritiques.length === 0 && isFlawlessProb >= 0.75) ? 10 : 8;
+        overall = (mistakes.length === 0 && sentenceCritiques.length === 0 && isFlawlessProb >= 0.75) ? 10 : (hasCriticalFault ? 6 : 8);
       } else if (bracketChoice === '5_moderate_error') {
-        overall = severityScore >= 2.15 ? 6 : 5;
+        overall = (severityScore !== null ? severityScore >= 2.15 : false) ? 6 : 5;
       } else if (bracketChoice === '3_major_error') {
-        overall = severityScore >= 1.25 ? 4 : 3;
+        overall = (severityScore !== null ? severityScore >= 1.25 : false) ? 4 : 3;
       } else if (bracketChoice === '1_fatal_error') {
-        overall = severityScore >= 0.7 ? 2 : 1;
+        overall = (severityScore !== null ? severityScore >= 0.7 : false) ? 2 : 1;
       } else {
         overall = 8;
       }
@@ -883,7 +911,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     const summaryCritiqueText = sentenceCritiques.length > 0 ? sentenceCritiques[0].label : '';
     const scoreLabel = `${overall}/10`;
-    const scoreClass = overall >= 7 ? 'high' : (overall >= 5 ? 'med' : 'low');
+    const scoreClass = overall === 10 ? 'high' : (overall >= 7 ? 'med' : 'low');
 
     return {
       overall,
@@ -1279,7 +1307,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       const isDiv = !!item.divergence?.diverged;
       const timeStr = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
       const jevScore = typeof item.jev?.overall === 'number' ? `${item.jev.overall}/10` : (item.jev?.badge || '?');
-      const jevBadgeClass = item.jev?.overall >= 7 ? 'high' : (item.jev?.overall >= 5 ? 'med' : 'low');
+      const jevBadgeClass = item.jev?.overall === 10 ? 'high' : (item.jev?.overall >= 7 ? 'med' : 'low');
       const llmScoreVal = typeof item.llm?.score === 'number' ? `${item.llm.score}/10` : '?';
       const divTag = isDiv ? `<span class="jpdb-ai-diag-badge-div" title="${escapeHtml(item.divergence?.reason || '')}">Δ ${item.divergence?.scoreDiff ?? '?'} pts</span>` : '';
 
@@ -1964,6 +1992,12 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(0,0,0,.35)}
     let jevMetrics = null;
     let jevElapsed = 0;
     let jevFinished = false;
+    let jevAttached = false;
+    let diagnosticRecorded = false;
+    let reply = '';
+    let llmScore = null;
+    let llmElapsed = 0;
+    let logEntry = null;
 
     // Launch fast System One evaluation (Jev-1.13) in parallel
     const t0_jev = Date.now();
@@ -1983,46 +2017,63 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(0,0,0,.35)}
       })
       .catch((err) => {
         console.warn('[JPDB AI] Jev evaluation error:', err);
+        jevFinished = true;
         return null;
       });
 
     const t0_llm = Date.now();
     try {
       const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: userPrompt }];
-      const reply = await callLLM(msgs);
-      const llmElapsed = Date.now() - t0_llm;
+      reply = await callLLM(msgs);
+      llmElapsed = Date.now() - t0_llm;
 
       // If Jev hasn't settled yet, give it up to 600ms before first render
       if (!jevFinished) {
         await Promise.race([jevPromise, new Promise((r) => setTimeout(r, 600))]);
       }
 
+      if (jevCardHtml) {
+        jevAttached = true;
+      }
+
       setMsgMarkdown(thinking, reply, jevCardHtml);
-      const logEntry = { role: 'assistant', text: reply, jevHtml: jevCardHtml, isErr: false };
+      logEntry = { role: 'assistant', text: reply, jevHtml: jevCardHtml, isErr: false };
       msgLog.push(logEntry);
       history.push({ role: 'user', content: userPrompt });
       history.push({ role: 'assistant', content: reply });
       saveSession();
 
-      const llmScore = extractLlmScore(reply);
+      llmScore = extractLlmScore(reply);
 
-      // In case Jev was slow and finished AFTER the 600ms race, attach it asynchronously
-      // so neither the chat UI nor diagnostics drop late Jev results!
+      // In case Jev finished late (AFTER the 600ms race window):
+      // attach it cleanly to the rendered message, log entry, and record diagnostics.
       jevPromise.then((lateRes) => {
-        if (lateRes && lateRes.cardHtml && !jevCardHtml) {
+        if (lateRes && lateRes.cardHtml && !jevAttached) {
+          jevAttached = true;
           jevCardHtml = lateRes.cardHtml;
           jevMetrics = lateRes.metrics;
           jevElapsed = lateRes.elapsedMs || (Date.now() - t0_jev);
-          logEntry.jevHtml = jevCardHtml;
+          if (logEntry) logEntry.jevHtml = jevCardHtml;
           setMsgMarkdown(thinking, reply, jevCardHtml);
           saveSession();
-          recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, reply, llmScore, llmElapsed);
+        }
+        if (!diagnosticRecorded) {
+          diagnosticRecorded = true;
+          recordDiagnosticEntry(info, userDraft, lateRes?.metrics ?? jevMetrics, lateRes?.elapsedMs ?? jevElapsed, reply, llmScore, llmElapsed);
+        }
+      }).catch(() => {
+        if (!diagnosticRecorded) {
+          diagnosticRecorded = true;
+          recordDiagnosticEntry(info, userDraft, null, Date.now() - t0_jev, reply, llmScore, llmElapsed);
         }
       });
 
       // Record diagnostics immediately if Jev has already settled
       if (jevMetrics || jevFinished) {
-        recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, reply, llmScore, llmElapsed);
+        if (!diagnosticRecorded) {
+          diagnosticRecorded = true;
+          recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, reply, llmScore, llmElapsed);
+        }
       }
     } catch (e) {
       msgLog.push({ role: 'assistant', text: 'Error: ' + (e.message || e), isErr: true });
