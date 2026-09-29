@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.73
+// @version      1.0.74
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -884,12 +884,15 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     // If advisories.length > 0 (only minor nuance/awkward phrasing), overall score is 8 or 9 (never 10), and rendered in amber (not red).
     const hasCriticalFault = mistakes.length > 0 || sentenceCritiques.some((sc) => sc.severity === 'critical');
     const hasModerateFault = sentenceCritiques.some((sc) => sc.severity === 'moderate');
-    const hasAdvisory = advisories.length > 0 || summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference';
+    // If every single word token was validated as natural/correct (0 mistakes, 0 advisories, 0 critiques),
+    // and isFlawlessProb >= 0.80, do not let reference-translation synonym mismatch penalize to advisory!
+    const isCleanFlawless = (!hasCriticalFault && !hasModerateFault && mistakes.length === 0 && advisories.length === 0 && sentenceCritiques.length === 0 && isFlawlessProb >= 0.80);
+    const hasAdvisory = advisories.length > 0 || (!isCleanFlawless && summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference');
 
     const isFlawlessCandidate = (isFlawlessProb >= 0.85 && bracketChoice === '10_flawless' && (severityScore === null || severityScore >= 3.5));
 
     let overall = 8;
-    if (!hasCriticalFault && !hasModerateFault && !hasAdvisory && (isFlawlessCandidate || bracketChoice === '10_flawless' || isFlawlessProb >= 0.85)) {
+    if (!hasCriticalFault && !hasModerateFault && !hasAdvisory && (isCleanFlawless || isFlawlessCandidate || bracketChoice === '10_flawless' || isFlawlessProb >= 0.85)) {
       overall = 10;
     } else if (!hasCriticalFault && !hasModerateFault) {
       overall = 8;
@@ -1036,7 +1039,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         },
         grade_bracket: {
           type: 'choice',
-          instructions: 'Grade this translation on the 10/10 scale considering contextual accuracy and natural English phrasing compared to `reference_translation`. Note: Idiomatic expressions, conversational softeners, natural equivalents, and obvious English typos/homophones (e.g. "their" for "there", "we\'ll" for "well") where Japanese meaning is understood capture the communicative intent perfectly and should receive 10_flawless.',
+          instructions: 'Grade this translation on the 10/10 scale considering contextual accuracy and natural English phrasing compared to `reference_translation`. Note: Natural synonyms and direct translations (e.g. "what I thought" for 思っていた when reference says "expected", "talked to" for 話した, "found" for 見つけた), idiomatic expressions, conversational softeners, natural equivalents, and minor English typos/homophones capture the communicative intent perfectly and should receive 10_flawless (do not downgrade to 8_minor_nuance merely because synonyms differ from reference_translation).',
           options: ['10_flawless', '8_minor_nuance', '5_moderate_error', '3_major_error', '1_fatal_error'],
           criteria: {
             '10_flawless': 'Flawless, natural, and contextually idiomatic translation (including minor English typos, punctuation slips, or phonetic homophones like their/there, we\'ll/well). Conveys the communicative intent and tone with no deductions.',
@@ -1072,14 +1075,14 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             'minor_nuance_or_word_choice_difference'
           ],
           criteria: {
-            no_flaws_accurate: 'Accurate, faithful, and natural translation with no notable errors (including idiomatic equivalents, conversational softeners, and minor English typos or homophones where Japanese meaning is understood).',
+            no_flaws_accurate: 'Accurate, faithful, and natural translation with no notable errors (including valid synonyms, direct translations like "thought" for 思っていた, idiomatic equivalents, conversational softeners, and minor English typos or homophones where Japanese meaning is understood).',
             wrong_benefactive_or_recipient: 'Confused the recipient or beneficiary of the action (e.g. translated ~てやってくれ as doing a favor for "me" instead of a third party/pet, or confused give/receive direction).',
             agent_or_passive_reversed: 'Reversed who did the action to whom, or passive was translated as active.',
             wrong_verb_or_action: 'The core verb or action was mistranslated or misunderstood.',
             tense_or_aspect_error: 'Past vs present/future tense was confused.',
             potential_or_modality_error: "Potential ('can') vs intent ('will'), or certainty vs possibility.",
             interrogative_or_question_error: 'Question word or structure was missed or changed.',
-            minor_nuance_or_word_choice_difference: 'Minor stylistic difference or slight nuance variance.'
+            minor_nuance_or_word_choice_difference: 'A genuine semantic nuance difference, dropped modifier, or awkward phrasing (do NOT select this for valid synonyms or direct translations like "thought" for 思っていた).'
           }
         },
         benefactive_direction: {
