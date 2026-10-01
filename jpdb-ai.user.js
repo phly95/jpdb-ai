@@ -34,6 +34,9 @@
   // Keep reasoning cheap/fast: "minimal" thinking level for both APIs.
   const REASONING_EFFORT = 'low';
 
+  let updateFoot = () => {};
+  let updateShortcutsUI = () => {};
+
   const CFG = {
     get base() { try { return (GM_getValue('jpdb_ai_base', DEFAULT_API_BASE) || DEFAULT_API_BASE).trim().replace(/\/+$/, ''); } catch { return DEFAULT_API_BASE; } },
     get model() { try { return (GM_getValue('jpdb_ai_model', DEFAULT_MODEL) || DEFAULT_MODEL).trim(); } catch { return DEFAULT_MODEL; } },
@@ -2627,7 +2630,7 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     panel.querySelector('#jpdb-ai-send').addEventListener('click', doSend);
     panel.querySelector('#jpdb-ai-rate').addEventListener('click', runRateTranslation);
 
-    function updateShortcutsUI() {
+    updateShortcutsUI = function () {
       const input = panel.querySelector('#jpdb-ai-input');
       const sendBtn = panel.querySelector('#jpdb-ai-send');
       const rateBtn = panel.querySelector('#jpdb-ai-rate');
@@ -2775,7 +2778,7 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
       });
     }
 
-    function updateFoot() {
+    updateFoot = function () {
       const el = document.getElementById('jpdb-ai-model');
       if (el) {
         const shortModel = CFG.model.replace(/^models\//, '');
