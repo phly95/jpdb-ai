@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.75
+// @version      1.0.76
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1594,6 +1594,37 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  function exportSettingsJson() {
+    const baseInput = document.getElementById('jpdb-ai-cfg-llm-base');
+    const modelInput = document.getElementById('jpdb-ai-cfg-llm-model');
+    const keyInput = document.getElementById('jpdb-ai-cfg-llm-key');
+    const jevEndpointInput = document.getElementById('jpdb-ai-cfg-jev-endpoint');
+    const jevModelInput = document.getElementById('jpdb-ai-cfg-jev-model');
+    const jevKeyInput = document.getElementById('jpdb-ai-cfg-jev-key');
+    const invertInput = document.getElementById('jpdb-ai-cfg-invert-enter');
+
+    const settings = {
+      base: baseInput ? baseInput.value : CFG.base,
+      model: modelInput ? modelInput.value : CFG.model,
+      key: keyInput ? keyInput.value : CFG.key,
+      jevEndpoint: jevEndpointInput ? jevEndpointInput.value : CFG.jevEndpoint,
+      jevModel: jevModelInput ? jevModelInput.value : CFG.jevModel,
+      jevKey: jevKeyInput ? jevKeyInput.value : CFG.jevKey,
+      invertEnter: invertInput ? invertInput.checked : CFG.invertEnter,
+      exportedAt: new Date().toISOString(),
+    };
+    const json = JSON.stringify(settings, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const dlAnchor = document.createElement('a');
+    dlAnchor.href = url;
+    dlAnchor.download = `jpdb_ai_settings_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json`;
+    document.body.appendChild(dlAnchor);
+    dlAnchor.click();
+    dlAnchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
 
 
   // Expose diagnostic tools to unsafeWindow / DevTools
@@ -1609,6 +1640,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         renderDiagList();
       },
     };
+    targetWin.__jpdbAiExportSettings = exportSettingsJson;
   } catch {}
 
   function buildRateTranslationPrompt(info, userDraft) {
@@ -2324,7 +2356,8 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         <div class="jpdb-ai-settings-head">
           <span>⚙️ Settings</span>
           <div class="jpdb-ai-settings-actions">
-            <button id="jpdb-ai-settings-close" title="Back to review chat">✕</button>
+            <button type="button" id="jpdb-ai-settings-export-top" title="Export settings as JSON file">Export JSON</button>
+            <button type="button" id="jpdb-ai-settings-close" title="Back to review chat">✕</button>
           </div>
         </div>
         <form id="jpdb-ai-settings-form" style="display:flex;flex-direction:column;gap:10px">
@@ -2374,8 +2407,9 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
             </label>
           </div>
 
-          <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+          <div style="display:flex;align-items:center;gap:8px;margin-top:2px;flex-wrap:wrap">
             <button type="submit" id="jpdb-ai-settings-save" class="jpdb-ai-settings-btn-primary">Save Settings</button>
+            <button type="button" id="jpdb-ai-settings-export" class="jpdb-ai-settings-btn-secondary" title="Export settings as JSON file">Export JSON</button>
             <button type="button" id="jpdb-ai-settings-reset" class="jpdb-ai-settings-btn-secondary">Reset Defaults</button>
             <span id="jpdb-ai-settings-status" style="font-size:11px;font-weight:600;color:#10b981;display:none">Saved!</span>
           </div>
@@ -2533,6 +2567,12 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     panel.querySelector('#jpdb-ai-settings-close').addEventListener('click', () => {
       toggleSettingsView(false);
     });
+
+    const exportBtnTop = panel.querySelector('#jpdb-ai-settings-export-top');
+    if (exportBtnTop) exportBtnTop.addEventListener('click', exportSettingsJson);
+
+    const exportBtnBottom = panel.querySelector('#jpdb-ai-settings-export');
+    if (exportBtnBottom) exportBtnBottom.addEventListener('click', exportSettingsJson);
 
     panel.querySelectorAll('.jpdb-ai-settings-btn-toggle').forEach((btn) => {
       btn.addEventListener('click', (e) => {
