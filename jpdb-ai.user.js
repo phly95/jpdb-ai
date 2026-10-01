@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.74
+// @version      1.0.75
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -10,6 +10,9 @@
 // @grant        GM_getValue
 // @grant        GM_registerMenuCommand
 // @connect      100.117.72.11
+// @connect      openrouter.ai
+// @connect      generativelanguage.googleapis.com
+// @connect      *
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -19,10 +22,15 @@
   // Do not run on learn pages
   if (location.pathname.startsWith('/learn')) return;
 
-  // ---------- Config (defaults from your request) ----------
-  const DEFAULT_API_BASE = 'http://100.117.72.11:20128/v1';
-  const DEFAULT_MODEL = 'ag/gemini-3.8-flash-low';
+  // ---------- Config Defaults ----------
+  const DEFAULT_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+  const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
   const DEFAULT_API_KEY = '';
+
+  const DEFAULT_JEV_ENDPOINT = 'https://openrouter.ai/api/alpha/decisions';
+  const DEFAULT_JEV_MODEL = 'typesafe/jev-1.13';
+  const DEFAULT_JEV_KEY = '';
+
   // Keep reasoning cheap/fast: "minimal" thinking level for both APIs.
   const REASONING_EFFORT = 'low';
 
@@ -31,24 +39,26 @@
     get model() { try { return (GM_getValue('jpdb_ai_model', DEFAULT_MODEL) || DEFAULT_MODEL).trim(); } catch { return DEFAULT_MODEL; } },
     get key() { try { return (GM_getValue('jpdb_ai_key', DEFAULT_API_KEY) || DEFAULT_API_KEY).trim(); } catch { return DEFAULT_API_KEY; } },
     get invertEnter() { try { return !!GM_getValue('jpdb_ai_invert_enter', false); } catch { return false; } },
-    set base(v) { GM_setValue('jpdb_ai_base', v); },
-    set model(v) { GM_setValue('jpdb_ai_model', v); },
-    set key(v) { GM_setValue('jpdb_ai_key', v); },
+
+    get jevEndpoint() { try { return (GM_getValue('jpdb_ai_jev_endpoint', DEFAULT_JEV_ENDPOINT) || DEFAULT_JEV_ENDPOINT).trim(); } catch { return DEFAULT_JEV_ENDPOINT; } },
+    get jevModel() { try { return (GM_getValue('jpdb_ai_jev_model', DEFAULT_JEV_MODEL) || DEFAULT_JEV_MODEL).trim(); } catch { return DEFAULT_JEV_MODEL; } },
+    get jevKey() { try { return (GM_getValue('jpdb_ai_jev_key', DEFAULT_JEV_KEY) || DEFAULT_JEV_KEY).trim(); } catch { return DEFAULT_JEV_KEY; } },
+
+    set base(v) { GM_setValue('jpdb_ai_base', (v || '').trim().replace(/\/+$/, '')); },
+    set model(v) { GM_setValue('jpdb_ai_model', (v || '').trim()); },
+    set key(v) { GM_setValue('jpdb_ai_key', (v || '').trim()); },
     set invertEnter(v) { GM_setValue('jpdb_ai_invert_enter', !!v); },
+    set jevEndpoint(v) { GM_setValue('jpdb_ai_jev_endpoint', (v || '').trim()); },
+    set jevModel(v) { GM_setValue('jpdb_ai_jev_model', (v || '').trim()); },
+    set jevKey(v) { GM_setValue('jpdb_ai_jev_key', (v || '').trim()); },
   };
 
   try {
-    GM_registerMenuCommand('Set AI API base/model/key', () => {
-      const b = prompt('API base URL:', CFG.base);
-      if (b === null) return;
-      const m = prompt('Model:', CFG.model);
-      if (m === null) return;
-      const k = prompt('API key:', CFG.key);
-      if (k === null) return;
-      CFG.base = b.trim().replace(/\/+$/, '');
-      CFG.model = m.trim();
-      CFG.key = k.trim();
-      alert('Saved. Reload the page.');
+    GM_registerMenuCommand('Open AI Settings', () => {
+      if (typeof ensureFab === 'function') ensureFab();
+      if (typeof ensurePanel === 'function') ensurePanel();
+      if (typeof toggle === 'function') toggle(true);
+      if (typeof toggleSettingsView === 'function') toggleSettingsView(true);
     });
     GM_registerMenuCommand('Toggle Enter / Ctrl+Enter mapping', () => {
       CFG.invertEnter = !CFG.invertEnter;
@@ -307,6 +317,10 @@
 
   function extractTextFromResponses(data) {
     if (!data || typeof data !== 'object') return '';
+    if (Array.isArray(data.candidates) && data.candidates[0]?.content?.parts) {
+      const parts = data.candidates[0].content.parts.map((p) => p.text || '').join('');
+      if (parts) return parts;
+    }
     if (typeof data.output_text === 'string' && data.output_text.trim()) return data.output_text;
     if (Array.isArray(data.output)) {
       let chunks = [];
@@ -342,8 +356,65 @@
 
   async function callLLM(messages) {
     const base = CFG.base;
-    const model = CFG.model;
+    let model = CFG.model;
     const key = CFG.key;
+
+    // Normalize model string if user typed with spaces (e.g. Gemini 3.5 Flash Lite -> gemini-3.5-flash-lite)
+    if (model.toLowerCase().includes('gemini') && model.includes(' ')) {
+      model = model.trim().toLowerCase().replace(/\s+/g, '-');
+    }
+
+    // Detect Google Generative Language native endpoint
+    const isGoogleNative = (base.includes('generativelanguage.googleapis.com') && !base.includes('/openai')) || base.includes(':generateContent');
+
+    if (isGoogleNative) {
+      let url = base;
+      if (!url.includes(':generateContent')) {
+        url = url.replace(/\/+$/, '') + '/models/' + encodeURIComponent(model.replace(/^models\//, '')) + ':generateContent';
+      }
+      const gHeaders = { 'Content-Type': 'application/json' };
+      if (key) {
+        gHeaders['x-goog-api-key'] = key;
+      }
+
+      const contents = [];
+      let sysInstruction = '';
+      for (const m of messages) {
+        if (m.role === 'system') {
+          sysInstruction = (sysInstruction ? sysInstruction + '\n\n' : '') + m.content;
+        } else {
+          const role = m.role === 'assistant' ? 'model' : 'user';
+          const last = contents[contents.length - 1];
+          if (last && last.role === role) {
+            last.parts.push({ text: m.content });
+          } else {
+            contents.push({
+              role: role,
+              parts: [{ text: m.content }]
+            });
+          }
+        }
+      }
+      const gBody = { contents };
+      if (sysInstruction) {
+        gBody.systemInstruction = { parts: [{ text: sysInstruction }] };
+      }
+
+      try {
+        const res = await gmPost(url, gHeaders, gBody, 60000);
+        if (res.status >= 200 && res.status < 300) {
+          const text = parseResponseText(res.responseText);
+          if (text) return text.trim();
+          throw new Error('Empty response from Gemini API');
+        } else {
+          throw new Error('Gemini API (' + res.status + '): ' + String(res.responseText || '').slice(0, 200));
+        }
+      } catch (err) {
+        console.warn('[JPDB AI] Google native API call failed, falling back to OpenAI format:', err);
+      }
+    }
+
+    // Standard OpenAI-compatible Chat Completions
     const headers = { 'Content-Type': 'application/json' };
     if (key) headers['Authorization'] = 'Bearer ' + key;
 
@@ -357,7 +428,8 @@
 
     let firstErr = null;
     try {
-      const res = await gmPost(base + '/chat/completions', headers, cBody, 60000);
+      const chatUrl = base.endsWith('/chat/completions') ? base : (base.replace(/\/+$/, '') + '/chat/completions');
+      const res = await gmPost(chatUrl, headers, cBody, 60000);
       if (res.status >= 200 && res.status < 300) {
         const text = parseResponseText(res.responseText);
         if (text) return text.trim();
@@ -386,7 +458,8 @@
       reasoning_effort: REASONING_EFFORT,
     };
     try {
-      const res2 = await gmPost(base + '/responses', headers, rBody);
+      const respUrl = base.endsWith('/responses') ? base : (base.replace(/\/+$/, '') + '/responses');
+      const res2 = await gmPost(respUrl, headers, rBody);
       if (res2.status >= 200 && res2.status < 300) {
         const text2 = parseResponseText(res2.responseText);
         if (text2) return text2.trim();
@@ -466,7 +539,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
   }
 
     // ---------- System One Jev-1.13 Evaluation ----------
-  const JEV_MODEL = 'openrouter/typesafe/jev-1.13';
 
   function getJapaneseSentenceWords(sentence, targetVocab) {
     if (!sentence) return targetVocab ? [targetVocab] : [];
@@ -932,18 +1004,19 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     };
   }
 
-  function renderJevCard(metrics) {
+  function renderJevCard(metrics, modelName) {
     if (!metrics) return '';
     const { overall, scoreLabel, scoreClass, summaryCritiqueText, sentenceCritiques, mistakes, advisories, words } = metrics;
     const isMinor = overall >= 7;
 
     const hasMistakes = mistakes && mistakes.length > 0;
     const hasAdvisories = advisories && advisories.length > 0;
+    const tag = modelName || CFG.jevModel || DEFAULT_JEV_MODEL;
 
     return `
       <details class="jpdb-ai-jev-card" open>
         <summary class="jpdb-ai-jev-head" title="Click to collapse/expand breakdown">
-          <span class="jpdb-ai-jev-title">⚡ Instant Assessment <span class="jpdb-ai-jev-tag">${escapeHtml(JEV_MODEL)}</span></span>
+          <span class="jpdb-ai-jev-title">⚡ Instant Assessment <span class="jpdb-ai-jev-tag">${escapeHtml(tag)}</span></span>
           <span class="jpdb-ai-jev-score ${scoreClass}" title="Calculated instant score: ${overall}/10">${scoreLabel}</span>
         </summary>
         <div class="jpdb-ai-jev-body">
@@ -1010,10 +1083,32 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
   async function callJevEvaluation(info, userDraft) {
     const t0 = Date.now();
     try {
-      const base = CFG.base;
-      const key = CFG.key;
+      const endpoint = CFG.jevEndpoint || DEFAULT_JEV_ENDPOINT;
+      const key = CFG.jevKey;
+      let model = CFG.jevModel || DEFAULT_JEV_MODEL;
+
+      let url = endpoint.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      if (!url.endsWith('/decisions') && !url.endsWith('/systemone')) {
+        if (url.includes('openrouter.ai')) {
+          url = url.replace(/\/+$/, '') + '/api/alpha/decisions';
+        } else {
+          url = url.replace(/\/+$/, '') + '/systemone';
+        }
+      }
+
+      if (url.includes('openrouter.ai') && model.startsWith('openrouter/')) {
+        model = model.replace(/^openrouter\//, '');
+      }
+
       const headers = { 'Content-Type': 'application/json' };
       if (key) headers['Authorization'] = 'Bearer ' + key;
+      if (url.includes('openrouter.ai')) {
+        headers['HTTP-Referer'] = 'https://jpdb.io';
+        headers['X-Title'] = 'JPDB AI Explainer';
+      }
 
       const cleanJp = (info.sentenceJP || '').replace(/\([^)]*\)/g, '').trim();
       const cleanTarget = (info.vocab || '').replace(/\([^)]*\)/g, '').trim();
@@ -1189,23 +1284,24 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       }
 
       const body = {
-        model: JEV_MODEL,
+        model: model,
         state: state,
         questions: questions
       };
 
-      const url = base.replace(/\/+$/, '') + '/systemone';
       const res = await gmPost(url, headers, body, 15000);
       if (res.status >= 200 && res.status < 300) {
         const data = JSON.parse(res.responseText);
         if (data && data.answers) {
           const metrics = parseJevScores(data.answers, words, cleanTarget);
           return {
-            cardHtml: renderJevCard(metrics),
+            cardHtml: renderJevCard(metrics, model),
             metrics,
             elapsedMs: Date.now() - t0,
           };
         }
+      } else {
+        console.warn('[JPDB AI] Jev call failed with status ' + res.status + ':', res.responseText);
       }
     } catch (err) {
       console.warn('[JPDB AI] Jev call failed:', err);
@@ -1262,6 +1358,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
   function toggleDiagView(forceOpen) {
     const diagView = document.getElementById('jpdb-ai-diag-view');
+    const settingsView = document.getElementById('jpdb-ai-settings-view');
     const msgsBox = document.getElementById('jpdb-ai-msgs');
     const btnsBox = document.getElementById('jpdb-ai-btns');
     const rowBox = document.getElementById('jpdb-ai-row');
@@ -1269,6 +1366,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     const shouldShow = forceOpen !== undefined ? forceOpen : (diagView.style.display !== 'flex');
     if (shouldShow) {
+      if (settingsView) settingsView.style.display = 'none';
       diagView.style.display = 'flex';
       msgsBox.style.display = 'none';
       if (btnsBox) btnsBox.style.display = 'none';
@@ -1276,9 +1374,57 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       renderDiagList();
     } else {
       diagView.style.display = 'none';
-      msgsBox.style.display = 'flex';
-      if (btnsBox) btnsBox.style.display = 'flex';
-      if (rowBox) rowBox.style.display = 'flex';
+      if (!settingsView || settingsView.style.display !== 'flex') {
+        msgsBox.style.display = 'flex';
+        if (btnsBox) btnsBox.style.display = 'flex';
+        if (rowBox) rowBox.style.display = 'flex';
+        msgsBox.scrollTop = msgsBox.scrollHeight;
+      }
+    }
+  }
+
+  function loadSettingsToUI() {
+    const baseEl = document.getElementById('jpdb-ai-cfg-llm-base');
+    const modelEl = document.getElementById('jpdb-ai-cfg-llm-model');
+    const keyEl = document.getElementById('jpdb-ai-cfg-llm-key');
+    const jevEndpointEl = document.getElementById('jpdb-ai-cfg-jev-endpoint');
+    const jevModelEl = document.getElementById('jpdb-ai-cfg-jev-model');
+    const jevKeyEl = document.getElementById('jpdb-ai-cfg-jev-key');
+    const invertEl = document.getElementById('jpdb-ai-cfg-invert-enter');
+
+    if (baseEl) baseEl.value = CFG.base;
+    if (modelEl) modelEl.value = CFG.model;
+    if (keyEl) keyEl.value = CFG.key;
+    if (jevEndpointEl) jevEndpointEl.value = CFG.jevEndpoint;
+    if (jevModelEl) jevModelEl.value = CFG.jevModel;
+    if (jevKeyEl) jevKeyEl.value = CFG.jevKey;
+    if (invertEl) invertEl.checked = CFG.invertEnter;
+  }
+
+  function toggleSettingsView(forceOpen) {
+    const settingsView = document.getElementById('jpdb-ai-settings-view');
+    const diagView = document.getElementById('jpdb-ai-diag-view');
+    const msgsBox = document.getElementById('jpdb-ai-msgs');
+    const btnsBox = document.getElementById('jpdb-ai-btns');
+    const rowBox = document.getElementById('jpdb-ai-row');
+    if (!settingsView || !msgsBox) return;
+
+    const shouldShow = forceOpen !== undefined ? forceOpen : (settingsView.style.display !== 'flex');
+    if (shouldShow) {
+      if (diagView) diagView.style.display = 'none';
+      settingsView.style.display = 'flex';
+      msgsBox.style.display = 'none';
+      if (btnsBox) btnsBox.style.display = 'none';
+      if (rowBox) rowBox.style.display = 'none';
+      loadSettingsToUI();
+    } else {
+      settingsView.style.display = 'none';
+      if (!diagView || diagView.style.display !== 'flex') {
+        msgsBox.style.display = 'flex';
+        if (btnsBox) btnsBox.style.display = 'flex';
+        if (rowBox) rowBox.style.display = 'flex';
+        msgsBox.scrollTop = msgsBox.scrollHeight;
+      }
     }
   }
 
@@ -1393,7 +1539,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           targetEvaluated: userDraft || info.sentenceEN || '',
         },
         jev: jevMetrics ? {
-          model: JEV_MODEL,
+          model: CFG.jevModel || DEFAULT_JEV_MODEL,
           elapsedMs: jevElapsedMs,
           overall: jevMetrics.overall,
           badge: jevMetrics.scoreLabel,
@@ -1680,6 +1826,30 @@ html.dark-mode .jpdb-ai-diag-subscores span{background:rgba(255,255,255,.1)}
 html.dark-mode .jpdb-ai-diag-details summary{color:#93c5fd}
 .jpdb-ai-diag-critique{margin-top:4px;padding:7px;background:rgba(0,0,0,.04);border-radius:5px;max-height:160px;overflow:auto;white-space:pre-wrap;font-size:11px;line-height:1.4}
 html.dark-mode .jpdb-ai-diag-critique{background:rgba(0,0,0,.35)}
+
+#jpdb-ai-settings-view{display:none;flex:1;flex-direction:column;min-height:0;overflow-y:auto;background:inherit;padding:10px 14px;gap:10px}
+.jpdb-ai-settings-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,.1);font-weight:700;font-size:12.5px}
+html.dark-mode .jpdb-ai-settings-head{border-color:rgba(255,255,255,.15)}
+.jpdb-ai-settings-actions{display:flex;gap:4px}
+.jpdb-ai-settings-actions button{padding:3px 8px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#1f2937!important;cursor:pointer;transition:all .15s}
+.jpdb-ai-settings-actions button:hover{background:#eff6ff;color:#1d4ed8!important;border-color:#3b82f6}
+html.dark-mode .jpdb-ai-settings-actions button{background:#2a2a2a;color:#f3f4f6!important;border-color:#555}
+html.dark-mode .jpdb-ai-settings-actions button:hover{background:#1e3a5f;color:#93c5fd!important;border-color:#60a5fa}
+.jpdb-ai-settings-group{display:flex;flex-direction:column;gap:8px;padding:9px 11px;border-radius:8px;border:1px solid #e5e7eb;background:rgba(0,0,0,.02)}
+html.dark-mode .jpdb-ai-settings-group{border-color:#444;background:rgba(255,255,255,.03)}
+.jpdb-ai-settings-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.8;margin-bottom:2px}
+.jpdb-ai-settings-label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:600;opacity:.9}
+.jpdb-ai-settings-checkbox-label{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:500;cursor:pointer;user-select:none}
+.jpdb-ai-settings-input{width:100%;box-sizing:border-box;padding:5px 8px;font-size:11.5px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#111;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+.jpdb-ai-settings-input:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.2)}
+html.dark-mode .jpdb-ai-settings-input{background:#232323;color:#e5e7eb;border-color:#555}
+html.dark-mode .jpdb-ai-settings-input:focus{border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.25)}
+.jpdb-ai-settings-btn-toggle{padding:0 8px;font-size:12px;border-radius:6px;border:1px solid #d1d5db;background:#f3f4f6;cursor:pointer}
+html.dark-mode .jpdb-ai-settings-btn-toggle{border-color:#555;background:#333}
+.jpdb-ai-settings-btn-primary{padding:6px 14px;font-size:11.5px;font-weight:600;border-radius:6px;border:1px solid #2563eb;background:#2563eb;color:#fff!important;cursor:pointer;transition:background .15s}
+.jpdb-ai-settings-btn-primary:hover{background:#1d4ed8}
+.jpdb-ai-settings-btn-secondary{padding:6px 12px;font-size:11.5px;font-weight:500;border-radius:6px;border:1px solid #d1d5db;background:transparent;color:inherit!important;cursor:pointer}
+html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
 `;
 
   function injectStyle() {
@@ -2150,6 +2320,67 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(0,0,0,.35)}
         <button id="jpdb-ai-breakdown" title="Sentence breakdown (S or Alt+S)">🔍 <span class="jpdb-ai-btn-long">Sentence breakdown</span><span class="jpdb-ai-btn-short">Breakdown</span></button>
         <button id="jpdb-ai-clear" style="flex:0 1 auto;min-width:44px" title="Clear chat history">Clear</button>
       </div>
+      <div id="jpdb-ai-settings-view">
+        <div class="jpdb-ai-settings-head">
+          <span>⚙️ Settings</span>
+          <div class="jpdb-ai-settings-actions">
+            <button id="jpdb-ai-settings-close" title="Back to review chat">✕</button>
+          </div>
+        </div>
+        <form id="jpdb-ai-settings-form" style="display:flex;flex-direction:column;gap:10px">
+          <div class="jpdb-ai-settings-group">
+            <div class="jpdb-ai-settings-group-title">💬 LLM (Chat & Explainer)</div>
+            <label class="jpdb-ai-settings-label">
+              API Endpoint / Base URL
+              <input type="text" id="jpdb-ai-cfg-llm-base" class="jpdb-ai-settings-input" placeholder="e.g. https://generativelanguage.googleapis.com/v1beta" />
+            </label>
+            <label class="jpdb-ai-settings-label">
+              Model
+              <input type="text" id="jpdb-ai-cfg-llm-model" class="jpdb-ai-settings-input" placeholder="e.g. gemini-3.5-flash-lite" />
+            </label>
+            <label class="jpdb-ai-settings-label">
+              API Key
+              <div style="display:flex;gap:6px">
+                <input type="password" id="jpdb-ai-cfg-llm-key" class="jpdb-ai-settings-input" placeholder="LLM API key" style="flex:1" />
+                <button type="button" class="jpdb-ai-settings-btn-toggle" data-target="jpdb-ai-cfg-llm-key" title="Toggle visibility">👁️</button>
+              </div>
+            </label>
+          </div>
+
+          <div class="jpdb-ai-settings-group">
+            <div class="jpdb-ai-settings-group-title">⚡ JEV (Instant Assessment)</div>
+            <label class="jpdb-ai-settings-label">
+              JEV Endpoint URL
+              <input type="text" id="jpdb-ai-cfg-jev-endpoint" class="jpdb-ai-settings-input" placeholder="e.g. https://openrouter.ai/api/alpha/decisions" />
+            </label>
+            <label class="jpdb-ai-settings-label">
+              JEV Model
+              <input type="text" id="jpdb-ai-cfg-jev-model" class="jpdb-ai-settings-input" placeholder="e.g. typesafe/jev-1.13" />
+            </label>
+            <label class="jpdb-ai-settings-label">
+              JEV API Key
+              <div style="display:flex;gap:6px">
+                <input type="password" id="jpdb-ai-cfg-jev-key" class="jpdb-ai-settings-input" placeholder="OpenRouter API key" style="flex:1" />
+                <button type="button" class="jpdb-ai-settings-btn-toggle" data-target="jpdb-ai-cfg-jev-key" title="Toggle visibility">👁️</button>
+              </div>
+            </label>
+          </div>
+
+          <div class="jpdb-ai-settings-group">
+            <div class="jpdb-ai-settings-group-title">⌨️ Keyboard Shortcuts</div>
+            <label class="jpdb-ai-settings-checkbox-label">
+              <input type="checkbox" id="jpdb-ai-cfg-invert-enter" />
+              <span>Invert Enter / Ctrl+Enter (Enter = Rate, Ctrl+Enter = Send)</span>
+            </label>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+            <button type="submit" id="jpdb-ai-settings-save" class="jpdb-ai-settings-btn-primary">Save Settings</button>
+            <button type="button" id="jpdb-ai-settings-reset" class="jpdb-ai-settings-btn-secondary">Reset Defaults</button>
+            <span id="jpdb-ai-settings-status" style="font-size:11px;font-weight:600;color:#10b981;display:none">Saved!</span>
+          </div>
+        </form>
+      </div>
       <div id="jpdb-ai-diag-view">
         <div class="jpdb-ai-diag-head">
           <span>Diagnostics (<span id="jpdb-ai-diag-stat">0</span>)</span>
@@ -2296,27 +2527,88 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(0,0,0,.35)}
 
     panel.querySelector('#jpdb-ai-cfg').addEventListener('click', (e) => {
       e.preventDefault();
-      const b = prompt('API base URL:', CFG.base);
-      if (b === null) return;
-      const m = prompt('Model:', CFG.model);
-      if (m === null) return;
-      const k = prompt('API key:', CFG.key);
-      if (k === null) return;
-      const inv = confirm('Invert Enter and Ctrl+Enter for sending vs rating?\n\n' +
-        'OK = Enter to Rate translation (Ctrl+Enter to Send)\n' +
-        'Cancel = Enter to Send (Ctrl+Enter to Rate translation)\n\n' +
-        'Currently: ' + (CFG.invertEnter ? 'Enter: Rate translation' : 'Enter: Send follow-up'));
-      CFG.base = b.trim().replace(/\/+$/, '');
-      CFG.model = m.trim();
-      CFG.key = k.trim();
-      CFG.invertEnter = inv;
-      updateFoot();
-      updateShortcutsUI();
+      toggleSettingsView();
     });
+
+    panel.querySelector('#jpdb-ai-settings-close').addEventListener('click', () => {
+      toggleSettingsView(false);
+    });
+
+    panel.querySelectorAll('.jpdb-ai-settings-btn-toggle').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = btn.getAttribute('data-target');
+        const input = panel.querySelector('#' + targetId);
+        if (input) {
+          const isPass = input.type === 'password';
+          input.type = isPass ? 'text' : 'password';
+          btn.textContent = isPass ? '🔒' : '👁️';
+          btn.title = isPass ? 'Hide API key' : 'Show API key';
+        }
+      });
+    });
+
+    const settingsForm = panel.querySelector('#jpdb-ai-settings-form');
+    if (settingsForm) {
+      settingsForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const baseVal = panel.querySelector('#jpdb-ai-cfg-llm-base')?.value || '';
+        let modelVal = panel.querySelector('#jpdb-ai-cfg-llm-model')?.value || '';
+        const keyVal = panel.querySelector('#jpdb-ai-cfg-llm-key')?.value || '';
+        const jevEndpointVal = panel.querySelector('#jpdb-ai-cfg-jev-endpoint')?.value || '';
+        const jevModelVal = panel.querySelector('#jpdb-ai-cfg-jev-model')?.value || '';
+        const jevKeyVal = panel.querySelector('#jpdb-ai-cfg-jev-key')?.value || '';
+        const invertVal = panel.querySelector('#jpdb-ai-cfg-invert-enter')?.checked || false;
+
+        if (modelVal.toLowerCase().includes('gemini') && modelVal.includes(' ')) {
+          modelVal = modelVal.trim().toLowerCase().replace(/\s+/g, '-');
+        }
+
+        CFG.base = baseVal;
+        CFG.model = modelVal;
+        CFG.key = keyVal;
+        CFG.jevEndpoint = jevEndpointVal;
+        CFG.jevModel = jevModelVal;
+        CFG.jevKey = jevKeyVal;
+        CFG.invertEnter = invertVal;
+
+        updateFoot();
+        updateShortcutsUI();
+
+        const statusEl = panel.querySelector('#jpdb-ai-settings-status');
+        if (statusEl) {
+          statusEl.textContent = 'Settings saved!';
+          statusEl.style.display = 'inline';
+          setTimeout(() => {
+            if (statusEl) statusEl.style.display = 'none';
+          }, 2500);
+        }
+      });
+    }
+
+    const resetBtn = panel.querySelector('#jpdb-ai-settings-reset');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        if (confirm('Reset settings to defaults? (Your API keys will be cleared)')) {
+          panel.querySelector('#jpdb-ai-cfg-llm-base').value = DEFAULT_API_BASE;
+          panel.querySelector('#jpdb-ai-cfg-llm-model').value = DEFAULT_MODEL;
+          panel.querySelector('#jpdb-ai-cfg-llm-key').value = '';
+          panel.querySelector('#jpdb-ai-cfg-jev-endpoint').value = DEFAULT_JEV_ENDPOINT;
+          panel.querySelector('#jpdb-ai-cfg-jev-model').value = DEFAULT_JEV_MODEL;
+          panel.querySelector('#jpdb-ai-cfg-jev-key').value = '';
+          panel.querySelector('#jpdb-ai-cfg-invert-enter').checked = false;
+        }
+      });
+    }
 
     function updateFoot() {
       const el = document.getElementById('jpdb-ai-model');
-      if (el) el.textContent = CFG.model + ' @ ' + CFG.base;
+      if (el) {
+        const shortModel = CFG.model.replace(/^models\//, '');
+        const shortJev = CFG.jevModel ? (CFG.jevModel.split('/').pop() || CFG.jevModel) : '';
+        el.textContent = shortJev ? `${shortModel} + ${shortJev}` : shortModel;
+        el.title = `LLM: ${CFG.model} (${CFG.base})\nJEV: ${CFG.jevModel} (${CFG.jevEndpoint})`;
+      }
     }
     updateFoot();
     updateShortcutsUI();
