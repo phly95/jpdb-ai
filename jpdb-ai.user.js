@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.76
+// @version      1.0.77
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1471,13 +1471,16 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         return item.jev ? `<div style="margin-top:4px;font-size:11px;color:#15803d;font-weight:600">✓ Flawless (no issues detected)</div>` : '';
       })();
 
+      const itemId = item.id || ('diag_' + (item.timestamp || ''));
       return `
-        <div class="jpdb-ai-diag-item ${isDiv ? 'diverged' : ''}">
+        <div class="jpdb-ai-diag-item ${isDiv ? 'diverged' : ''}" data-id="${escapeHtml(itemId)}">
           <div class="jpdb-ai-diag-item-top">
             <span style="font-weight:700;color:#2563eb">${escapeHtml(item.card?.vocab || 'Card')}</span>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div style="display:flex;align-items:center;gap:4px">
               ${divTag}
               <span class="jpdb-ai-diag-time">${escapeHtml(timeStr)}</span>
+              <button type="button" class="jpdb-ai-diag-btn-action jpdb-ai-diag-btn-copy" data-id="${escapeHtml(itemId)}" title="Copy diagnostic JSON to clipboard">📋 Copy</button>
+              <button type="button" class="jpdb-ai-diag-btn-action jpdb-ai-diag-btn-dl" data-id="${escapeHtml(itemId)}" title="Download diagnostic JSON file">💾 JSON</button>
             </div>
           </div>
           <div style="margin-bottom:3px"><strong>JP:</strong> ${escapeHtml(item.card?.sentenceJP || '(none)')}</div>
@@ -1498,6 +1501,43 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         </div>
       `;
     }).join('');
+
+    listEl.querySelectorAll('.jpdb-ai-diag-btn-copy').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        const entry = getDiagnosticsLog().find((x) => (x.id || ('diag_' + (x.timestamp || ''))) === id);
+        if (!entry) return;
+        const text = JSON.stringify(entry, null, 2);
+        const orig = btn.textContent;
+        const done = () => {
+          btn.textContent = '✓ Copied!';
+          setTimeout(() => { btn.textContent = orig; }, 1500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(() => {
+            prompt('Copy Diagnostic JSON:', text);
+          });
+        } else {
+          prompt('Copy Diagnostic JSON:', text);
+        }
+      });
+    });
+
+    listEl.querySelectorAll('.jpdb-ai-diag-btn-dl').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        const entry = getDiagnosticsLog().find((x) => (x.id || ('diag_' + (x.timestamp || ''))) === id);
+        if (!entry) return;
+        downloadSpecificDiagnostic(entry);
+        const orig = btn.textContent;
+        btn.textContent = '✓ Saved!';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      });
+    });
   }
 
   function recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsedMs, llmReply, llmScore, llmElapsedMs) {
@@ -1580,6 +1620,22 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     }
   }
 
+  function downloadSpecificDiagnostic(entry) {
+    if (!entry) return;
+    const json = JSON.stringify(entry, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const dlAnchor = document.createElement('a');
+    dlAnchor.href = url;
+    const vocabSafe = (entry.card?.vocab || 'item').replace(/[^a-zA-Z0-9_\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/g, '_');
+    const timeSafe = (entry.timestamp || new Date().toISOString()).replace(/[:.]/g, '-').slice(0, 19);
+    dlAnchor.download = `jpdb_diag_${vocabSafe}_${timeSafe}.json`;
+    document.body.appendChild(dlAnchor);
+    dlAnchor.click();
+    dlAnchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   function exportDiagnosticsJson() {
     const list = getDiagnosticsLog();
     const json = JSON.stringify(list, null, 2);
@@ -1641,6 +1697,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       },
     };
     targetWin.__jpdbAiExportSettings = exportSettingsJson;
+    targetWin.__jpdbAiDiagnostics.downloadOne = downloadSpecificDiagnostic;
   } catch {}
 
   function buildRateTranslationPrompt(info, userDraft) {
@@ -1847,6 +1904,10 @@ html.dark-mode .jpdb-ai-diag-item{border-color:#444;background:rgba(255,255,255,
 html.dark-mode .jpdb-ai-diag-item.diverged{border-color:rgba(147,197,253,.25);background:rgba(37,99,235,.07)}
 .jpdb-ai-diag-item-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
 .jpdb-ai-diag-time{opacity:.6;font-size:10.5px}
+.jpdb-ai-diag-btn-action{padding:1px 6px;font-size:10px;font-weight:600;border-radius:4px;border:1px solid #d1d5db;background:#fff;color:#374151!important;cursor:pointer;line-height:1.2;transition:all .15s}
+.jpdb-ai-diag-btn-action:hover{background:#eff6ff;color:#1d4ed8!important;border-color:#3b82f6}
+html.dark-mode .jpdb-ai-diag-btn-action{background:#2a2a2a;color:#d1d5db!important;border-color:#555}
+html.dark-mode .jpdb-ai-diag-btn-action:hover{background:#1e3a5f;color:#93c5fd!important;border-color:#60a5fa}
 .jpdb-ai-diag-badge-div{font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:rgba(37,99,235,.1);color:#1d4ed8;border:1px solid rgba(37,99,235,.25)}
 html.dark-mode .jpdb-ai-diag-badge-div{background:rgba(59,130,246,.15);color:#93c5fd;border-color:rgba(59,130,246,.3)}
 .jpdb-ai-diag-scores{display:flex;align-items:center;gap:8px;margin:5px 0;font-weight:600;font-size:12px}
