@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.78
+// @version      1.0.79
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -2218,7 +2218,8 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     busy = true;
     setBusy(true);
     try {
-      const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: userPrompt }];
+      // Ratings are fresh, independent evaluations and do not include prior chat history
+      const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: userPrompt }];
       const reply = await callLLM(msgs);
       setMsgMarkdown(thinking, reply);
       msgLog.push({ role: 'assistant', text: reply, isErr: false });
