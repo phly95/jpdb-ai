@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.77
+// @version      1.0.78
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -895,7 +895,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       if (sc.code === 'confused_indefinite_with_wh_word' && !mistakes.some((m) => m.type === 'mistranslated_or_wrong_meaning')) {
         mistakes.push({
           tokenIndex: null,
-          word: '不定代名詞 (何か・誰か)',
+          word: 'Sentence: Question Scope',
           type: 'mistranslated_or_wrong_meaning',
           description: 'translated indefinite pronoun (e.g. 何か "something") as open wh-question word ("what"), turning yes/no question into wh-question',
           confidence: answers.question_type_and_scope?.confidence ?? 0
@@ -903,7 +903,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       } else if (sc.code === 'wrong_benefactive_or_recipient' && !mistakes.some((m) => m.type === 'recipient_or_beneficiary_error')) {
         mistakes.push({
           tokenIndex: null,
-          word: '授受・受益 (~てやる)',
+          word: 'Sentence: Benefactive Direction',
           type: 'recipient_or_beneficiary_error',
           description: 'confused who the favor was for: action for a third party/pet (~てやる) translated as for oneself ("me")',
           confidence: answers.benefactive_direction?.confidence ?? 0
@@ -911,7 +911,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       } else if (sc.code === 'potential_or_modality_error' && !mistakes.some((m) => m.type === 'modality_or_mood_error')) {
         mistakes.push({
           tokenIndex: null,
-          word: '動詞・助動詞',
+          word: 'Sentence: Modality (Potential/Intent)',
           type: 'modality_or_mood_error',
           description: "potential form ('can / be able to') was translated as intent ('will')",
           confidence: answers.predicate_mood_and_voice?.confidence ?? 0
@@ -919,7 +919,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       } else if (sc.code === 'agent_or_passive_reversed' && !mistakes.some((m) => m.type === 'voice_passive_active_error')) {
         mistakes.push({
           tokenIndex: null,
-          word: '態 (Voice)',
+          word: 'Sentence: Voice (Passive/Active)',
           type: 'voice_passive_active_error',
           description: 'passive voice reversed to active (or subject/agent inverted)',
           confidence: answers.predicate_mood_and_voice?.confidence ?? 0
@@ -927,7 +927,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       } else if (sc.code === 'polarity_inverted' && !mistakes.some((m) => m.type === 'polarity_inverted')) {
         mistakes.push({
           tokenIndex: null,
-          word: '肯定・否定',
+          word: 'Sentence: Polarity (Affirmative/Negative)',
           type: 'polarity_inverted',
           description: 'affirmative vs negative polarity was inverted',
           confidence: answers.polarity_check?.confidence ?? 0
@@ -935,7 +935,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       } else if (sc.code === 'wrong_verb_or_action' && !mistakes.some((m) => m.type === 'wrong_verb_or_action' || m.type === 'omitted_or_missing')) {
         mistakes.push({
           tokenIndex: null,
-          word: '述語 (Predicate)',
+          word: 'Sentence: Predicate',
           type: 'wrong_verb_or_action',
           description: 'the main action/verb was omitted or mistranslated',
           confidence: answers.predicate_mood_and_voice?.confidence ?? 0
@@ -943,7 +943,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       } else if (sc.code === 'benefactive_omitted' && !advisories.some((a) => a.type === 'benefactive_omitted') && !mistakes.some((m) => m.type === 'recipient_or_beneficiary_error')) {
         advisories.push({
           tokenIndex: null,
-          word: '授受・受益 (~てやる/~てくれる)',
+          word: 'Sentence: Benefactive (~てくれる)',
           type: 'benefactive_omitted',
           description: 'benefactive nuance omitted: does not convey that the action was performed for someone',
           confidence: answers.benefactive_direction?.confidence ?? 0
