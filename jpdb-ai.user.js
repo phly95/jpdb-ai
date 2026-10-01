@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.79
+// @version      1.0.80
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1681,6 +1681,65 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  function triggerImportSettings() {
+    const fileInput = document.getElementById('jpdb-ai-settings-file');
+    if (fileInput) {
+      fileInput.value = '';
+      fileInput.click();
+    }
+  }
+
+  function handleSettingsFileSelect(e) {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const text = evt.target?.result;
+        const obj = JSON.parse(text);
+        applyImportedSettings(obj);
+      } catch (err) {
+        alert('Failed to parse settings JSON: ' + (err.message || err));
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function applyImportedSettings(obj) {
+    if (!obj || typeof obj !== 'object') {
+      alert('Invalid JSON file format.');
+      return;
+    }
+    const baseVal = obj.base ?? obj.jpdb_ai_base ?? obj.llmBase ?? obj.endpoint;
+    const modelVal = obj.model ?? obj.jpdb_ai_model ?? obj.llmModel;
+    const keyVal = obj.key ?? obj.jpdb_ai_key ?? obj.llmKey ?? obj.apiKey;
+
+    const jevEndpointVal = obj.jevEndpoint ?? obj.jpdb_ai_jev_endpoint;
+    const jevModelVal = obj.jevModel ?? obj.jpdb_ai_jev_model;
+    const jevKeyVal = obj.jevKey ?? obj.jpdb_ai_jev_key;
+
+    const invertVal = obj.invertEnter ?? obj.jpdb_ai_invert_enter;
+
+    if (baseVal !== undefined) CFG.base = baseVal;
+    if (modelVal !== undefined) CFG.model = modelVal;
+    if (keyVal !== undefined) CFG.key = keyVal;
+    if (jevEndpointVal !== undefined) CFG.jevEndpoint = jevEndpointVal;
+    if (jevModelVal !== undefined) CFG.jevModel = jevModelVal;
+    if (jevKeyVal !== undefined) CFG.jevKey = jevKeyVal;
+    if (invertVal !== undefined) CFG.invertEnter = !!invertVal;
+
+    loadSettingsToUI();
+    updateFoot();
+    updateShortcutsUI();
+
+    const statusEl = document.getElementById('jpdb-ai-settings-status');
+    if (statusEl) {
+      statusEl.textContent = 'Settings imported & saved!';
+      statusEl.style.display = 'inline';
+      setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 2500);
+    }
+  }
+
 
 
   // Expose diagnostic tools to unsafeWindow / DevTools
@@ -1697,6 +1756,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       },
     };
     targetWin.__jpdbAiExportSettings = exportSettingsJson;
+    targetWin.__jpdbAiImportSettings = applyImportedSettings;
     targetWin.__jpdbAiDiagnostics.downloadOne = downloadSpecificDiagnostic;
   } catch {}
 
@@ -2415,9 +2475,11 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         <button id="jpdb-ai-clear" style="flex:0 1 auto;min-width:44px" title="Clear chat history">Clear</button>
       </div>
       <div id="jpdb-ai-settings-view">
+        <input type="file" id="jpdb-ai-settings-file" accept=".json,application/json" style="display:none" />
         <div class="jpdb-ai-settings-head">
           <span>⚙️ Settings</span>
           <div class="jpdb-ai-settings-actions">
+            <button type="button" id="jpdb-ai-settings-import-top" title="Import settings from JSON file">Import JSON</button>
             <button type="button" id="jpdb-ai-settings-export-top" title="Export settings as JSON file">Export JSON</button>
             <button type="button" id="jpdb-ai-settings-close" title="Back to review chat">✕</button>
           </div>
@@ -2471,6 +2533,7 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
 
           <div style="display:flex;align-items:center;gap:8px;margin-top:2px;flex-wrap:wrap">
             <button type="submit" id="jpdb-ai-settings-save" class="jpdb-ai-settings-btn-primary">Save Settings</button>
+            <button type="button" id="jpdb-ai-settings-import" class="jpdb-ai-settings-btn-secondary" title="Import settings from JSON file">Import JSON</button>
             <button type="button" id="jpdb-ai-settings-export" class="jpdb-ai-settings-btn-secondary" title="Export settings as JSON file">Export JSON</button>
             <button type="button" id="jpdb-ai-settings-reset" class="jpdb-ai-settings-btn-secondary">Reset Defaults</button>
             <span id="jpdb-ai-settings-status" style="font-size:11px;font-weight:600;color:#10b981;display:none">Saved!</span>
@@ -2629,6 +2692,15 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     panel.querySelector('#jpdb-ai-settings-close').addEventListener('click', () => {
       toggleSettingsView(false);
     });
+
+    const fileInput = panel.querySelector('#jpdb-ai-settings-file');
+    if (fileInput) fileInput.addEventListener('change', handleSettingsFileSelect);
+
+    const importBtnTop = panel.querySelector('#jpdb-ai-settings-import-top');
+    if (importBtnTop) importBtnTop.addEventListener('click', triggerImportSettings);
+
+    const importBtnBottom = panel.querySelector('#jpdb-ai-settings-import');
+    if (importBtnBottom) importBtnBottom.addEventListener('click', triggerImportSettings);
 
     const exportBtnTop = panel.querySelector('#jpdb-ai-settings-export-top');
     if (exportBtnTop) exportBtnTop.addEventListener('click', exportSettingsJson);
