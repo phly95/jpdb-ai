@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.81
+// @version      1.0.82
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -969,10 +969,24 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     }
 
     // 4. Synthesize Dynamic Concise Critique (LLM-style synthesis)
-    const predWord = cleanTarget || 'The predicate';
+    const isTargetFlawed = tvChoice && tvChoice !== 'natural_accurate_sense';
+    const omittedItem = mistakes.find((m) => m.type === 'omitted_or_missing' && m.word && !m.word.startsWith('Sentence:'));
+    const specificWordIssue = mistakes.find((m) => m.word && !m.word.startsWith('Sentence:')) || advisories.find((a) => a.word && !a.word.startsWith('Sentence:'));
+
+    // Determine the relevant focus word: if tested vocab is flawed, use it; otherwise use the specific flawed word, or infer the verb
+    const verbToken = words.find((w) => /(?:さ?れる|られ|させ|ちゃう|ちゃった|なかっ|ばよかった|わけにはいかない|たい|でした|ます)$/.test(w));
+    const predWord = isTargetFlawed ? cleanTarget : (verbToken || specificWordIssue?.word || 'The predicate');
+    const targetWord = isTargetFlawed ? cleanTarget : (specificWordIssue?.word || null);
     let dynamicCritique = '';
 
-    if (stEx && refEx && rel && rel !== 'accurate_equivalent') {
+    // Pedagogical priority 1: Check if a specific modifier or word was omitted (e.g. そう "very/so", あまり, ちょっと)
+    if (omittedItem && (!isTargetFlawed || omittedItem.word === cleanTarget)) {
+      if (stEx && refEx) {
+        dynamicCritique = `Your draft ("${stEx}") missed **${omittedItem.word}**, omitting the degree nuance conveyed in the reference translation ("${refEx}").`;
+      } else {
+        dynamicCritique = `Your translation missed the word **${omittedItem.word}**, omitting the nuance of degree in this context.`;
+      }
+    } else if (stEx && refEx && rel && rel !== 'accurate_equivalent') {
       if (rel === 'passive_vs_active_reversal' || summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') {
         dynamicCritique = `Instead of translating "${predWord}" as passive ("${refEx}"), your draft translated it actively as "${stEx}", reversing who received the action.`;
       } else if (rel === 'causative_reversal' || complexChoice === 'causative_passive_inverted') {
@@ -987,8 +1001,14 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         dynamicCritique = `"${predWord}" expresses counterfactual regret ("${refEx}"), rather than a literal factual condition ("${stEx}").`;
       } else if (rel === 'question_vs_statement' || summaryCritiqueChoice === 'interrogative_or_question_error' || scopeCheck === 'confused_indefinite_with_wh_word') {
         dynamicCritique = `You translated this as an open question ("${stEx}"), but "${predWord}" is an indefinite pronoun in a statement ("${refEx}").`;
+      } else if (rel === 'degree_or_modifier_omitted') {
+        dynamicCritique = `Your draft ("${stEx}") omitted a modifier or degree nuance conveyed in the reference translation ("${refEx}").`;
       } else {
-        dynamicCritique = `In this context, "${predWord}" naturally translates to "${refEx}", whereas "${stEx}" sounds slightly awkward or overly literal.`;
+        if (targetWord && isTargetFlawed) {
+          dynamicCritique = `In this context, "${targetWord}" naturally translates to "${refEx}", whereas "${stEx}" sounds slightly awkward or overly literal.`;
+        } else {
+          dynamicCritique = `In this sentence, the natural phrasing is "${refEx}" rather than "${stEx}".`;
+        }
       }
     } else if (complexChoice && complexChoice !== 'accurate_or_not_stacked' && complexChoice !== 'stacked_conjugation_not_applicable') {
       if (complexChoice === 'causative_passive_inverted') {
@@ -1017,8 +1037,10 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     } else if (predCheck === 'tense_past_present_error' || summaryCritiqueChoice === 'tense_or_aspect_error') {
       dynamicCritique = `Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).`;
     } else if (summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference') {
-      if (predWord === '今度') {
+      if (isTargetFlawed && predWord === '今度') {
         dynamicCritique = `In an invitation context, 今度 naturally means "sometime soon" or "next time", whereas translating it literally as "this time" sounds awkward in English.`;
+      } else if (specificWordIssue && specificWordIssue.word !== cleanTarget) {
+        dynamicCritique = `Noticeable nuance gap with **${specificWordIssue.word}**: ${specificWordIssue.description}.`;
       } else {
         dynamicCritique = `The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.`;
       }
@@ -1027,32 +1049,28 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     }
 
     // 5. Strict Scoring and Presentation Reconciliation:
-    const hasCriticalFault = mistakes.length > 0 || sentenceCritiques.some((sc) => sc.severity === 'critical');
+    const hasCriticalFault = sentenceCritiques.some((sc) => sc.severity === 'critical') || mistakes.some((m) => m.type === 'wrong_definition_or_misinterpreted');
     const hasModerateFault = sentenceCritiques.some((sc) => sc.severity === 'moderate');
     const isCleanFlawless = (!hasCriticalFault && !hasModerateFault && mistakes.length === 0 && advisories.length === 0 && sentenceCritiques.length === 0 && isFlawlessProb >= 0.80);
-    const hasAdvisory = advisories.length > 0 || (!isCleanFlawless && summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference');
+    const hasAdvisory = advisories.length > 0 || mistakes.length > 0 || (!isCleanFlawless && summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference');
 
     const isFlawlessCandidate = (isFlawlessProb >= 0.85 && bracketChoice === '10_flawless' && (severityScore === null || severityScore >= 3.5));
 
     let overall = 8;
     if (!hasCriticalFault && !hasModerateFault && !hasAdvisory && (isCleanFlawless || isFlawlessCandidate || bracketChoice === '10_flawless' || isFlawlessProb >= 0.85)) {
       overall = 10;
-    } else if (!hasCriticalFault && !hasModerateFault) {
-      overall = 8;
+    } else if (bracketChoice === '10_flawless') {
+      overall = hasCriticalFault ? 5 : (hasModerateFault ? 7 : 8);
+    } else if (bracketChoice === '8_minor_nuance') {
+      overall = (mistakes.length === 0 && sentenceCritiques.length === 0 && isFlawlessProb >= 0.80) ? 10 : (hasCriticalFault ? 6 : 8);
+    } else if (bracketChoice === '5_moderate_error') {
+      overall = (severityScore !== null ? severityScore >= 2.15 : false) ? 6 : 5;
+    } else if (bracketChoice === '3_major_error') {
+      overall = (severityScore !== null ? severityScore >= 1.25 : false) ? 4 : 3;
+    } else if (bracketChoice === '1_fatal_error') {
+      overall = (severityScore !== null ? severityScore >= 0.7 : false) ? 2 : 1;
     } else {
-      if (bracketChoice === '10_flawless') {
-        overall = hasCriticalFault ? 5 : 8;
-      } else if (bracketChoice === '8_minor_nuance') {
-        overall = (mistakes.length === 0 && sentenceCritiques.length === 0 && isFlawlessProb >= 0.75) ? 10 : (hasCriticalFault ? 6 : 8);
-      } else if (bracketChoice === '5_moderate_error') {
-        overall = (severityScore !== null ? severityScore >= 2.15 : false) ? 6 : 5;
-      } else if (bracketChoice === '3_major_error') {
-        overall = (severityScore !== null ? severityScore >= 1.25 : false) ? 4 : 3;
-      } else if (bracketChoice === '1_fatal_error') {
-        overall = (severityScore !== null ? severityScore >= 0.7 : false) ? 2 : 1;
-      } else {
-        overall = 8;
-      }
+      overall = hasCriticalFault ? 4 : (hasModerateFault ? 6 : 8);
     }
 
     const bracketLabels = {
@@ -1387,7 +1405,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         questions.flawed_student_excerpt = {
           type: 'choice',
           instructions: {
-            question: `Which excerpt in \`student_chunks\` contains the mistranslation or conflicting meaning of "${cleanTarget}"?`,
+            question: 'Which excerpt in `student_chunks` contains the primary mistranslation, omission, or nuance divergence in `user_translation` compared to `japanese_sentence`?',
             focus: 'Pick the specific phrase chunk where the student translation diverges from the Japanese sentence.'
           },
           options: studentChunks,
@@ -1397,8 +1415,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         questions.correct_reference_excerpt = {
           type: 'choice',
           instructions: {
-            question: `Which excerpt in \`reference_chunks\` correctly expresses "${cleanTarget}" in English?`,
-            focus: 'Pick the corresponding proper English phrase for this Japanese vocabulary.'
+            question: 'Which excerpt in `reference_chunks` correctly expresses that part of `japanese_sentence` in English?',
+            focus: 'Pick the corresponding proper English phrase for that part of the sentence.'
           },
           options: refChunks,
           criteria: toCriteria(refChunks)
@@ -1407,7 +1425,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         questions.contrast_relation = {
           type: 'choice',
           instructions: {
-            question: `Contrast the student excerpt with the reference excerpt for "${cleanTarget}".`,
+            question: 'Contrast the student excerpt with the reference excerpt.',
             focus: 'Characterize the exact difference between the student phrasing and the reference translation.'
           },
           options: [
@@ -1418,6 +1436,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             'obligation_vs_absence',
             'counterfactual_regret_vs_condition',
             'question_vs_statement',
+            'degree_or_modifier_omitted',
             'word_choice_or_nuance_mismatch',
             'accurate_equivalent'
           ],
@@ -1429,6 +1448,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             obligation_vs_absence: 'Obligation (must do) vs absence of obligation.',
             counterfactual_regret_vs_condition: 'Counterfactual wish/regret vs literal condition.',
             question_vs_statement: 'Open question vs indefinite pronoun statement.',
+            degree_or_modifier_omitted: 'A degree modifier, adverb, or softening word (e.g. そう/very, あまり/not much, ちょっと) was dropped.',
             word_choice_or_nuance_mismatch: 'Literal phrasing or nuance misfit.',
             accurate_equivalent: 'Student phrasing and reference phrasing are equivalent in meaning.'
           }
