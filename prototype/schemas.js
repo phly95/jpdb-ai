@@ -310,24 +310,30 @@ function buildVocabExplanationQuestions(info) {
       type: 'choice',
       instructions: `What is the primary syntactic role of "${cleanTarget}" in \`japanese_sentence\`?`,
       options: [
-        'main_predicate_verb',
-        'subordinate_clause_verb',
         'direct_object',
-        'topic_marker',
         'grammatical_subject',
+        'topic_marker',
+        'indirect_object_or_destination',
+        'location_or_means',
+        'noun_modifying_relative_clause',
+        'main_predicate_verb',
+        'connective_te_form',
+        'subordinate_clause_verb',
         'adverbial_modifier',
-        'indirect_object_or_target',
-        'sentence_ending_particle_or_expression'
+        'particle_or_sentence_ender'
       ],
       criteria: {
-        main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
-        subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), or relative clause.',
-        direct_object: 'The noun directly receiving the action (usually marked by を).',
+        direct_object: 'The noun directly receiving the action (marked by を or topicalized).',
+        grammatical_subject: 'The noun performing the action or being described (marked by が).',
         topic_marker: 'The topic or conversational framing noun (marked by は).',
-        grammatical_subject: 'The entity performing the action (marked by が).',
-        adverbial_modifier: 'An adverb, time expression, or modifier altering the verb.',
-        indirect_object_or_target: 'Target, destination, or indirect object (marked by に, へ, で).',
-        sentence_ending_particle_or_expression: 'Colloquial particle, softener, or modal ending (e.g. ね, よ, けど).'
+        indirect_object_or_destination: 'Target, recipient, or destination of motion/action (marked by に or へ).',
+        location_or_means: 'Location of action, instrument, or means (marked by で).',
+        noun_modifying_relative_clause: 'Verb, adjective, or clause directly modifying a following noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
+        main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
+        connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
+        subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
+        adverbial_modifier: 'An adverb, time expression, or modifier altering the verb/adjective (e.g. ゆっくり, とても).',
+        particle_or_sentence_ender: 'Colloquial particle, conversational softener, or sentence-ending expression (e.g. ね, よ, けど).'
       }
     },
     attachment_and_particles: {
@@ -338,7 +344,9 @@ function buildVocabExplanationQuestions(info) {
         'particle_ga_subject',
         'particle_wa_topic',
         'particle_ni_target',
-        'particle_to_quotation',
+        'particle_de_location_means',
+        'particle_to_quotation_or_companion',
+        'particle_no_genitive',
         'direct_noun_modification',
         'te_form_connection',
         'sentence_final'
@@ -347,8 +355,10 @@ function buildVocabExplanationQuestions(info) {
         particle_wo_object: 'Followed by object particle を.',
         particle_ga_subject: 'Followed by subject particle が.',
         particle_wa_topic: 'Followed by topic particle は.',
-        particle_ni_target: 'Followed by particle に (target/location/beneficiary).',
-        particle_to_quotation: 'Followed by quotative と (e.g. と言う, と思う).',
+        particle_ni_target: 'Followed by particle に (target/location/beneficiary/time).',
+        particle_de_location_means: 'Followed by particle で (location of action / means).',
+        particle_to_quotation_or_companion: 'Followed by quotative or companion particle と.',
+        particle_no_genitive: 'Followed by possessive/genitive particle の.',
         direct_noun_modification: 'Directly modifies a noun (attributive / 連体修飾).',
         te_form_connection: 'Connects in te-form (〜て) to an auxiliary verb.',
         sentence_final: 'Occurs at the end of the sentence or clause.'
@@ -366,18 +376,20 @@ function buildVocabExplanationQuestions(info) {
         'potential_form',
         'causative_or_causative_passive',
         'conditional_form',
-        'polite_masu_desu'
+        'polite_masu_desu',
+        'adverbial_form'
       ],
       criteria: {
         uninflected_noun_or_particle: 'Noun, pronoun, or invariable word.',
-        plain_present_dictionary: 'Plain non-past dictionary form (e.g. 食べる, 行く).',
+        plain_present_dictionary: 'Plain non-past dictionary form (e.g. 食べる, 行く, 静かだ).',
         past_ta_form: 'Plain past tense (e.g. た, だ).',
         te_form: 'Te-form (e.g. て, で).',
         passive_voice: 'Passive form (e.g. られる, れる).',
         potential_form: 'Potential form ("can do", e.g. 買える, できる).',
         causative_or_causative_passive: 'Causative (〜せる/〜させる) or Causative-Passive (〜させられる).',
         conditional_form: 'Conditional form (〜たら, 〜ば, 〜なら).',
-        polite_masu_desu: 'Polite speech (〜ます, 〜です).'
+        polite_masu_desu: 'Polite speech (〜ます, 〜です).',
+        adverbial_form: 'Adverbial inflection (e.g. 〜く, 〜に).'
       }
     },
     pedagogical_tip_type: {
@@ -391,6 +403,7 @@ function buildVocabExplanationQuestions(info) {
         'colloquial_contraction',
         'idiomatic_set_phrase',
         'transitive_vs_intransitive_pair',
+        'case_particle_governance',
         'standard_usage'
       ],
       criteria: {
@@ -401,10 +414,24 @@ function buildVocabExplanationQuestions(info) {
         colloquial_contraction: 'Slang or conversational contractions (e.g. 〜ちゃった, 〜じゃん).',
         idiomatic_set_phrase: 'Fixed idiomatic expression whose meaning is greater than individual parts.',
         transitive_vs_intransitive_pair: 'Pair confusion (e.g. 開ける vs 開く, 落とす vs 落ちる).',
+        case_particle_governance: 'Pay attention to which particle marks this argument (を, が, に, で).',
         standard_usage: 'Standard straightforward vocabulary usage.'
       }
     }
   };
+
+  const candidateWords = (info.words || [])
+    .filter(w => w && w !== cleanTarget && !cleanTarget.includes(w) && !['は', 'が', 'を', 'に', 'で', 'と', 'の'].includes(w))
+    .slice(0, 6);
+  if (candidateWords.length > 0) {
+    const toCriteria = (arr) => Object.fromEntries(arr.map((k) => [k, null]));
+    questions.connected_target_word = {
+      type: 'choice',
+      instructions: `Which adjacent word or predicate in \`japanese_sentence\` does "${cleanTarget}" directly modify, connect to, or govern?`,
+      options: ['none_or_independent', ...candidateWords],
+      criteria: toCriteria(['none_or_independent', ...candidateWords])
+    };
+  }
 
   return questions;
 }

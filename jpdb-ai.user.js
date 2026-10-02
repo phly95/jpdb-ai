@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.86
+// @version      1.0.87
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1230,35 +1230,44 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     `.trim();
   }
 
+  function getJevConnection() {
+    const endpoint = CFG.jevEndpoint || DEFAULT_JEV_ENDPOINT;
+    const key = CFG.jevKey;
+    let model = CFG.jevModel || DEFAULT_JEV_MODEL;
+
+    let url = endpoint.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    if (!url.endsWith('/decisions') && !url.endsWith('/systemone')) {
+      if (url.includes('openrouter.ai')) {
+        url = url.replace(/\/+$/, '') + '/api/alpha/decisions';
+      } else {
+        url = url.replace(/\/+$/, '') + '/systemone';
+      }
+    }
+
+    if (url.includes('openrouter.ai') && model.startsWith('openrouter/')) {
+      model = model.replace(/^openrouter\//, '');
+    }
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (key) headers['Authorization'] = 'Bearer ' + key;
+    if (url.includes('openrouter.ai')) {
+      headers['HTTP-Referer'] = 'https://jpdb.io';
+      headers['X-Title'] = 'JPDB AI Explainer';
+    }
+
+    return { url, headers, model };
+  }
+
   async function callJevEvaluation(info, userDraft) {
     const t0 = Date.now();
     try {
-      const endpoint = CFG.jevEndpoint || DEFAULT_JEV_ENDPOINT;
-      const key = CFG.jevKey;
-      let model = CFG.jevModel || DEFAULT_JEV_MODEL;
-
-      let url = endpoint.trim();
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = 'https://' + url;
-      }
-      if (!url.endsWith('/decisions') && !url.endsWith('/systemone')) {
-        if (url.includes('openrouter.ai')) {
-          url = url.replace(/\/+$/, '') + '/api/alpha/decisions';
-        } else {
-          url = url.replace(/\/+$/, '') + '/systemone';
-        }
-      }
-
-      if (url.includes('openrouter.ai') && model.startsWith('openrouter/')) {
-        model = model.replace(/^openrouter\//, '');
-      }
-
-      const headers = { 'Content-Type': 'application/json' };
-      if (key) headers['Authorization'] = 'Bearer ' + key;
-      if (url.includes('openrouter.ai')) {
-        headers['HTTP-Referer'] = 'https://jpdb.io';
-        headers['X-Title'] = 'JPDB AI Explainer';
-      }
+      const conn = getJevConnection();
+      const url = conn.url;
+      const headers = conn.headers;
+      const model = conn.model;
 
       const cleanJp = (info.sentenceJP || '').replace(/\([^)]*\)/g, '').trim();
       const cleanTarget = (info.vocab || '').replace(/\([^)]*\)/g, '').trim();
@@ -1575,6 +1584,354 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       console.warn('[JPDB AI] Jev call failed:', err);
     }
     return { cardHtml: '', metrics: null, elapsedMs: Date.now() - t0 };
+  }
+
+  // ---------- Vocab Explanation Fast-Path (Jev-1.13 System One) ----------
+
+  function buildVocabExplanationQuestions(info, cleanTarget, words) {
+    const meanings = (info.meanings || []).slice(0, 8);
+
+    const meaningOptions = [];
+    const meaningCriteria = {};
+    meanings.forEach((m, idx) => {
+      const optKey = `sense_${idx}`;
+      meaningOptions.push(optKey);
+      meaningCriteria[optKey] = { what: m, index: idx };
+    });
+    if (meaningOptions.length === 0) {
+      meaningOptions.push('sense_0');
+      meaningCriteria['sense_0'] = { what: 'primary dictionary meaning', index: 0 };
+    }
+
+    const questions = {
+      applied_meaning: {
+        type: 'choice',
+        instructions: {
+          question: `Which of the dictionary meanings for "${cleanTarget}" is being used in \`japanese_sentence\`?`,
+          field: 'dictionary_sense'
+        },
+        options: meaningOptions,
+        criteria: meaningCriteria
+      },
+      grammatical_role: {
+        type: 'choice',
+        instructions: `What is the primary syntactic role of "${cleanTarget}" in \`japanese_sentence\`?`,
+        options: [
+          'direct_object',
+          'grammatical_subject',
+          'topic_marker',
+          'indirect_object_or_destination',
+          'location_or_means',
+          'noun_modifying_relative_clause',
+          'main_predicate_verb',
+          'connective_te_form',
+          'subordinate_clause_verb',
+          'adverbial_modifier',
+          'particle_or_sentence_ender'
+        ],
+        criteria: {
+          direct_object: 'The noun directly receiving the action (marked by を or topicalized).',
+          grammatical_subject: 'The noun performing the action or being described (marked by が).',
+          topic_marker: 'The topic or conversational framing noun (marked by は).',
+          indirect_object_or_destination: 'Target, recipient, or destination of motion/action (marked by に or へ).',
+          location_or_means: 'Location of action, instrument, or means (marked by で).',
+          noun_modifying_relative_clause: 'Verb, adjective, or clause directly modifying a following noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
+          main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
+          connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
+          subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
+          adverbial_modifier: 'An adverb, time expression, or modifier altering the verb/adjective (e.g. ゆっくり, とても).',
+          particle_or_sentence_ender: 'Colloquial particle, conversational softener, or sentence-ending expression (e.g. ね, よ, けど).'
+        }
+      },
+      attachment_and_particles: {
+        type: 'choice',
+        instructions: `How does "${cleanTarget}" attach to adjacent words in \`japanese_sentence\`?`,
+        options: [
+          'particle_wo_object',
+          'particle_ga_subject',
+          'particle_wa_topic',
+          'particle_ni_target',
+          'particle_de_location_means',
+          'particle_to_quotation_or_companion',
+          'particle_no_genitive',
+          'direct_noun_modification',
+          'te_form_connection',
+          'sentence_final'
+        ],
+        criteria: {
+          particle_wo_object: 'Followed by object particle を.',
+          particle_ga_subject: 'Followed by subject particle が.',
+          particle_wa_topic: 'Followed by topic particle は.',
+          particle_ni_target: 'Followed by particle に (target/location/beneficiary/time).',
+          particle_de_location_means: 'Followed by particle で (location of action / means).',
+          particle_to_quotation_or_companion: 'Followed by quotative or companion particle と.',
+          particle_no_genitive: 'Followed by possessive/genitive particle の.',
+          direct_noun_modification: 'Directly modifies a noun (attributive / 連体修飾).',
+          te_form_connection: 'Connects in te-form (〜て) to an auxiliary verb.',
+          sentence_final: 'Occurs at the end of the sentence or clause.'
+        }
+      },
+      inflection_form: {
+        type: 'choice',
+        instructions: `What grammatical conjugation or inflection form is "${cleanTarget}" in?`,
+        options: [
+          'uninflected_noun_or_particle',
+          'plain_present_dictionary',
+          'past_ta_form',
+          'te_form',
+          'passive_voice',
+          'potential_form',
+          'causative_or_causative_passive',
+          'conditional_form',
+          'polite_masu_desu',
+          'adverbial_form'
+        ],
+        criteria: {
+          uninflected_noun_or_particle: 'Noun, pronoun, or invariable word.',
+          plain_present_dictionary: 'Plain non-past dictionary form (e.g. 食べる, 行く, 静かだ).',
+          past_ta_form: 'Plain past tense (e.g. た, だ).',
+          te_form: 'Te-form (e.g. て, で).',
+          passive_voice: 'Passive form (e.g. られる, れる).',
+          potential_form: 'Potential form ("can do", e.g. 買える, できる).',
+          causative_or_causative_passive: 'Causative (〜せる/〜させる) or Causative-Passive (〜させられる).',
+          conditional_form: 'Conditional form (〜たら, 〜ば, 〜なら).',
+          polite_masu_desu: 'Polite speech (〜ます, 〜です).',
+          adverbial_form: 'Adverbial inflection (e.g. 〜く, 〜に).'
+        }
+      },
+      pedagogical_tip_type: {
+        type: 'choice',
+        instructions: 'Which pedagogical tip or common pitfall is most relevant for a Japanese learner encountering this word in this context?',
+        options: [
+          'give_receive_direction',
+          'passive_adversative_nuance',
+          'potential_vs_intent',
+          'polite_softener_not_literal_contrast',
+          'colloquial_contraction',
+          'idiomatic_set_phrase',
+          'transitive_vs_intransitive_pair',
+          'case_particle_governance',
+          'standard_usage'
+        ],
+        criteria: {
+          give_receive_direction: 'Direction of favors (~てやる vs ~てくれる vs ~てもらう).',
+          passive_adversative_nuance: 'The Japanese passive often carries an adversative/troubled nuance ("suffering passive").',
+          potential_vs_intent: 'Distinguishing ability ("can do"), not just future intention.',
+          polite_softener_not_literal_contrast: 'Sentence-ending softeners like 〜けど or 〜んだけど soften the tone and avoid abruptness; they rarely mean a harsh "but".',
+          colloquial_contraction: 'Slang or conversational contractions (e.g. 〜ちゃった, 〜じゃん).',
+          idiomatic_set_phrase: 'Fixed idiomatic expression whose meaning is greater than individual parts.',
+          transitive_vs_intransitive_pair: 'Pair confusion (e.g. 開ける vs 開く, 落とす vs 落ちる).',
+          case_particle_governance: 'Pay attention to which particle marks this argument (を, が, に, で).',
+          standard_usage: 'Standard straightforward vocabulary usage.'
+        }
+      }
+    };
+
+    const candidateWords = (words || [])
+      .filter((w) => w && w !== cleanTarget && !cleanTarget.includes(w) && !['は', 'が', 'を', 'に', 'で', 'と', 'の'].includes(w))
+      .slice(0, 6);
+    if (candidateWords.length > 0) {
+      const toCriteria = (arr) => Object.fromEntries(arr.map((k) => [k, null]));
+      questions.connected_target_word = {
+        type: 'choice',
+        instructions: `Which adjacent word or predicate in \`japanese_sentence\` does "${cleanTarget}" directly modify, connect to, or govern?`,
+        options: ['none_or_independent', ...candidateWords],
+        criteria: toCriteria(['none_or_independent', ...candidateWords])
+      };
+    }
+
+    return questions;
+  }
+
+  function generateVocabExplanation(answers, cardInfo, cleanTarget) {
+    const { applied_meaning, grammatical_role, attachment_and_particles, inflection_form, pedagogical_tip_type, connected_target_word } = answers || {};
+
+    const meanings = cardInfo.meanings || [];
+    let chosenSense = meanings[0] || 'target definition';
+    if (applied_meaning && applied_meaning.choice) {
+      const match = applied_meaning.choice.match(/sense_(\d+)/);
+      if (match && meanings[parseInt(match[1], 10)]) {
+        chosenSense = meanings[parseInt(match[1], 10)];
+      }
+    }
+
+    const role = grammatical_role?.choice;
+    const inflect = inflection_form?.choice;
+    const tip = pedagogical_tip_type?.choice;
+    const targetWord = (connected_target_word?.choice && connected_target_word.choice !== 'none_or_independent') ? connected_target_word.choice : null;
+
+    const inflectionLabels = {
+      plain_present_dictionary: 'plain non-past dictionary form',
+      past_ta_form: 'past tense (〜た / 〜だ)',
+      te_form: 'connective 〜て form',
+      passive_voice: 'passive voice (〜られる / 〜れる)',
+      potential_form: 'potential form ("can do")',
+      causative_or_causative_passive: 'causative or causative-passive form',
+      conditional_form: 'conditional form (〜たら / 〜ば / 〜なら)',
+      polite_masu_desu: 'polite form (〜ます / 〜です)',
+      adverbial_form: 'adverbial form'
+    };
+
+    const isInflectionConfident = (inflection_form?.confidence || 0) >= 0.75;
+    const inflectionText = isInflectionConfident && inflect && inflect !== 'uninflected_noun_or_particle'
+      ? ` (${inflectionLabels[inflect] || inflect})`
+      : '';
+
+    let roleExplanation = '';
+    if (role === 'direct_object') {
+      roleExplanation = targetWord
+        ? `functioning as the direct object (marked by **を**) in the clause with **${targetWord}**`
+        : `functioning as the direct object receiving the action of the verb, marked by **を**`;
+    } else if (role === 'grammatical_subject') {
+      roleExplanation = targetWord
+        ? `functioning as the grammatical subject (marked by **が**) associated with **${targetWord}**`
+        : `functioning as the grammatical subject performing or undergoing the action, marked by the identifier particle **が**`;
+    } else if (role === 'topic_marker') {
+      roleExplanation = `functioning as the conversational topic and contextual anchor of the sentence, framed by the topic particle **は**`;
+    } else if (role === 'indirect_object_or_destination') {
+      roleExplanation = targetWord
+        ? `indicating the destination, target, or recipient for **${targetWord}**, marked by **に** / **へ**`
+        : `indicating the target, recipient, or direction of the action, marked by **に** / **へ**`;
+    } else if (role === 'location_or_means') {
+      roleExplanation = targetWord
+        ? `specifying the location, means, or instrument where **${targetWord}** takes place, marked by **で**`
+        : `specifying the location of the action or the means used, marked by **で**`;
+    } else if (role === 'noun_modifying_relative_clause') {
+      roleExplanation = targetWord
+        ? `functioning as an attributive modifier directly describing the noun **${targetWord}**`
+        : `functioning as an attributive / relative clause directly modifying the following noun`;
+    } else if (role === 'adverbial_modifier') {
+      roleExplanation = targetWord
+        ? `functioning as an adverbial modifier modifying the predicate **${targetWord}**`
+        : `functioning as an adverbial modifier describing manner, degree, or time`;
+    } else if (role === 'connective_te_form') {
+      roleExplanation = targetWord
+        ? `is in the connective 〜て form, chaining this action into **${targetWord}**`
+        : `is in the connective 〜て form, linking sequential actions or attaching to an auxiliary verb`;
+    } else if (role === 'subordinate_clause_verb') {
+      roleExplanation = `functioning as the verb within an embedded, conditional, or subordinate clause`;
+    } else if (role === 'particle_or_sentence_ender') {
+      roleExplanation = `functions as a conversational particle or sentence-ending expression providing pragmatic nuance`;
+    } else {
+      roleExplanation = `serving as the main predicate verb of the sentence${inflectionText}`;
+    }
+
+    const tipsMap = {
+      give_receive_direction: 'Pay attention to favor direction: 〜てやる is done for someone younger, a pet, or third party; 〜てくれる is done for the speaker ("for me"); 〜てもらう is receiving a favor.',
+      passive_adversative_nuance: 'In Japanese, the passive voice often expresses that the subject was negatively affected or troubled by someone else\'s action (the "adversative" or suffering passive).',
+      potential_vs_intent: 'Potential forms express capability or opportunity ("can do"), not just future intention.',
+      polite_softener_not_literal_contrast: 'Sentence-ending softeners like 〜けど or 〜んだけど soften the tone and avoid abruptness; they rarely mean a harsh "but".',
+      colloquial_contraction: 'Note the conversational contraction used here in casual speech.',
+      idiomatic_set_phrase: 'This is part of a common Japanese idiomatic set phrase.',
+      transitive_vs_intransitive_pair: 'Watch the transitive/intransitive pair: pay close attention to whether the subject performs the action or undergoes it.',
+      case_particle_governance: 'Pay close attention to which particle marks this word (を for direct object, が for subject, に for target, で for location/means).',
+      standard_usage: 'Focus on how the attached particle or inflection connects this word to the main predicate.'
+    };
+
+    const nuanceTip = tipsMap[tip] || 'Focus on how the attached particle or inflection connects this word to the main predicate.';
+
+    let cleanSense = chosenSense.replace(/^\d+[\.\)]\s*/, '').trim();
+    const semiParts = cleanSense.split(';');
+    if (semiParts.length > 1) {
+      cleanSense = semiParts.slice(0, 2).join(';').trim();
+    }
+
+    const lines = [
+      `### Role of **${cleanTarget}** in this Sentence\n`,
+      `In this sentence, **${cleanTarget}** means **"${cleanSense}"**, ${roleExplanation}.\n`,
+      `💡 **Key Nuance:** ${nuanceTip}`
+    ];
+
+    return {
+      markdown: lines.join('\n'),
+      role: role || 'main_predicate_verb',
+      chosenSense: cleanSense,
+      targetWord
+    };
+  }
+
+  function renderJevVocabCard(vocabResult, modelName, words, cleanTarget) {
+    if (!vocabResult) return '';
+    const tag = modelName || CFG.jevModel || DEFAULT_JEV_MODEL;
+    const roleLabel = (vocabResult.role || 'vocab role').replace(/_/g, ' ');
+
+    return `
+      <details class="jpdb-ai-jev-card" open>
+        <summary class="jpdb-ai-jev-head" title="Click to collapse/expand breakdown">
+          <span class="jpdb-ai-jev-title">⚡ Instant Vocab Explainer <span class="jpdb-ai-jev-tag">${escapeHtml(tag)}</span></span>
+          <span class="jpdb-ai-jev-score ok" style="background:#2b2250;color:#c4b5fd;border:1px solid #6366f1;text-transform:capitalize;">${escapeHtml(roleLabel)}</span>
+        </summary>
+        <div class="jpdb-ai-jev-body">
+          <div style="font-size:12px;margin-bottom:4px;">
+            <strong>Applied Sense:</strong> "${escapeHtml(vocabResult.chosenSense)}"
+          </div>
+          ${vocabResult.targetWord ? `
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">
+              <strong>Connected With:</strong> ${escapeHtml(vocabResult.targetWord)}
+            </div>
+          ` : ''}
+          ${words && words.length > 0 ? `
+            <div class="jpdb-ai-jev-tokens">
+              ${words.map((w) => {
+                const isTarget = w === cleanTarget || w.includes(cleanTarget) || cleanTarget.includes(w);
+                const isConn = vocabResult.targetWord && (w === vocabResult.targetWord || w.includes(vocabResult.targetWord));
+                const cls = isTarget ? 'err' : (isConn ? 'advisory' : 'ok');
+                return `<span class="jpdb-ai-jev-token ${cls}">${escapeHtml(w)}</span>`;
+              }).join(' ')}
+            </div>
+          ` : ''}
+        </div>
+      </details>
+    `.trim();
+  }
+
+  async function callJevVocabExplanation(info) {
+    const t0 = Date.now();
+    try {
+      const conn = getJevConnection();
+      const cleanJp = (info.sentenceJP || '').replace(/\([^)]*\)/g, '').trim();
+      const cleanTarget = (info.vocab || '').replace(/\([^)]*\)/g, '').trim();
+      const words = getJapaneseSentenceWords(info.sentenceJP, info.vocab);
+
+      const state = {
+        japanese_sentence: cleanJp || info.sentenceJP || '',
+        target_vocabulary: cleanTarget || info.vocab || '',
+        target_meanings: (info.meanings || []).slice(0, 8),
+        reference_translation: info.sentenceEN || '',
+        words: words
+      };
+
+      const questions = buildVocabExplanationQuestions(info, cleanTarget, words);
+      const body = {
+        model: conn.model,
+        state: state,
+        questions: questions
+      };
+
+      const res = await gmPost(conn.url, conn.headers, body, 15000);
+      if (res.status >= 200 && res.status < 300) {
+        const data = JSON.parse(res.responseText);
+        if (data && data.answers) {
+          const gen = generateVocabExplanation(data.answers, info, cleanTarget);
+          const roleConf = data.answers.grammatical_role?.confidence ?? 0.8;
+          const senseConf = data.answers.applied_meaning?.confidence ?? 0.8;
+          const isFastPath = roleConf >= 0.40 && senseConf >= 0.40 && !!gen.role;
+          return {
+            cardHtml: renderJevVocabCard(gen, conn.model, words, cleanTarget),
+            markdown: gen.markdown,
+            role: gen.role,
+            isFastPath,
+            elapsedMs: Date.now() - t0,
+            answers: data.answers
+          };
+        }
+      } else {
+        console.warn('[JPDB AI] Jev vocab explanation call failed with status ' + res.status + ':', res.responseText);
+      }
+    } catch (err) {
+      console.warn('[JPDB AI] Jev vocab explanation call failed:', err);
+    }
+    return { cardHtml: '', markdown: '', role: null, isFastPath: false, elapsedMs: Date.now() - t0 };
   }
 
   // ---------- Translation Rating Diagnostics & Divergence Tracking ----------
@@ -2553,11 +2910,38 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     const info = refreshCtx();
     const userPrompt = kind === 'breakdown' ? buildBreakdownPrompt(info) : buildExplainPrompt(info);
     addMsg('user', kind === 'breakdown' ? 'Break down this sentence please.' : `What does "${info.vocab || 'this word'}" do in this sentence?`);
-    const thinking = addMsg('assistant', 'Thinking…', false, true);
+    const thinking = addMsg('assistant', kind === 'explain' ? 'Analyzing vocab role…' : 'Thinking…', false, true);
     busy = true;
     setBusy(true);
+
+    // Fast-path: Instant System One Vocab Explainer (<250ms)
+    if (kind === 'explain') {
+      try {
+        const jevPromise = callJevVocabExplanation(info);
+        const jevTimeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+        const jevRes = await Promise.race([jevPromise, jevTimeoutPromise]);
+
+        if (jevRes && jevRes.isFastPath && jevRes.markdown) {
+          setMsgMarkdown(thinking, jevRes.markdown, jevRes.cardHtml);
+          msgLog.push({ role: 'assistant', text: jevRes.markdown, jevHtml: jevRes.cardHtml, isErr: false });
+          history.push({ role: 'user', content: userPrompt });
+          history.push({ role: 'assistant', content: jevRes.markdown });
+          saveSession();
+          busy = false;
+          setBusy(false);
+          return;
+        }
+
+        if (thinking && jevRes && jevRes.cardHtml) {
+          thinking.innerHTML = jevRes.cardHtml + '<div class="jpdb-ai-jev-waiting">Thinking… generating detailed analysis…</div>';
+        }
+      } catch (err) {
+        console.warn('[JPDB AI] Fast-path vocab explanation fallback to LLM:', err);
+      }
+    }
+
     try {
-      // Ratings are fresh, independent evaluations and do not include prior chat history
+      // Ratings and explanations are fresh, independent evaluations and do not include prior chat history
       const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: userPrompt }];
       const reply = await callLLM(msgs);
       setMsgMarkdown(thinking, reply);
@@ -2806,7 +3190,7 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
           </div>
 
           <div class="jpdb-ai-settings-group">
-            <div class="jpdb-ai-settings-group-title">⚡ JEV (Instant Assessment)</div>
+            <div class="jpdb-ai-settings-group-title">⚡ JEV (Instant Vocab & Assessment)</div>
             <label class="jpdb-ai-settings-label">
               JEV Endpoint URL
               <input type="text" id="jpdb-ai-cfg-jev-endpoint" class="jpdb-ai-settings-input" placeholder="e.g. https://openrouter.ai/api/alpha/decisions" />

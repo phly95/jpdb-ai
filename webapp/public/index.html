@@ -509,6 +509,8 @@
           const s = ex.jev.score;
           const cls = s === 10 ? 'badge-score-10' : (s >= 7 ? 'badge-score-med' : 'badge-score-low');
           scoreBadge = `<span class="badge ${cls}">${s}/10</span>`;
+        } else if (ex.jev?.role) {
+          scoreBadge = `<span class="badge" style="background:#2b2250;color:#c4b5fd;border:1px solid #6366f1;">${escapeHtml(ex.jev.role.replace(/_/g, ' '))}</span>`;
         }
 
         const isJevOnly = ex.routing?.isPureJevFastPath;
@@ -617,7 +619,7 @@
                 }
                 return '';
               })()}
-              <div class="rendered-markdown">${escapeHtml(ex.jev?.generatedMarkdown || 'Run evaluation to view synthesized explanation.')}</div>
+              <div class="rendered-markdown">${renderMarkdown(ex.jev?.generatedMarkdown || 'Run evaluation to view synthesized explanation.')}</div>
               
               <details style="margin-top:16px; border-top:1px solid #334155; padding-top:10px;">
                 <summary style="font-size:11px; cursor:pointer; color:var(--accent);">🔍 View Jev System One Discrete Decisions</summary>
@@ -637,7 +639,7 @@
               </span>
             </div>
             <div class="pane-body">
-              <div class="rendered-markdown">${escapeHtml(ex.llm?.content || 'Run evaluation to compare with LLM.')}</div>
+              <div class="rendered-markdown">${renderMarkdown(ex.llm?.content || 'Run evaluation to compare with LLM.')}</div>
             </div>
           </div>
         </div>
@@ -698,6 +700,18 @@
           btn.innerHTML = `<span>⚡ Re-evaluate Live</span>`;
         }
       }
+    }
+
+    function renderMarkdown(str) {
+      if (!str) return '';
+      let html = escapeHtml(str);
+      html = html.replace(/^### (.*$)/gim, '<h3 style="margin: 8px 0 4px 0; color: #93c5fd; font-size: 14px;">$1</h3>');
+      html = html.replace(/^## (.*$)/gim, '<h2 style="margin: 10px 0 6px 0; color: #bfdbfe; font-size: 15px;">$1</h2>');
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      html = html.replace(/\n\n/g, '<p style="margin: 6px 0;"></p>');
+      html = html.replace(/\n/g, '<br>');
+      return html;
     }
 
     function escapeHtml(str) {

@@ -151,7 +151,7 @@ function generateTranslationCritique(answers, cardInfo, userDraft) {
 }
 
 function generateVocabExplanation(answers, cardInfo) {
-  const { applied_meaning, grammatical_role, attachment_and_particles, inflection_form, pedagogical_tip_type } = answers;
+  const { applied_meaning, grammatical_role, attachment_and_particles, inflection_form, pedagogical_tip_type, connected_target_word } = answers;
   
   const cleanTarget = (cardInfo.vocab || '').replace(/\([^)]*\)/g, '').trim();
   const meanings = cardInfo.meanings || [];
@@ -164,59 +164,100 @@ function generateVocabExplanation(answers, cardInfo) {
     }
   }
 
-  const roleMap = {
-    main_predicate_verb: 'functioning as the main predicate verb',
-    subordinate_clause_verb: 'functioning as the verb within a subordinate or conditional clause',
-    direct_object: 'marked as the direct object',
-    topic_marker: 'functioning as the topic of the conversation',
-    grammatical_subject: 'functioning as the grammatical subject performing the action',
-    adverbial_modifier: 'functioning as an adverbial modifier',
-    indirect_object_or_target: 'marked as the target or direction of the action',
-    sentence_ending_particle_or_expression: 'functioning as a sentence-ending expressive particle'
-  };
+  const role = grammatical_role?.choice;
+  const attach = attachment_and_particles?.choice;
+  const inflect = inflection_form?.choice;
+  const tip = pedagogical_tip_type?.choice;
+  const targetWord = (connected_target_word?.choice && connected_target_word.choice !== 'none_or_independent') ? connected_target_word.choice : null;
 
-  const attachmentMap = {
-    particle_wo_object: 'governing the direct object marked by を',
-    particle_ga_subject: 'accompanied by the subject particle が',
-    particle_wa_topic: 'framed by the topic particle は',
-    particle_ni_target: 'accompanied by the target particle に',
-    particle_to_quotation: 'introduced by the quotative particle と',
-    direct_noun_modification: 'directly modifying the following noun',
-    te_form_connection: 'connecting via the て-form to an auxiliary verb',
-    sentence_final: 'standing at the end of the clause'
-  };
-
-  const inflectionMap = {
+  const inflectionLabels = {
     plain_present_dictionary: 'plain non-past dictionary form',
     past_ta_form: 'past tense (〜た / 〜だ)',
     te_form: 'connective 〜て form',
     passive_voice: 'passive voice (〜られる / 〜れる)',
     potential_form: 'potential form ("can do")',
     causative_or_causative_passive: 'causative or causative-passive form',
-    conditional_form: 'conditional form (〜たら / 〜ば)',
+    conditional_form: 'conditional form (〜たら / 〜ば / 〜なら)',
     polite_masu_desu: 'polite form (〜ます / 〜です)',
-    uninflected_noun_or_particle: 'uninflected form'
+    adverbial_form: 'adverbial form'
   };
 
+  const isInflectionConfident = (inflection_form?.confidence || 0) >= 0.75;
+  const inflectionText = isInflectionConfident && inflect && inflect !== 'uninflected_noun_or_particle'
+    ? ` (${inflectionLabels[inflect] || inflect})`
+    : '';
+
+  let roleExplanation = '';
+
+  if (role === 'direct_object') {
+    if (targetWord) {
+      roleExplanation = `functioning as the direct object (marked by **を**) in the clause with **${targetWord}**`;
+    } else {
+      roleExplanation = `functioning as the direct object receiving the action of the verb, marked by **を**`;
+    }
+  } else if (role === 'grammatical_subject') {
+    if (targetWord) {
+      roleExplanation = `functioning as the grammatical subject (marked by **が**) associated with **${targetWord}**`;
+    } else {
+      roleExplanation = `functioning as the grammatical subject performing or undergoing the action, marked by the identifier particle **が**`;
+    }
+  } else if (role === 'topic_marker') {
+    roleExplanation = `functioning as the conversational topic and contextual anchor of the sentence, framed by the topic particle **は**`;
+  } else if (role === 'indirect_object_or_destination') {
+    if (targetWord) {
+      roleExplanation = `indicating the destination, target, or recipient for **${targetWord}**, marked by **に** / **へ**`;
+    } else {
+      roleExplanation = `indicating the target, recipient, or direction of the action, marked by **に** / **へ**`;
+    }
+  } else if (role === 'location_or_means') {
+    if (targetWord) {
+      roleExplanation = `specifying the location, means, or instrument where **${targetWord}** takes place, marked by **で**`;
+    } else {
+      roleExplanation = `specifying the location of the action or the means used, marked by **で**`;
+    }
+  } else if (role === 'noun_modifying_relative_clause') {
+    if (targetWord) {
+      roleExplanation = `functioning as an attributive modifier directly describing the noun **${targetWord}**`;
+    } else {
+      roleExplanation = `functioning as an attributive / relative clause directly modifying the following noun`;
+    }
+  } else if (role === 'adverbial_modifier') {
+    if (targetWord) {
+      roleExplanation = `functioning as an adverbial modifier modifying the predicate **${targetWord}**`;
+    } else {
+      roleExplanation = `functioning as an adverbial modifier describing manner, degree, or time`;
+    }
+  } else if (role === 'connective_te_form') {
+    if (targetWord) {
+      roleExplanation = `is in the connective 〜て form, chaining this action into **${targetWord}**`;
+    } else {
+      roleExplanation = `is in the connective 〜て form, linking sequential actions or attaching to an auxiliary verb`;
+    }
+  } else if (role === 'subordinate_clause_verb') {
+    roleExplanation = `functioning as the verb within an embedded, conditional, or subordinate clause`;
+  } else if (role === 'particle_or_sentence_ender') {
+    roleExplanation = `functions as a conversational particle or sentence-ending expression providing pragmatic nuance`;
+  } else {
+    // main_predicate_verb
+    roleExplanation = `serving as the main predicate verb of the sentence${inflectionText}`;
+  }
+
   const tipsMap = {
-    give_receive_direction: 'Pay attention to favor direction: 〜てやる is done for someone younger, a pet, or third party; 〜てくれる is done for the speaker ("for me").',
+    give_receive_direction: 'Pay attention to favor direction: 〜てやる is done for someone younger, a pet, or third party; 〜てくれる is done for the speaker ("for me"); 〜てもらう is receiving a favor.',
     passive_adversative_nuance: 'In Japanese, the passive voice often expresses that the subject was negatively affected or troubled by someone else\'s action (the "adversative" or suffering passive).',
     potential_vs_intent: 'Potential forms express capability or opportunity ("can do"), not just future intention.',
     polite_softener_not_literal_contrast: 'Sentence-ending softeners like 〜けど or 〜んだけど soften the tone and avoid abruptness; they rarely mean a harsh "but".',
     colloquial_contraction: 'Note the conversational contraction used here in casual speech.',
     transitive_vs_intransitive_pair: 'Watch out for transitive vs. intransitive verb pairing in this construction.',
-    standard_usage: 'Focus on how the attached particle connects this word to the main predicate.'
+    polysemous_idiomatic_sense: `Notice how context dictates this specific sense over other dictionary definitions.`,
+    case_particle_governance: 'Pay close attention to which particle marks this word (を for direct object, が for subject, に for target, で for location/means).',
+    standard_usage: 'Focus on how the attached particle or inflection connects this word to the main predicate.'
   };
-
-  const isInflectionConfident = (inflection_form?.confidence || 0) >= 0.75;
-  const inflectionText = isInflectionConfident && inflection_form?.choice && inflection_form.choice !== 'uninflected_noun_or_particle'
-    ? ` (${inflectionMap[inflection_form.choice] || inflection_form.choice})`
-    : '';
 
   const lines = [
     `### Role of **${cleanTarget}** in this Sentence\n`,
-    `In this sentence, **${cleanTarget}** means **"${chosenSense}"**, ${roleMap[grammatical_role?.choice] || 'used in the clause'}${inflectionText} while ${attachmentMap[attachment_and_particles?.choice] || 'attaching in the sentence'}.\n`,
-    `💡 **Key Nuance:** ${tipsMap[pedagogical_tip_type?.choice] || tipsMap.standard_usage}`
+    `In this sentence, **${cleanTarget}** means **"${chosenSense}"**, ${roleExplanation}.\n`,
+    `💡 **Key Nuance:** ${tipsMap[tip] || tipsMap.standard_usage}`
   ];
 
   return {
