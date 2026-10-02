@@ -1,0 +1,4526 @@
+{
+  "ex_01_flawless_synonym": {
+    "id": "ex_01_flawless_synonym",
+    "title": "Flawless Synonym (Direct Translation)",
+    "mode": "translation_critique",
+    "category": "Natural Equivalence",
+    "card": {
+      "vocab": "見つけた",
+      "reading": "みつけた",
+      "meanings": [
+        "found",
+        "discovered"
+      ],
+      "pos": "verb, ichidan",
+      "sentenceJP": "公園で可愛い猫を見つけた。",
+      "sentenceEN": "I discovered a cute cat in the park."
+    },
+    "userDraft": "I found a cute cat at the park.",
+    "notes": "Should be 10/10. 'found' for 'discovered' and 'at' for 'in' are natural synonyms. Demonstrates Jev avoiding LLM pedantic deductions.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 372,
+      "score": 10,
+      "bracket": "10_flawless",
+      "critique": "no_flaws_accurate",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "10_flawless",
+          "probabilities": {
+            "10_flawless": 0.84,
+            "5_moderate_error": 0,
+            "1_fatal_error": 0,
+            "8_minor_nuance": 0.16,
+            "3_major_error": 0
+          },
+          "confidence": 0.79
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "no_flaws_accurate",
+          "probabilities": {
+            "minor_nuance_or_word_choice_difference": 0.15,
+            "subject_object_inverted": 0,
+            "interrogative_or_question_error": 0,
+            "wrong_benefactive_or_recipient": 0,
+            "passive_voice_reversed": 0,
+            "tense_or_aspect_error": 0,
+            "no_flaws_accurate": 0.85,
+            "potential_or_modality_error": 0,
+            "wrong_verb_or_action": 0
+          },
+          "confidence": 0.83
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "correct_benefactive_or_not_applicable": 1,
+            "recipient_reversed_self_vs_other": 0,
+            "benefactive_omitted": 0
+          },
+          "confidence": 1
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "correct_or_not_applicable",
+          "probabilities": {
+            "tense_past_present_error": 0,
+            "predicate_omitted_or_wrong": 0,
+            "correct_or_not_applicable": 1,
+            "potential_vs_intent_error": 0,
+            "passive_vs_active_error": 0
+          },
+          "confidence": 1
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 1,
+            "polarity_inverted": 0
+          },
+          "confidence": 1
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "accurate_or_not_stacked",
+          "probabilities": {
+            "causative_passive_inverted": 0,
+            "accurate_or_not_stacked": 1,
+            "double_negative_obligation_inverted": 0,
+            "potential_change_of_state_missed": 0,
+            "causative_benefactive_inverted": 0,
+            "conditional_regret_missed": 0
+          },
+          "confidence": 1
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.02
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0,
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 1,
+            "awkward_or_literal_misfit": 0
+          },
+          "confidence": 1
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.02
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0,
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 1,
+            "awkward_or_literal_misfit": 0
+          },
+          "confidence": 1
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.16
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.01,
+            "not_applicable_if_omitted": 0.05,
+            "natural_correct_sense": 0.94,
+            "awkward_or_literal_misfit": 0
+          },
+          "confidence": 0.92
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I found a cute cat at the park",
+          "probabilities": {
+            "I found a cute cat": 0.47,
+            "I found a cute cat at the park": 0.51,
+            "the park": 0.02
+          },
+          "confidence": 0.26
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I discovered a cute cat",
+          "probabilities": {
+            "I discovered a cute cat": 0.85,
+            "I discovered a cute cat in the park": 0.15,
+            "the park": 0
+          },
+          "confidence": 0.78
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "word_choice_or_nuance_mismatch",
+          "probabilities": {
+            "potential_vs_intent": 0,
+            "question_vs_statement": 0,
+            "causative_reversal": 0,
+            "passive_vs_active_reversal": 0,
+            "accurate_equivalent": 0.31,
+            "obligation_vs_absence": 0,
+            "benefactive_direction_inverted": 0,
+            "counterfactual_regret_vs_condition": 0,
+            "word_choice_or_nuance_mismatch": 0.69
+          },
+          "confidence": 0.65
+        }
+      },
+      "confidence": {
+        "minConf": 0.26,
+        "avgConf": 0.8525
+      },
+      "tokenCost": 0.000166824,
+      "generatedMarkdown": "**Score: 10/10 (Flawless)**\n\nYour translation accurately captures the meaning, tone, and grammatical intent with no deductions.\n\n**Reference Translation:**\n\"I discovered a cute cat in the park.\""
+    },
+    "llm": {
+      "elapsedMs": 1548,
+      "content": "**Score:** 10/10\n\n**Criticism:**\nNone. While the reference uses \"discovered\" and \"in,\" your use of \"found\" (for 見つけた) and \"at the park\" (for 公園で) is actually more natural English while remaining completely faithful to the Japanese original. Excellent translation.",
+      "tokenCost": 0.001068
+    },
+    "speedup": "4.2x"
+  },
+  "ex_03_flawless_idiom": {
+    "id": "ex_03_flawless_idiom",
+    "title": "Flawless Idiomatic Set Phrase (もう知らない)",
+    "mode": "translation_critique",
+    "category": "Idiomatic Expression",
+    "card": {
+      "vocab": "知らない",
+      "reading": "しらない",
+      "meanings": [
+        "don't know",
+        "unaware"
+      ],
+      "pos": "verb",
+      "sentenceJP": "もう知らない！勝手にして。",
+      "sentenceEN": "I don't care anymore! Do whatever you want."
+    },
+    "userDraft": "I'm done with you! Do as you please.",
+    "notes": "Should be 10/10. 'I'm done with you' captures the pragmatic sense of もう知らない far better than literal 'I don't know'.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 336,
+      "score": 8,
+      "bracket": "8_minor_nuance",
+      "critique": "minor_nuance_or_word_choice_difference",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.76
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "8_minor_nuance",
+          "probabilities": {
+            "8_minor_nuance": 0.85,
+            "10_flawless": 0.11,
+            "3_major_error": 0.01,
+            "1_fatal_error": 0,
+            "5_moderate_error": 0.03
+          },
+          "confidence": 0.81
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "minor_nuance_or_word_choice_difference",
+          "probabilities": {
+            "potential_or_modality_error": 0,
+            "minor_nuance_or_word_choice_difference": 0.73,
+            "tense_or_aspect_error": 0,
+            "passive_voice_reversed": 0,
+            "subject_object_inverted": 0,
+            "no_flaws_accurate": 0.21,
+            "interrogative_or_question_error": 0,
+            "wrong_benefactive_or_recipient": 0.02,
+            "wrong_verb_or_action": 0.04
+          },
+          "confidence": 0.69
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "correct_benefactive_or_not_applicable": 1,
+            "benefactive_omitted": 0,
+            "recipient_reversed_self_vs_other": 0
+          },
+          "confidence": 1
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "correct_or_not_applicable",
+          "probabilities": {
+            "tense_past_present_error": 0,
+            "predicate_omitted_or_wrong": 0.12,
+            "correct_or_not_applicable": 0.82,
+            "potential_vs_intent_error": 0.06,
+            "passive_vs_active_error": 0
+          },
+          "confidence": 0.77
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 0.8,
+            "polarity_inverted": 0.2
+          },
+          "confidence": 0.6
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "accurate_or_not_stacked",
+          "probabilities": {
+            "causative_benefactive_inverted": 0,
+            "potential_change_of_state_missed": 0,
+            "conditional_regret_missed": 0,
+            "causative_passive_inverted": 0,
+            "double_negative_obligation_inverted": 0,
+            "accurate_or_not_stacked": 1
+          },
+          "confidence": 1
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.37
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.03,
+            "mistranslated_or_wrong_meaning": 0.03,
+            "natural_correct_sense": 0.91,
+            "not_applicable_if_omitted": 0.03
+          },
+          "confidence": 0.88
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.54
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.1,
+            "mistranslated_or_wrong_meaning": 0.21,
+            "natural_correct_sense": 0.59,
+            "not_applicable_if_omitted": 0.1
+          },
+          "confidence": 0.45
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.25
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.07,
+            "mistranslated_or_wrong_meaning": 0.02,
+            "natural_correct_sense": 0.82,
+            "not_applicable_if_omitted": 0.09
+          },
+          "confidence": 0.76
+        },
+        "word_3_omitted": {
+          "type": "noul",
+          "noul": 0.34
+        },
+        "word_3_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.03,
+            "mistranslated_or_wrong_meaning": 0.01,
+            "natural_correct_sense": 0.89,
+            "not_applicable_if_omitted": 0.07
+          },
+          "confidence": 0.85
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I'm done with you! Do as you please",
+          "probabilities": {
+            "I'm done with you! Do as you please": 0.7,
+            "you! Do as you please": 0.1,
+            "I'm done": 0.2
+          },
+          "confidence": 0.55
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I don't care anymore!",
+          "probabilities": {
+            "Do whatever you want.": 0,
+            "I don't care anymore!": 1,
+            "I don't care anymore! Do whatever you want": 0
+          },
+          "confidence": 0.99
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "word_choice_or_nuance_mismatch",
+          "probabilities": {
+            "counterfactual_regret_vs_condition": 0,
+            "benefactive_direction_inverted": 0,
+            "obligation_vs_absence": 0,
+            "accurate_equivalent": 0.07,
+            "word_choice_or_nuance_mismatch": 0.93,
+            "passive_vs_active_reversal": 0,
+            "causative_reversal": 0,
+            "potential_vs_intent": 0,
+            "question_vs_statement": 0
+          },
+          "confidence": 0.91
+        }
+      },
+      "confidence": {
+        "minConf": 0.45,
+        "avgConf": 0.7892307692307692
+      },
+      "tokenCost": 0.000176568,
+      "generatedMarkdown": "**Score: 8/10 (Minor Nuance)**\n\n**Critique:** In this context, **知らない** naturally translates to *\"I don't care anymore!\"*, whereas *\"I'm done with you! Do as you please\"* sounds slightly awkward or overly literal.\n\n**Reference Translation:**\n\"I don't care anymore! Do whatever you want.\""
+    },
+    "llm": {
+      "elapsedMs": 1893,
+      "content": "**Score: 8/10**\n\n**Criticism:**\n* **\"I'm done with you!\" is slightly too severe.** 「もう知らない！」 literally means \"I don't know [about this] anymore!\" While it expresses frustration and washing one's hands of a situation, your translation sounds like permanently ending a relationship. \"I don't care anymore!\" or \"See if I care!\" is closer to the original weight.\n* \"Do as you please\" is an accurate, natural translation for 「勝手にして」.",
+      "tokenCost": 0.0010934999999999999
+    },
+    "speedup": "5.6x"
+  },
+  "ex_04_passive_direct_reversal": {
+    "id": "ex_04_passive_direct_reversal",
+    "title": "Direct Passive Reversal (言われた)",
+    "mode": "translation_critique",
+    "category": "Passive Voice",
+    "card": {
+      "vocab": "言われた",
+      "reading": "いわれた",
+      "meanings": [
+        "was told",
+        "to be said"
+      ],
+      "pos": "verb, passive",
+      "sentenceJP": "先生に宿題をやりなさいと言われた。",
+      "sentenceEN": "I was told by my teacher to do my homework."
+    },
+    "userDraft": "I told the teacher to do homework.",
+    "notes": "Fatal agent reversal. The student inverted subject and agent.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 243,
+      "score": 3,
+      "bracket": "3_major_error",
+      "critique": "passive_voice_reversed",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.02
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "3_major_error",
+          "probabilities": {
+            "3_major_error": 0.99,
+            "10_flawless": 0,
+            "8_minor_nuance": 0,
+            "5_moderate_error": 0,
+            "1_fatal_error": 0.01
+          },
+          "confidence": 0.98
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "passive_voice_reversed",
+          "probabilities": {
+            "subject_object_inverted": 0,
+            "potential_or_modality_error": 0,
+            "tense_or_aspect_error": 0,
+            "minor_nuance_or_word_choice_difference": 0,
+            "interrogative_or_question_error": 0,
+            "wrong_benefactive_or_recipient": 0,
+            "no_flaws_accurate": 0,
+            "passive_voice_reversed": 1,
+            "wrong_verb_or_action": 0
+          },
+          "confidence": 1
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "correct_benefactive_or_not_applicable": 0.8099999999999999,
+            "recipient_reversed_self_vs_other": 0.18,
+            "benefactive_omitted": 0.01
+          },
+          "confidence": 0.73
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "passive_vs_active_error",
+          "probabilities": {
+            "predicate_omitted_or_wrong": 0,
+            "correct_or_not_applicable": 0,
+            "tense_past_present_error": 0,
+            "passive_vs_active_error": 1,
+            "potential_vs_intent_error": 0
+          },
+          "confidence": 1
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 0.95,
+            "polarity_inverted": 0.05
+          },
+          "confidence": 0.9
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "causative_passive_inverted",
+          "probabilities": {
+            "accurate_or_not_stacked": 0.38,
+            "double_negative_obligation_inverted": 0,
+            "causative_benefactive_inverted": 0,
+            "conditional_regret_missed": 0,
+            "causative_passive_inverted": 0.62,
+            "potential_change_of_state_missed": 0
+          },
+          "confidence": 0.54
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.13
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.06,
+            "awkward_or_literal_misfit": 0.02,
+            "natural_correct_sense": 0.92,
+            "not_applicable_if_omitted": 0
+          },
+          "confidence": 0.88
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.06
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.02,
+            "mistranslated_or_wrong_meaning": 0.02,
+            "natural_correct_sense": 0.96,
+            "not_applicable_if_omitted": 0
+          },
+          "confidence": 0.95
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.65
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.48,
+            "awkward_or_literal_misfit": 0.05,
+            "natural_correct_sense": 0.17,
+            "not_applicable_if_omitted": 0.3
+          },
+          "confidence": 0.31
+        },
+        "word_3_omitted": {
+          "type": "noul",
+          "noul": 0.89
+        },
+        "word_3_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.71,
+            "awkward_or_literal_misfit": 0.01,
+            "natural_correct_sense": 0.02,
+            "not_applicable_if_omitted": 0.26
+          },
+          "confidence": 0.62
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I told the teacher to do homework",
+          "probabilities": {
+            "I told the teacher to do homework": 0.63,
+            "I told the teacher": 0.37,
+            "do homework": 0
+          },
+          "confidence": 0.45
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I was told",
+          "probabilities": {
+            "do my homework": 0,
+            "I was told": 0.97,
+            "I was told by my teacher to do my homework": 0.03,
+            "my teacher": 0
+          },
+          "confidence": 0.96
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "passive_vs_active_reversal",
+          "probabilities": {
+            "question_vs_statement": 0,
+            "obligation_vs_absence": 0,
+            "potential_vs_intent": 0,
+            "word_choice_or_nuance_mismatch": 0,
+            "accurate_equivalent": 0,
+            "causative_reversal": 0.02,
+            "benefactive_direction_inverted": 0,
+            "passive_vs_active_reversal": 0.98,
+            "counterfactual_regret_vs_condition": 0
+          },
+          "confidence": 0.97
+        }
+      },
+      "confidence": {
+        "minConf": 0.31,
+        "avgConf": 0.7915384615384616
+      },
+      "tokenCost": 0.000176904,
+      "generatedMarkdown": "**Score: 3/10 (Major Error)**\n\n**Critique:** Instead of translating **言われた** as passive (*\"I was told\"*), your draft translated it actively as *\"I told the teacher to do homework\"*, reversing who received the action.\n\n**Reference Translation:**\n\"I was told by my teacher to do my homework.\""
+    },
+    "llm": {
+      "elapsedMs": 2026,
+      "content": "**Score: 2/10**\n\n**Criticism:**\nYou completely reversed the subject and the action. \n\n* **〜と言われた** is the passive form of \"to say\" (言う), meaning **\"was told,\"** not \"told.\"\n* **先生に** marks the agent in a passive sentence: **\"by the teacher.\"** \n\nYou were the one receiving the instruction, not giving it.",
+      "tokenCost": 0.0010815
+    },
+    "speedup": "8.3x"
+  },
+  "ex_06_benefactive_inward": {
+    "id": "ex_06_benefactive_inward",
+    "title": "Benefactive Inversion (~てくれた)",
+    "mode": "translation_critique",
+    "category": "Benefactives",
+    "card": {
+      "vocab": "やってくれた",
+      "reading": "やってくれた",
+      "meanings": [
+        "did (for me)",
+        "did a favor"
+      ],
+      "pos": "verb, benefactive",
+      "sentenceJP": "友達が私の宿題をやってくれた。",
+      "sentenceEN": "My friend did my homework for me."
+    },
+    "userDraft": "I did homework for my friend.",
+    "notes": "Major reversal (3/10). Inverted who received the favor.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 329,
+      "score": 3,
+      "bracket": "3_major_error",
+      "critique": "subject_object_inverted",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.02
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "3_major_error",
+          "probabilities": {
+            "1_fatal_error": 0.09,
+            "5_moderate_error": 0,
+            "3_major_error": 0.91,
+            "10_flawless": 0,
+            "8_minor_nuance": 0
+          },
+          "confidence": 0.88
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "subject_object_inverted",
+          "probabilities": {
+            "passive_voice_reversed": 0,
+            "wrong_verb_or_action": 0,
+            "minor_nuance_or_word_choice_difference": 0,
+            "potential_or_modality_error": 0,
+            "tense_or_aspect_error": 0,
+            "interrogative_or_question_error": 0,
+            "subject_object_inverted": 0.85,
+            "wrong_benefactive_or_recipient": 0.15,
+            "no_flaws_accurate": 0
+          },
+          "confidence": 0.83
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "recipient_reversed_self_vs_other",
+          "probabilities": {
+            "correct_benefactive_or_not_applicable": 0,
+            "recipient_reversed_self_vs_other": 0.99,
+            "benefactive_omitted": 0.01
+          },
+          "confidence": 0.98
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "correct_or_not_applicable",
+          "probabilities": {
+            "correct_or_not_applicable": 0.65,
+            "tense_past_present_error": 0.09,
+            "potential_vs_intent_error": 0,
+            "predicate_omitted_or_wrong": 0.21,
+            "passive_vs_active_error": 0.05
+          },
+          "confidence": 0.56
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_inverted": 0.01,
+            "polarity_preserved": 0.99
+          },
+          "confidence": 0.98
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "causative_benefactive_inverted",
+          "probabilities": {
+            "causative_benefactive_inverted": 0.46,
+            "potential_change_of_state_missed": 0,
+            "causative_passive_inverted": 0.12,
+            "double_negative_obligation_inverted": 0,
+            "conditional_regret_missed": 0,
+            "accurate_or_not_stacked": 0.42
+          },
+          "confidence": 0.35
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.26
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.41,
+            "awkward_or_literal_misfit": 0.09,
+            "natural_correct_sense": 0.48,
+            "not_applicable_if_omitted": 0.02
+          },
+          "confidence": 0.3
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.06
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.09,
+            "awkward_or_literal_misfit": 0.01,
+            "natural_correct_sense": 0.9,
+            "not_applicable_if_omitted": 0
+          },
+          "confidence": 0.87
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.71
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.52,
+            "awkward_or_literal_misfit": 0.02,
+            "natural_correct_sense": 0.08,
+            "not_applicable_if_omitted": 0.38
+          },
+          "confidence": 0.36
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I did homework for my friend",
+          "probabilities": {
+            "my friend": 0,
+            "I did homework for my friend": 0.93,
+            "I did homework": 0.07
+          },
+          "confidence": 0.89
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "My friend did my homework for me",
+          "probabilities": {
+            "My friend did my homework": 0.09,
+            "My friend did my homework for me": 0.91
+          },
+          "confidence": 0.82
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "benefactive_direction_inverted",
+          "probabilities": {
+            "obligation_vs_absence": 0,
+            "potential_vs_intent": 0,
+            "question_vs_statement": 0,
+            "accurate_equivalent": 0,
+            "passive_vs_active_reversal": 0.01,
+            "causative_reversal": 0,
+            "counterfactual_regret_vs_condition": 0,
+            "benefactive_direction_inverted": 0.99,
+            "word_choice_or_nuance_mismatch": 0
+          },
+          "confidence": 0.98
+        }
+      },
+      "confidence": {
+        "minConf": 0.3,
+        "avgConf": 0.7333333333333334
+      },
+      "tokenCost": 0.000166446,
+      "generatedMarkdown": "**Score: 3/10 (Major Error)**\n\n**Critique:** You translated **やってくれた** as *\"I did homework for my friend\"*, but it indicates a favor received from someone else (*\"My friend did my homework for me\"*), not a favor you performed.\n\n**Reference Translation:**\n\"My friend did my homework for me.\""
+    },
+    "llm": {
+      "elapsedMs": 2248,
+      "content": "**Score: 2/10**\n\n**Criticism:**\n* **Reversed direction of action:** You inverted the subject and the receiver. The particle **が** marks 友達 (friend) as the one doing the action, not you.\n* **Misunderstanding of 〜てくれた:** This helper verb indicates that *someone else* did a favor *for me* (or my in-group). If you had done it for your friend, it would be 〜てあげた.\n\n**Correction:** \n\"My friend did my homework for me.\"",
+      "tokenCost": 0.0010919999999999999
+    },
+    "speedup": "6.8x"
+  },
+  "ex_07_benefactive_outward": {
+    "id": "ex_07_benefactive_outward",
+    "title": "Benefactive Direction (~てやる)",
+    "mode": "translation_critique",
+    "category": "Benefactives",
+    "card": {
+      "vocab": "散歩させてやる",
+      "reading": "さんぽさせてやる",
+      "meanings": [
+        "walk (the dog)",
+        "do favor of walking"
+      ],
+      "pos": "verb, causative-benefactive",
+      "sentenceJP": "犬を散歩させてやる。",
+      "sentenceEN": "I'll take the dog for a walk."
+    },
+    "userDraft": "The dog walked me.",
+    "notes": "Major reversal (3/10). Confused downward benefactive direction.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 221,
+      "score": 3,
+      "bracket": "3_major_error",
+      "critique": "subject_object_inverted",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.01
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "3_major_error",
+          "probabilities": {
+            "8_minor_nuance": 0,
+            "1_fatal_error": 0.08,
+            "10_flawless": 0,
+            "3_major_error": 0.92,
+            "5_moderate_error": 0
+          },
+          "confidence": 0.89
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "subject_object_inverted",
+          "probabilities": {
+            "no_flaws_accurate": 0,
+            "interrogative_or_question_error": 0,
+            "minor_nuance_or_word_choice_difference": 0,
+            "subject_object_inverted": 0.97,
+            "potential_or_modality_error": 0,
+            "tense_or_aspect_error": 0,
+            "wrong_benefactive_or_recipient": 0.03,
+            "wrong_verb_or_action": 0,
+            "passive_voice_reversed": 0
+          },
+          "confidence": 0.97
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "recipient_reversed_self_vs_other",
+          "probabilities": {
+            "recipient_reversed_self_vs_other": 0.98,
+            "benefactive_omitted": 0.02,
+            "correct_benefactive_or_not_applicable": 0
+          },
+          "confidence": 0.97
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "tense_past_present_error",
+          "probabilities": {
+            "passive_vs_active_error": 0.22,
+            "potential_vs_intent_error": 0.01,
+            "tense_past_present_error": 0.41,
+            "predicate_omitted_or_wrong": 0.33,
+            "correct_or_not_applicable": 0.03
+          },
+          "confidence": 0.26
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 1,
+            "polarity_inverted": 0
+          },
+          "confidence": 1
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "causative_benefactive_inverted",
+          "probabilities": {
+            "causative_passive_inverted": 0.01,
+            "potential_change_of_state_missed": 0,
+            "causative_benefactive_inverted": 0.99,
+            "double_negative_obligation_inverted": 0,
+            "conditional_regret_missed": 0,
+            "accurate_or_not_stacked": 0
+          },
+          "confidence": 0.98
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.28
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.22,
+            "mistranslated_or_wrong_meaning": 0.66,
+            "not_applicable_if_omitted": 0.04,
+            "natural_correct_sense": 0.08
+          },
+          "confidence": 0.55
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.84
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "not_applicable_if_omitted": 0.31,
+            "mistranslated_or_wrong_meaning": 0.68,
+            "awkward_or_literal_misfit": 0.01,
+            "natural_correct_sense": 0
+          },
+          "confidence": 0.57
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "The dog walked me",
+          "probabilities": {
+            "walked me.": 0.23,
+            "The dog walked me": 0.76,
+            "The dog": 0.01
+          },
+          "confidence": 0.64
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I'll take the dog for a walk",
+          "probabilities": {
+            "a walk": 0.07,
+            "I'll take the dog": 0,
+            "I'll take the dog for a walk": 0.93
+          },
+          "confidence": 0.9
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "causative_reversal",
+          "probabilities": {
+            "passive_vs_active_reversal": 0.29,
+            "potential_vs_intent": 0,
+            "question_vs_statement": 0,
+            "counterfactual_regret_vs_condition": 0,
+            "causative_reversal": 0.45,
+            "obligation_vs_absence": 0,
+            "word_choice_or_nuance_mismatch": 0,
+            "accurate_equivalent": 0,
+            "benefactive_direction_inverted": 0.26
+          },
+          "confidence": 0.37
+        }
+      },
+      "confidence": {
+        "minConf": 0.26,
+        "avgConf": 0.7363636363636363
+      },
+      "tokenCost": 0.000157038,
+      "generatedMarkdown": "**Score: 3/10 (Major Error)**\n\n**Critique:** In Japanese, the causative-passive **散歩させてやる** expresses being subjected to an action (*\"I'll take the dog for a walk\"*), but you translated it as causing the action (*\"The dog walked me\"*).\n\n**Reference Translation:**\n\"I'll take the dog for a walk.\""
+    },
+    "llm": {
+      "elapsedMs": 2719,
+      "content": "**Score: 1/10**\n\n**Criticism:**\nYou completely reversed the subject and the object, and misunderstood the causative grammar. \n\n* **散歩させて (Causative):** Means \"make/let [someone] walk.\" The speaker is making the dog walk, not the other way around.\n* **やる (Benefactive):** Indicates the speaker is doing a favor for someone of lower status (the dog). \n* **犬を:** The particle を marks \"dog\" as the direct object, meaning the action is being done *to* the dog. \n\n**Correct meaning:** \"I'll take the dog for a walk\" (literally: \"I will do the dog the favor of letting it walk\").",
+      "tokenCost": 0.0011099999999999999
+    },
+    "speedup": "12.3x"
+  },
+  "ex_08_modality_potential": {
+    "id": "ex_08_modality_potential",
+    "title": "Potential vs Intent (行ける vs 行く)",
+    "mode": "translation_critique",
+    "category": "Modality",
+    "card": {
+      "vocab": "行ける",
+      "reading": "いける",
+      "meanings": [
+        "can go",
+        "to be able to go"
+      ],
+      "pos": "verb, potential",
+      "sentenceJP": "明日のパーティーに行けるよ。",
+      "sentenceEN": "I can go to tomorrow's party."
+    },
+    "userDraft": "I will go to tomorrow's party.",
+    "notes": "Moderate error (5/10). Ability/potential translated as simple future intent.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 260,
+      "score": 5,
+      "bracket": "5_moderate_error",
+      "critique": "potential_or_modality_error",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.18
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "5_moderate_error",
+          "probabilities": {
+            "8_minor_nuance": 0.14,
+            "5_moderate_error": 0.83,
+            "3_major_error": 0.03,
+            "10_flawless": 0,
+            "1_fatal_error": 0
+          },
+          "confidence": 0.78
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "potential_or_modality_error",
+          "probabilities": {
+            "passive_voice_reversed": 0,
+            "no_flaws_accurate": 0,
+            "wrong_verb_or_action": 0,
+            "interrogative_or_question_error": 0,
+            "subject_object_inverted": 0,
+            "tense_or_aspect_error": 0,
+            "wrong_benefactive_or_recipient": 0,
+            "potential_or_modality_error": 1,
+            "minor_nuance_or_word_choice_difference": 0
+          },
+          "confidence": 1
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "recipient_reversed_self_vs_other": 0,
+            "correct_benefactive_or_not_applicable": 1,
+            "benefactive_omitted": 0
+          },
+          "confidence": 1
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "potential_vs_intent_error",
+          "probabilities": {
+            "passive_vs_active_error": 0,
+            "correct_or_not_applicable": 0,
+            "potential_vs_intent_error": 1,
+            "predicate_omitted_or_wrong": 0,
+            "tense_past_present_error": 0
+          },
+          "confidence": 1
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 1,
+            "polarity_inverted": 0
+          },
+          "confidence": 1
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "accurate_or_not_stacked",
+          "probabilities": {
+            "potential_change_of_state_missed": 0.2,
+            "causative_passive_inverted": 0,
+            "conditional_regret_missed": 0,
+            "double_negative_obligation_inverted": 0.01,
+            "causative_benefactive_inverted": 0,
+            "accurate_or_not_stacked": 0.79
+          },
+          "confidence": 0.74
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.03
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0,
+            "mistranslated_or_wrong_meaning": 0,
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 1
+          },
+          "confidence": 1
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.02
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0,
+            "mistranslated_or_wrong_meaning": 0,
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 1
+          },
+          "confidence": 1
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.67
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.18,
+            "mistranslated_or_wrong_meaning": 0.79,
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 0.03
+          },
+          "confidence": 0.72
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I will go to tomorrow's party",
+          "probabilities": {
+            "I will go": 0.49,
+            "tomorrow's party": 0,
+            "I will go to tomorrow's party": 0.51
+          },
+          "confidence": 0.26
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I can go",
+          "probabilities": {
+            "I can go to tomorrow's party": 0.06,
+            "tomorrow's party": 0,
+            "I can go": 0.94
+          },
+          "confidence": 0.9
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "potential_vs_intent",
+          "probabilities": {
+            "word_choice_or_nuance_mismatch": 0,
+            "question_vs_statement": 0,
+            "benefactive_direction_inverted": 0,
+            "obligation_vs_absence": 0,
+            "accurate_equivalent": 0,
+            "passive_vs_active_reversal": 0,
+            "counterfactual_regret_vs_condition": 0,
+            "potential_vs_intent": 1,
+            "causative_reversal": 0
+          },
+          "confidence": 1
+        }
+      },
+      "confidence": {
+        "minConf": 0.26,
+        "avgConf": 0.8666666666666667
+      },
+      "tokenCost": 0.000166656,
+      "generatedMarkdown": "**Score: 5/10 (Moderate Error)**\n\n**Critique:** You translated **行ける** as *\"I will go to tomorrow's party\"*, but the potential form expresses *\"I can go\"* (ability/possibility rather than future certainty).\n\n**Reference Translation:**\n\"I can go to tomorrow's party.\""
+    },
+    "llm": {
+      "elapsedMs": 1609,
+      "content": "**Score: 7/10**\n\n**Criticism:**\nYou translated **行ける** (*ikeru*) as \"will go\" instead of \"can go.\" \n\n* **行ける** is the potential form of 行く (*iku* - to go), expressing ability or possibility (\"can go\"). \n* For \"will go,\" the Japanese would simply be **行くよ** (*iku yo*).",
+      "tokenCost": 0.001077
+    },
+    "speedup": "6.2x"
+  },
+  "ex_09_modality_conditional_wish": {
+    "id": "ex_09_modality_conditional_wish",
+    "title": "Conditional Wish (〜ばいいのに)",
+    "mode": "translation_critique",
+    "category": "Modality",
+    "card": {
+      "vocab": "いいのに",
+      "reading": "いいのに",
+      "meanings": [
+        "I wish",
+        "it would be nice if"
+      ],
+      "pos": "expression",
+      "sentenceJP": "もっと時間があればいいのに。",
+      "sentenceEN": "I wish I had more time."
+    },
+    "userDraft": "If I have more time, it is good.",
+    "notes": "Moderate/Minor error (6/10). Literal conditional missed counterfactual wish nuance.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 939,
+      "score": 5,
+      "bracket": "5_moderate_error",
+      "critique": "potential_or_modality_error",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.22
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "5_moderate_error",
+          "probabilities": {
+            "8_minor_nuance": 0.26,
+            "1_fatal_error": 0,
+            "10_flawless": 0,
+            "5_moderate_error": 0.58,
+            "3_major_error": 0.16
+          },
+          "confidence": 0.46
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "potential_or_modality_error",
+          "probabilities": {
+            "subject_object_inverted": 0,
+            "minor_nuance_or_word_choice_difference": 0.43,
+            "potential_or_modality_error": 0.49,
+            "wrong_benefactive_or_recipient": 0,
+            "passive_voice_reversed": 0,
+            "no_flaws_accurate": 0,
+            "interrogative_or_question_error": 0,
+            "tense_or_aspect_error": 0.06,
+            "wrong_verb_or_action": 0.02
+          },
+          "confidence": 0.43
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "correct_benefactive_or_not_applicable": 0.99,
+            "benefactive_omitted": 0.01,
+            "recipient_reversed_self_vs_other": 0
+          },
+          "confidence": 0.99
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "correct_or_not_applicable",
+          "probabilities": {
+            "correct_or_not_applicable": 0.64,
+            "predicate_omitted_or_wrong": 0.25,
+            "tense_past_present_error": 0.07,
+            "potential_vs_intent_error": 0.04,
+            "passive_vs_active_error": 0
+          },
+          "confidence": 0.55
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 0.87,
+            "polarity_inverted": 0.13
+          },
+          "confidence": 0.75
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "conditional_regret_missed",
+          "probabilities": {
+            "causative_passive_inverted": 0,
+            "accurate_or_not_stacked": 0.25,
+            "causative_benefactive_inverted": 0,
+            "conditional_regret_missed": 0.75,
+            "double_negative_obligation_inverted": 0,
+            "potential_change_of_state_missed": 0
+          },
+          "confidence": 0.7
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.12
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.05,
+            "mistranslated_or_wrong_meaning": 0,
+            "not_applicable_if_omitted": 0.01,
+            "natural_correct_sense": 0.94
+          },
+          "confidence": 0.91
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.04
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.01,
+            "mistranslated_or_wrong_meaning": 0,
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 0.99
+          },
+          "confidence": 0.98
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.76
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "not_applicable_if_omitted",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.13,
+            "mistranslated_or_wrong_meaning": 0.22,
+            "not_applicable_if_omitted": 0.55,
+            "natural_correct_sense": 0.1
+          },
+          "confidence": 0.41
+        },
+        "word_3_omitted": {
+          "type": "noul",
+          "noul": 0.13
+        },
+        "word_3_sense": {
+          "type": "choice",
+          "choice": "awkward_or_literal_misfit",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.87,
+            "mistranslated_or_wrong_meaning": 0.03,
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 0.1
+          },
+          "confidence": 0.82
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "it is good",
+          "probabilities": {
+            "I have more time": 0.01,
+            "it is good": 0.99
+          },
+          "confidence": 0.97
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I wish I had more time",
+          "probabilities": {
+            "I wish I had more time": 0.72,
+            "I wish I": 0.27,
+            "had more time.": 0.01
+          },
+          "confidence": 0.58
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "counterfactual_regret_vs_condition",
+          "probabilities": {
+            "accurate_equivalent": 0,
+            "counterfactual_regret_vs_condition": 0.99,
+            "word_choice_or_nuance_mismatch": 0.01,
+            "potential_vs_intent": 0,
+            "passive_vs_active_reversal": 0,
+            "benefactive_direction_inverted": 0,
+            "causative_reversal": 0,
+            "obligation_vs_absence": 0,
+            "question_vs_statement": 0
+          },
+          "confidence": 0.99
+        }
+      },
+      "confidence": {
+        "minConf": 0.41,
+        "avgConf": 0.7338461538461538
+      },
+      "tokenCost": 0.000174426,
+      "generatedMarkdown": "**Score: 5/10 (Moderate Error)**\n\n**Critique:** You translated **いいのに** as *\"it is good\"*, but the potential form expresses *\"I wish I had more time\"* (ability/possibility rather than future certainty).\n\n**Reference Translation:**\n\"I wish I had more time.\""
+    },
+    "llm": {
+      "elapsedMs": 2074,
+      "content": "**Score: 4/10**\n\n**Criticism:**\n* **Unnatural translation:** You translated the grammar too literally. While `〜ばいい` means \"it would be good if,\" the pattern `〜ばいいのに` expresses a counterfactual desire (a regret about reality). \n* **Tense/Mood error:** In English, this must be translated as a wish or an unreal condition (\"I wish I had...\" or \"If only I had...\"), not a real condition (\"If I have...\"). \n\n**Better translation:**\n\"I wish I had more time.\" / \"If only I had more time.\"",
+      "tokenCost": 0.0010995
+    },
+    "speedup": "2.2x"
+  },
+  "ex_10_modality_obligation": {
+    "id": "ex_10_modality_obligation",
+    "title": "Obligation Inversion (〜なければならない)",
+    "mode": "translation_critique",
+    "category": "Modality",
+    "card": {
+      "vocab": "行かなければならない",
+      "reading": "いかなければならない",
+      "meanings": [
+        "must go",
+        "have to go"
+      ],
+      "pos": "expression, obligation",
+      "sentenceJP": "明日早く行かなければならない。",
+      "sentenceEN": "I have to go early tomorrow."
+    },
+    "userDraft": "I don't have to go early tomorrow.",
+    "notes": "Fatal error (1/10). Double negative mistaken for negative.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 218,
+      "score": 1,
+      "bracket": "1_fatal_error",
+      "critique": "potential_or_modality_error",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.02
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "1_fatal_error",
+          "probabilities": {
+            "1_fatal_error": 0.92,
+            "8_minor_nuance": 0,
+            "10_flawless": 0,
+            "5_moderate_error": 0.01,
+            "3_major_error": 0.07
+          },
+          "confidence": 0.9
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "potential_or_modality_error",
+          "probabilities": {
+            "tense_or_aspect_error": 0,
+            "minor_nuance_or_word_choice_difference": 0.05,
+            "wrong_verb_or_action": 0.01,
+            "wrong_benefactive_or_recipient": 0,
+            "passive_voice_reversed": 0,
+            "interrogative_or_question_error": 0,
+            "no_flaws_accurate": 0,
+            "potential_or_modality_error": 0.93,
+            "subject_object_inverted": 0
+          },
+          "confidence": 0.93
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "recipient_reversed_self_vs_other": 0,
+            "benefactive_omitted": 0,
+            "correct_benefactive_or_not_applicable": 1
+          },
+          "confidence": 1
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "correct_or_not_applicable",
+          "probabilities": {
+            "potential_vs_intent_error": 0.1,
+            "correct_or_not_applicable": 0.66,
+            "predicate_omitted_or_wrong": 0.24,
+            "passive_vs_active_error": 0,
+            "tense_past_present_error": 0
+          },
+          "confidence": 0.57
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_inverted",
+          "probabilities": {
+            "polarity_preserved": 0.04,
+            "polarity_inverted": 0.96
+          },
+          "confidence": 0.92
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "double_negative_obligation_inverted",
+          "probabilities": {
+            "double_negative_obligation_inverted": 0.83,
+            "conditional_regret_missed": 0,
+            "causative_passive_inverted": 0,
+            "potential_change_of_state_missed": 0,
+            "causative_benefactive_inverted": 0,
+            "accurate_or_not_stacked": 0.17
+          },
+          "confidence": 0.79
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.03
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "natural_correct_sense": 1,
+            "not_applicable_if_omitted": 0,
+            "mistranslated_or_wrong_meaning": 0,
+            "awkward_or_literal_misfit": 0
+          },
+          "confidence": 1
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.05
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "natural_correct_sense": 0.99,
+            "not_applicable_if_omitted": 0,
+            "mistranslated_or_wrong_meaning": 0.01,
+            "awkward_or_literal_misfit": 0
+          },
+          "confidence": 0.99
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.66
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "natural_correct_sense": 0.03,
+            "mistranslated_or_wrong_meaning": 0.82,
+            "not_applicable_if_omitted": 0.15,
+            "awkward_or_literal_misfit": 0
+          },
+          "confidence": 0.75
+        },
+        "word_3_omitted": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "word_3_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "natural_correct_sense": 0.06,
+            "not_applicable_if_omitted": 0.09,
+            "mistranslated_or_wrong_meaning": 0.84,
+            "awkward_or_literal_misfit": 0.01
+          },
+          "confidence": 0.79
+        },
+        "word_4_omitted": {
+          "type": "noul",
+          "noul": 0.24
+        },
+        "word_4_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "natural_correct_sense": 0.11,
+            "not_applicable_if_omitted": 0,
+            "mistranslated_or_wrong_meaning": 0.88,
+            "awkward_or_literal_misfit": 0.01
+          },
+          "confidence": 0.84
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I don't have to go early tomorrow",
+          "probabilities": {
+            "I don't have to go early tomorrow": 0.69,
+            "I don't have": 0.31,
+            "go early tomorrow": 0
+          },
+          "confidence": 0.53
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I have to go early tomorrow",
+          "probabilities": {
+            "I have": 0.07,
+            "go early tomorrow": 0.01,
+            "I have to go early tomorrow": 0.92
+          },
+          "confidence": 0.88
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "obligation_vs_absence",
+          "probabilities": {
+            "obligation_vs_absence": 1,
+            "counterfactual_regret_vs_condition": 0,
+            "causative_reversal": 0,
+            "potential_vs_intent": 0,
+            "question_vs_statement": 0,
+            "passive_vs_active_reversal": 0,
+            "benefactive_direction_inverted": 0,
+            "word_choice_or_nuance_mismatch": 0,
+            "accurate_equivalent": 0
+          },
+          "confidence": 1
+        }
+      },
+      "confidence": {
+        "minConf": 0.53,
+        "avgConf": 0.8492857142857143
+      },
+      "tokenCost": 0.000185724,
+      "generatedMarkdown": "**Score: 1/10 (Fatal Error)**\n\n**Critique:** You translated **行かなければならない** as *\"I don't have to go early tomorrow\"*, but the potential form expresses *\"I have to go early tomorrow\"* (ability/possibility rather than future certainty).\n\n**Reference Translation:**\n\"I have to go early tomorrow.\""
+    },
+    "llm": {
+      "elapsedMs": 2734,
+      "content": "**Score: 2/10**\n\n**Criticism:**\nYou translated the sentence as a negative obligation (\"don't have to\"), which means the exact opposite of the original text. \n\n* **〜なければならない** (*nakereba naranai*) is a double negative that means **\"must\"** or **\"have to.\"**\n* To say \"don't have to,\" the pattern is **〜なくてもいい** (*nakutemo ii*).",
+      "tokenCost": 0.001083
+    },
+    "speedup": "12.5x"
+  },
+  "ex_11_polarity_inverted": {
+    "id": "ex_11_polarity_inverted",
+    "title": "Polarity Reversal (Negative -> Affirmative)",
+    "mode": "translation_critique",
+    "category": "Polarity",
+    "card": {
+      "vocab": "食べなかった",
+      "reading": "たべなかった",
+      "meanings": [
+        "did not eat"
+      ],
+      "pos": "verb, negative past",
+      "sentenceJP": "朝ご飯を全然食べなかった。",
+      "sentenceEN": "I didn't eat any breakfast."
+    },
+    "userDraft": "I ate breakfast completely.",
+    "notes": "Fatal error (1/10). 全然 + negative missed, polarity inverted.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 261,
+      "score": 1,
+      "bracket": "1_fatal_error",
+      "critique": "wrong_verb_or_action",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.01
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "1_fatal_error",
+          "probabilities": {
+            "1_fatal_error": 0.94,
+            "8_minor_nuance": 0,
+            "5_moderate_error": 0,
+            "10_flawless": 0,
+            "3_major_error": 0.06
+          },
+          "confidence": 0.92
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "wrong_verb_or_action",
+          "probabilities": {
+            "tense_or_aspect_error": 0.08,
+            "wrong_benefactive_or_recipient": 0,
+            "interrogative_or_question_error": 0,
+            "no_flaws_accurate": 0,
+            "passive_voice_reversed": 0,
+            "potential_or_modality_error": 0,
+            "subject_object_inverted": 0,
+            "minor_nuance_or_word_choice_difference": 0.1,
+            "wrong_verb_or_action": 0.81
+          },
+          "confidence": 0.79
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "recipient_reversed_self_vs_other": 0,
+            "correct_benefactive_or_not_applicable": 1,
+            "benefactive_omitted": 0
+          },
+          "confidence": 1
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "predicate_omitted_or_wrong",
+          "probabilities": {
+            "tense_past_present_error": 0.16,
+            "predicate_omitted_or_wrong": 0.48,
+            "passive_vs_active_error": 0,
+            "potential_vs_intent_error": 0,
+            "correct_or_not_applicable": 0.36
+          },
+          "confidence": 0.34
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_inverted",
+          "probabilities": {
+            "polarity_inverted": 1,
+            "polarity_preserved": 0
+          },
+          "confidence": 1
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "accurate_or_not_stacked",
+          "probabilities": {
+            "double_negative_obligation_inverted": 0.02,
+            "potential_change_of_state_missed": 0,
+            "causative_benefactive_inverted": 0,
+            "conditional_regret_missed": 0,
+            "causative_passive_inverted": 0.04,
+            "accurate_or_not_stacked": 0.93
+          },
+          "confidence": 0.92
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.08
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 0.95,
+            "mistranslated_or_wrong_meaning": 0.03,
+            "awkward_or_literal_misfit": 0.02
+          },
+          "confidence": 0.92
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.65
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "not_applicable_if_omitted": 0.02,
+            "natural_correct_sense": 0.02,
+            "mistranslated_or_wrong_meaning": 0.88,
+            "awkward_or_literal_misfit": 0.08
+          },
+          "confidence": 0.83
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.94
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "not_applicable_if_omitted": 0.31,
+            "natural_correct_sense": 0.01,
+            "mistranslated_or_wrong_meaning": 0.68,
+            "awkward_or_literal_misfit": 0
+          },
+          "confidence": 0.58
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I ate breakfast completely",
+          "probabilities": {
+            "breakfast completely.": 0.04,
+            "I ate breakfast completely": 0.59,
+            "I ate": 0.37
+          },
+          "confidence": 0.39
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I didn't eat",
+          "probabilities": {
+            "I didn't eat any breakfast": 0.12,
+            "I didn't eat": 0.87,
+            "eat any breakfast.": 0.01
+          },
+          "confidence": 0.79
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "word_choice_or_nuance_mismatch",
+          "probabilities": {
+            "question_vs_statement": 0,
+            "causative_reversal": 0.01,
+            "potential_vs_intent": 0,
+            "word_choice_or_nuance_mismatch": 0.95,
+            "benefactive_direction_inverted": 0,
+            "counterfactual_regret_vs_condition": 0,
+            "accurate_equivalent": 0,
+            "passive_vs_active_reversal": 0.03,
+            "obligation_vs_absence": 0.01
+          },
+          "confidence": 0.95
+        }
+      },
+      "confidence": {
+        "minConf": 0.34,
+        "avgConf": 0.7858333333333333
+      },
+      "tokenCost": 0.00016653,
+      "generatedMarkdown": "**Score: 1/10 (Fatal Error)**\n\n**Critique:** In this context, **食べなかった** naturally translates to *\"I didn't eat\"*, whereas *\"I ate breakfast completely\"* sounds slightly awkward or overly literal.\n\n**Reference Translation:**\n\"I didn't eat any breakfast.\""
+    },
+    "llm": {
+      "elapsedMs": 1686,
+      "content": "**Score: 2/10**\n\n**Criticism:**\nYou translated the sentence as a positive statement, but it is negative. \n\n* **全然 (zenzen)** means \"not at all\" when paired with a negative verb. \n* **食べなかった (tabenakatta)** is the past-negative form of \"to eat\" (did *not* eat). \n\nYou completely reversed the meaning of the sentence.",
+      "tokenCost": 0.0010765
+    },
+    "speedup": "6.5x"
+  },
+  "ex_12_indefinite_vs_wh": {
+    "id": "ex_12_indefinite_vs_wh",
+    "title": "Indefinite Pronoun vs Open Question (何か vs 何)",
+    "mode": "translation_critique",
+    "category": "Interrogative Scope",
+    "card": {
+      "vocab": "何か",
+      "reading": "なにか",
+      "meanings": [
+        "something",
+        "anything"
+      ],
+      "pos": "pronoun",
+      "sentenceJP": "何か冷たいものを飲みたい。",
+      "sentenceEN": "I want to drink something cold."
+    },
+    "userDraft": "What cold thing do you want to drink?",
+    "notes": "Major error (3/10). Statement with indefinite pronoun 何か turned into open WH question.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 269,
+      "score": 3,
+      "bracket": "3_major_error",
+      "critique": "interrogative_or_question_error",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.02
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "3_major_error",
+          "probabilities": {
+            "3_major_error": 0.77,
+            "10_flawless": 0,
+            "8_minor_nuance": 0.04,
+            "1_fatal_error": 0.11,
+            "5_moderate_error": 0.08
+          },
+          "confidence": 0.71
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "interrogative_or_question_error",
+          "probabilities": {
+            "no_flaws_accurate": 0,
+            "wrong_benefactive_or_recipient": 0,
+            "potential_or_modality_error": 0,
+            "wrong_verb_or_action": 0,
+            "tense_or_aspect_error": 0,
+            "passive_voice_reversed": 0,
+            "interrogative_or_question_error": 0.99,
+            "minor_nuance_or_word_choice_difference": 0,
+            "subject_object_inverted": 0.01
+          },
+          "confidence": 0.99
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "benefactive_omitted": 0,
+            "recipient_reversed_self_vs_other": 0.02,
+            "correct_benefactive_or_not_applicable": 0.98
+          },
+          "confidence": 0.96
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "correct_or_not_applicable",
+          "probabilities": {
+            "tense_past_present_error": 0,
+            "correct_or_not_applicable": 0.83,
+            "potential_vs_intent_error": 0.08,
+            "predicate_omitted_or_wrong": 0.09,
+            "passive_vs_active_error": 0
+          },
+          "confidence": 0.79
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_inverted": 0.32,
+            "polarity_preserved": 0.68
+          },
+          "confidence": 0.36
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "accurate_or_not_stacked",
+          "probabilities": {
+            "accurate_or_not_stacked": 1,
+            "conditional_regret_missed": 0,
+            "double_negative_obligation_inverted": 0,
+            "causative_benefactive_inverted": 0,
+            "potential_change_of_state_missed": 0,
+            "causative_passive_inverted": 0
+          },
+          "confidence": 1
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.04
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0,
+            "awkward_or_literal_misfit": 0.05,
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 0.95
+          },
+          "confidence": 0.93
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.39
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.03,
+            "awkward_or_literal_misfit": 0.16,
+            "not_applicable_if_omitted": 0.07,
+            "natural_correct_sense": 0.74
+          },
+          "confidence": 0.66
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.53
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.15,
+            "awkward_or_literal_misfit": 0.09,
+            "not_applicable_if_omitted": 0.07,
+            "natural_correct_sense": 0.69
+          },
+          "confidence": 0.59
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "What cold thing do you want to drink",
+          "probabilities": {
+            "What cold thing do you want": 0.1,
+            "What cold thing do you want to drink": 0.9
+          },
+          "confidence": 0.81
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I want to drink something cold",
+          "probabilities": {
+            "I want": 0,
+            "I want to drink something cold": 0.51,
+            "drink something cold": 0.49
+          },
+          "confidence": 0.26
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "question_vs_statement",
+          "probabilities": {
+            "causative_reversal": 0,
+            "benefactive_direction_inverted": 0,
+            "question_vs_statement": 1,
+            "passive_vs_active_reversal": 0,
+            "potential_vs_intent": 0,
+            "counterfactual_regret_vs_condition": 0,
+            "accurate_equivalent": 0,
+            "word_choice_or_nuance_mismatch": 0,
+            "obligation_vs_absence": 0
+          },
+          "confidence": 1
+        }
+      },
+      "confidence": {
+        "minConf": 0.26,
+        "avgConf": 0.755
+      },
+      "tokenCost": 0.00016548,
+      "generatedMarkdown": "**Score: 3/10 (Major Error)**\n\n**Critique:** You translated this as an open question (*\"What cold thing do you want to drink\"*), but **何か** is an indefinite pronoun in a statement (*\"I want to drink something cold\"*).\n\n**Reference Translation:**\n\"I want to drink something cold.\""
+    },
+    "llm": {
+      "elapsedMs": 2933,
+      "content": "**Score: 3/10**\n\n**Criticism:**\n* **Misidentified the sentence type:** You translated a statement as a question. There is no question particle (か) at the end, nor is there a question mark.\n* **Misunderstood 何か (*nanika*):** In this position, 何か means \"something,\" not \"what.\" \n* **Misunderstood ～たい (*-tai*):** The *-tai* form expresses the speaker's own desire (\"I want to...\"). To ask someone else, you would need a question marker (～たいですか) or a different grammar pattern.",
+      "tokenCost": 0.0010984999999999999
+    },
+    "speedup": "10.9x"
+  },
+  "ex_13_causative_reversal": {
+    "id": "ex_13_causative_reversal",
+    "title": "Causative Reversal (食べさせた)",
+    "mode": "translation_critique",
+    "category": "Causative Voice",
+    "card": {
+      "vocab": "食べさせた",
+      "reading": "たべさせた",
+      "meanings": [
+        "made eat",
+        "fed"
+      ],
+      "pos": "verb, causative",
+      "sentenceJP": "お母さんが子供に野菜を食べさせた。",
+      "sentenceEN": "The mother made the child eat vegetables."
+    },
+    "userDraft": "The child made the mother eat vegetables.",
+    "notes": "Major reversal (3/10). Causative agent and patient inverted.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 202,
+      "score": 3,
+      "bracket": "3_major_error",
+      "critique": "subject_object_inverted",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.01
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "3_major_error",
+          "probabilities": {
+            "10_flawless": 0,
+            "5_moderate_error": 0,
+            "3_major_error": 0.95,
+            "1_fatal_error": 0.05,
+            "8_minor_nuance": 0
+          },
+          "confidence": 0.93
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "subject_object_inverted",
+          "probabilities": {
+            "minor_nuance_or_word_choice_difference": 0,
+            "wrong_benefactive_or_recipient": 0,
+            "interrogative_or_question_error": 0,
+            "wrong_verb_or_action": 0,
+            "subject_object_inverted": 1,
+            "tense_or_aspect_error": 0,
+            "no_flaws_accurate": 0,
+            "passive_voice_reversed": 0,
+            "potential_or_modality_error": 0
+          },
+          "confidence": 1
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "correct_benefactive_or_not_applicable": 0.74,
+            "recipient_reversed_self_vs_other": 0.25,
+            "benefactive_omitted": 0.01
+          },
+          "confidence": 0.61
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "correct_or_not_applicable",
+          "probabilities": {
+            "correct_or_not_applicable": 0.85,
+            "predicate_omitted_or_wrong": 0.08,
+            "potential_vs_intent_error": 0,
+            "tense_past_present_error": 0.03,
+            "passive_vs_active_error": 0.04
+          },
+          "confidence": 0.82
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_inverted": 0,
+            "polarity_preserved": 1
+          },
+          "confidence": 1
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "causative_passive_inverted",
+          "probabilities": {
+            "conditional_regret_missed": 0,
+            "accurate_or_not_stacked": 0.38,
+            "causative_benefactive_inverted": 0.02,
+            "potential_change_of_state_missed": 0,
+            "double_negative_obligation_inverted": 0,
+            "causative_passive_inverted": 0.6
+          },
+          "confidence": 0.53
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.23
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.62,
+            "natural_correct_sense": 0.3,
+            "awkward_or_literal_misfit": 0.07,
+            "not_applicable_if_omitted": 0.01
+          },
+          "confidence": 0.49
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.25
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.7,
+            "natural_correct_sense": 0.24,
+            "awkward_or_literal_misfit": 0.05,
+            "not_applicable_if_omitted": 0.01
+          },
+          "confidence": 0.6
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.04
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0,
+            "natural_correct_sense": 1,
+            "awkward_or_literal_misfit": 0,
+            "not_applicable_if_omitted": 0
+          },
+          "confidence": 1
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "The child made the mother eat vegetables",
+          "probabilities": {
+            "The child made the mother eat vegetables": 0.81,
+            "the mother eat vegetables.": 0.16,
+            "The child made the": 0.03
+          },
+          "confidence": 0.72
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "The mother made the child eat vegetables",
+          "probabilities": {
+            "The mother made the": 0.12,
+            "the child eat vegetables.": 0.32,
+            "The mother made the child eat vegetables": 0.56
+          },
+          "confidence": 0.33
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "causative_reversal",
+          "probabilities": {
+            "causative_reversal": 0.96,
+            "counterfactual_regret_vs_condition": 0,
+            "passive_vs_active_reversal": 0.02,
+            "benefactive_direction_inverted": 0.02,
+            "potential_vs_intent": 0,
+            "obligation_vs_absence": 0,
+            "accurate_equivalent": 0,
+            "word_choice_or_nuance_mismatch": 0,
+            "question_vs_statement": 0
+          },
+          "confidence": 0.95
+        }
+      },
+      "confidence": {
+        "minConf": 0.33,
+        "avgConf": 0.7483333333333332
+      },
+      "tokenCost": 0.000167874,
+      "generatedMarkdown": "**Score: 3/10 (Major Error)**\n\n**Critique:** In Japanese, the causative-passive **食べさせた** expresses being subjected to an action (*\"The mother made the child eat vegetables\"*), but you translated it as causing the action (*\"The child made the mother eat vegetables\"*).\n\n**Reference Translation:**\n\"The mother made the child eat vegetables.\""
+    },
+    "llm": {
+      "elapsedMs": 2013,
+      "content": "**Score: 2/10**\n\n**Criticism:**\nYou reversed the subject and the object. \n\n* **お母さんが (okāsan ga):** The mother is the actor performing the action (marked by が).\n* **子供に (kodomo ni):** The child is the recipient being made to do the action (marked by に).\n* **食べさせた (tabesaseta):** This is the causative form of \"to eat\" (made/let [someone] eat).\n\nTherefore, the mother made the child eat, not the other way around.",
+      "tokenCost": 0.0010955
+    },
+    "speedup": "10.0x"
+  },
+  "ex_14_causative_passive": {
+    "id": "ex_14_causative_passive",
+    "title": "Causative-Passive (待たされた)",
+    "mode": "translation_critique",
+    "category": "Causative-Passive",
+    "card": {
+      "vocab": "待たされた",
+      "reading": "またされた",
+      "meanings": [
+        "was kept waiting",
+        "was made to wait"
+      ],
+      "pos": "verb, causative-passive",
+      "sentenceJP": "病院で二時間も待たされた。",
+      "sentenceEN": "I was kept waiting for two whole hours at the hospital."
+    },
+    "userDraft": "I made the hospital wait for two hours.",
+    "notes": "Major reversal (3/10). Inverted causative-passive role.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 254,
+      "score": 3,
+      "bracket": "3_major_error",
+      "critique": "passive_voice_reversed",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.02
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "3_major_error",
+          "probabilities": {
+            "8_minor_nuance": 0,
+            "5_moderate_error": 0,
+            "3_major_error": 0.98,
+            "1_fatal_error": 0.02,
+            "10_flawless": 0
+          },
+          "confidence": 0.97
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "passive_voice_reversed",
+          "probabilities": {
+            "passive_voice_reversed": 0.9,
+            "no_flaws_accurate": 0,
+            "wrong_verb_or_action": 0,
+            "interrogative_or_question_error": 0,
+            "subject_object_inverted": 0.1,
+            "tense_or_aspect_error": 0,
+            "wrong_benefactive_or_recipient": 0,
+            "potential_or_modality_error": 0,
+            "minor_nuance_or_word_choice_difference": 0
+          },
+          "confidence": 0.89
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "recipient_reversed_self_vs_other": 0.43,
+            "correct_benefactive_or_not_applicable": 0.56,
+            "benefactive_omitted": 0.01
+          },
+          "confidence": 0.34
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "passive_vs_active_error",
+          "probabilities": {
+            "passive_vs_active_error": 0.99,
+            "tense_past_present_error": 0,
+            "potential_vs_intent_error": 0,
+            "predicate_omitted_or_wrong": 0,
+            "correct_or_not_applicable": 0.01
+          },
+          "confidence": 0.99
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 0.93,
+            "polarity_inverted": 0.07
+          },
+          "confidence": 0.85
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "causative_passive_inverted",
+          "probabilities": {
+            "potential_change_of_state_missed": 0,
+            "causative_passive_inverted": 1,
+            "conditional_regret_missed": 0,
+            "causative_benefactive_inverted": 0,
+            "double_negative_obligation_inverted": 0,
+            "accurate_or_not_stacked": 0
+          },
+          "confidence": 1
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.34
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "awkward_or_literal_misfit",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.45,
+            "not_applicable_if_omitted": 0.01,
+            "mistranslated_or_wrong_meaning": 0.21,
+            "natural_correct_sense": 0.33
+          },
+          "confidence": 0.26
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.07
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.02,
+            "not_applicable_if_omitted": 0,
+            "mistranslated_or_wrong_meaning": 0.01,
+            "natural_correct_sense": 0.97
+          },
+          "confidence": 0.96
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I made the hospital wait for two hours",
+          "probabilities": {
+            "two hours": 0,
+            "I made the hospital wait for two hours": 0.61,
+            "I made the hospital wait": 0.39
+          },
+          "confidence": 0.42
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I was kept waiting",
+          "probabilities": {
+            "I was kept waiting": 0.95,
+            "two whole hours": 0,
+            "I was kept waiting for two whole hours at the hospital": 0.05,
+            "the hospital": 0
+          },
+          "confidence": 0.94
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "passive_vs_active_reversal",
+          "probabilities": {
+            "word_choice_or_nuance_mismatch": 0,
+            "question_vs_statement": 0,
+            "benefactive_direction_inverted": 0,
+            "passive_vs_active_reversal": 0.52,
+            "accurate_equivalent": 0,
+            "obligation_vs_absence": 0,
+            "counterfactual_regret_vs_condition": 0,
+            "potential_vs_intent": 0,
+            "causative_reversal": 0.48
+          },
+          "confidence": 0.46
+        }
+      },
+      "confidence": {
+        "minConf": 0.26,
+        "avgConf": 0.7345454545454545
+      },
+      "tokenCost": 0.000158676,
+      "generatedMarkdown": "**Score: 3/10 (Major Error)**\n\n**Critique:** Instead of translating **待たされた** as passive (*\"I was kept waiting\"*), your draft translated it actively as *\"I made the hospital wait for two hours\"*, reversing who received the action.\n\n**Reference Translation:**\n\"I was kept waiting for two whole hours at the hospital.\""
+    },
+    "llm": {
+      "elapsedMs": 2787,
+      "content": "**Score: 2/10**\n\n**Criticism:**\nYou completely reversed the subject and object by misinterpreting the causative-passive verb form. \n\n* **待たされた** (*matasareta*) is causative-passive, meaning \"was made to wait\" (the hospital made *you* wait). \n* Your translation would require the active causative form (待たせた) and different particles.\n* You also missed the nuance of **も** (*mo*), which emphasizes that two hours is a long, unreasonable amount of time (\"as long as\" or \"whole\").",
+      "tokenCost": 0.001099
+    },
+    "speedup": "11.0x"
+  },
+  "ex_15_nuance_kondo": {
+    "id": "ex_15_nuance_kondo",
+    "title": "Nuance Misfit (今度 - Next Time vs This Time)",
+    "mode": "translation_critique",
+    "category": "Lexical Nuance",
+    "card": {
+      "vocab": "今度",
+      "reading": "こんど",
+      "meanings": [
+        "next time",
+        "another time",
+        "this time"
+      ],
+      "pos": "noun, adverb",
+      "sentenceJP": "今度、ご飯でも行きましょう。",
+      "sentenceEN": "Let's go grab a bite sometime soon."
+    },
+    "userDraft": "Let's go eat this time.",
+    "notes": "Minor nuance (8/10). 'this time' clashes with future invitation sense.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 201,
+      "score": 8,
+      "bracket": "8_minor_nuance",
+      "critique": "minor_nuance_or_word_choice_difference",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.74
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "8_minor_nuance",
+          "probabilities": {
+            "5_moderate_error": 0.05,
+            "8_minor_nuance": 0.89,
+            "3_major_error": 0,
+            "1_fatal_error": 0,
+            "10_flawless": 0.06
+          },
+          "confidence": 0.86
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "minor_nuance_or_word_choice_difference",
+          "probabilities": {
+            "interrogative_or_question_error": 0,
+            "tense_or_aspect_error": 0,
+            "potential_or_modality_error": 0,
+            "minor_nuance_or_word_choice_difference": 0.89,
+            "wrong_verb_or_action": 0,
+            "wrong_benefactive_or_recipient": 0,
+            "subject_object_inverted": 0,
+            "no_flaws_accurate": 0.11,
+            "passive_voice_reversed": 0
+          },
+          "confidence": 0.87
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "benefactive_omitted": 0,
+            "recipient_reversed_self_vs_other": 0,
+            "correct_benefactive_or_not_applicable": 1
+          },
+          "confidence": 1
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "correct_or_not_applicable",
+          "probabilities": {
+            "passive_vs_active_error": 0,
+            "predicate_omitted_or_wrong": 0,
+            "potential_vs_intent_error": 0,
+            "correct_or_not_applicable": 1,
+            "tense_past_present_error": 0
+          },
+          "confidence": 0.99
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 1,
+            "polarity_inverted": 0
+          },
+          "confidence": 1
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "accurate_or_not_stacked",
+          "probabilities": {
+            "double_negative_obligation_inverted": 0,
+            "conditional_regret_missed": 0,
+            "accurate_or_not_stacked": 1,
+            "causative_benefactive_inverted": 0,
+            "causative_passive_inverted": 0,
+            "potential_change_of_state_missed": 0
+          },
+          "confidence": 1
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.11
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "awkward_or_literal_misfit",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.01,
+            "awkward_or_literal_misfit": 0.52,
+            "natural_correct_sense": 0.47,
+            "not_applicable_if_omitted": 0
+          },
+          "confidence": 0.35
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.13
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.01,
+            "awkward_or_literal_misfit": 0.08,
+            "natural_correct_sense": 0.89,
+            "not_applicable_if_omitted": 0.02
+          },
+          "confidence": 0.87
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.71
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "not_applicable_if_omitted",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.03,
+            "awkward_or_literal_misfit": 0.03,
+            "natural_correct_sense": 0.23,
+            "not_applicable_if_omitted": 0.71
+          },
+          "confidence": 0.62
+        },
+        "word_3_omitted": {
+          "type": "noul",
+          "noul": 0.09
+        },
+        "word_3_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.01,
+            "awkward_or_literal_misfit": 0.03,
+            "natural_correct_sense": 0.89,
+            "not_applicable_if_omitted": 0.07
+          },
+          "confidence": 0.85
+        },
+        "word_4_omitted": {
+          "type": "noul",
+          "noul": 0.19
+        },
+        "word_4_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.01,
+            "awkward_or_literal_misfit": 0.02,
+            "not_applicable_if_omitted": 0.17,
+            "natural_correct_sense": 0.8
+          },
+          "confidence": 0.74
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "Let's go eat this time",
+          "probabilities": {
+            "Let's go eat this time": 0.82,
+            "eat this time.": 0.16,
+            "Let's go eat": 0.02
+          },
+          "confidence": 0.74
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "Let's go grab a bite sometime soon",
+          "probabilities": {
+            "Let's go grab a": 0,
+            "Let's go grab a bite sometime soon": 0.74,
+            "a bite sometime soon.": 0.26
+          },
+          "confidence": 0.61
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "word_choice_or_nuance_mismatch",
+          "probabilities": {
+            "obligation_vs_absence": 0,
+            "benefactive_direction_inverted": 0,
+            "causative_reversal": 0,
+            "potential_vs_intent": 0,
+            "passive_vs_active_reversal": 0,
+            "word_choice_or_nuance_mismatch": 0.98,
+            "question_vs_statement": 0,
+            "counterfactual_regret_vs_condition": 0,
+            "accurate_equivalent": 0.02
+          },
+          "confidence": 0.97
+        }
+      },
+      "confidence": {
+        "minConf": 0.35,
+        "avgConf": 0.8192857142857143
+      },
+      "tokenCost": 0.000184464,
+      "generatedMarkdown": "**Score: 8/10 (Minor Nuance)**\n\n**Critique:** In this context, **今度** naturally translates to *\"Let's go grab a bite sometime soon\"*, whereas *\"Let's go eat this time\"* sounds slightly awkward or overly literal.\n\n**Reference Translation:**\n\"Let's go grab a bite sometime soon.\""
+    },
+    "llm": {
+      "elapsedMs": 2353,
+      "content": "**Score: 4/10**\n\n**Criticism:**\n* **Mistranslation of 今度 (kondo):** In this context, it means \"sometime soon\" or \"next time,\" not \"this time.\"\n* **Missing でも (demo):** You ignored でも, which softens the invitation to mean \"or something\" (e.g., \"grab a bite *or something*\"). \n* **Unnatural tone:** \"Let's go eat this time\" sounds rigid and implies you failed to eat together previously. \n\n**Better translation:**\n\"Let's go get something to eat sometime.\"",
+      "tokenCost": 0.0010999999999999998
+    },
+    "speedup": "11.7x"
+  },
+  "ex_16_vocab_polysemy_kakeru": {
+    "id": "ex_16_vocab_polysemy_kakeru",
+    "title": "Polysemy Disambiguation: かける (Put on Glasses)",
+    "mode": "vocab_explanation",
+    "category": "Sense Disambiguation",
+    "card": {
+      "vocab": "かける",
+      "reading": "かける",
+      "meanings": [
+        "to hang (e.g. coat)",
+        "to spend (time/money)",
+        "to put on (glasses)",
+        "to make a call (phone)"
+      ],
+      "pos": "verb, ichidan",
+      "sentenceJP": "急いで眼鏡をかけた。",
+      "sentenceEN": "I quickly put on my glasses."
+    },
+    "notes": "Should pick Sense 2 (glasses) and main predicate verb.",
+    "routing": {
+      "isPureJevFastPath": true,
+      "decisionReason": "Fast Vocab Explanation: Sense disambiguation and particle attachment resolved by Jev (<200ms)."
+    },
+    "jev": {
+      "elapsedMs": 433,
+      "appliedSense": "sense_2",
+      "role": "main_predicate_verb",
+      "attachment": "particle_wo_object",
+      "answers": {
+        "applied_meaning": {
+          "type": "choice",
+          "choice": "sense_2",
+          "probabilities": {
+            "sense_0": 0,
+            "sense_2": 1,
+            "sense_1": 0,
+            "sense_3": 0
+          },
+          "confidence": 1
+        },
+        "grammatical_role": {
+          "type": "choice",
+          "choice": "main_predicate_verb",
+          "probabilities": {
+            "main_predicate_verb": 1,
+            "subordinate_clause_verb": 0,
+            "topic_marker": 0,
+            "direct_object": 0,
+            "sentence_ending_particle_or_expression": 0,
+            "indirect_object_or_target": 0,
+            "grammatical_subject": 0,
+            "adverbial_modifier": 0
+          },
+          "confidence": 1
+        },
+        "attachment_and_particles": {
+          "type": "choice",
+          "choice": "particle_wo_object",
+          "probabilities": {
+            "sentence_final": 0.25,
+            "particle_wa_topic": 0,
+            "particle_ni_target": 0,
+            "direct_noun_modification": 0,
+            "te_form_connection": 0.25,
+            "particle_ga_subject": 0,
+            "particle_to_quotation": 0,
+            "particle_wo_object": 0.5
+          },
+          "confidence": 0.42
+        },
+        "inflection_form": {
+          "type": "choice",
+          "choice": "te_form",
+          "probabilities": {
+            "passive_voice": 0,
+            "uninflected_noun_or_particle": 0,
+            "causative_or_causative_passive": 0,
+            "polite_masu_desu": 0,
+            "te_form": 0.63,
+            "plain_present_dictionary": 0.14,
+            "potential_form": 0,
+            "conditional_form": 0,
+            "past_ta_form": 0.23
+          },
+          "confidence": 0.57
+        },
+        "pedagogical_tip_type": {
+          "type": "choice",
+          "choice": "standard_usage",
+          "probabilities": {
+            "passive_adversative_nuance": 0,
+            "potential_vs_intent": 0,
+            "standard_usage": 0.5700000000000001,
+            "polite_softener_not_literal_contrast": 0,
+            "transitive_vs_intransitive_pair": 0.02,
+            "colloquial_contraction": 0,
+            "idiomatic_set_phrase": 0.41,
+            "give_receive_direction": 0
+          },
+          "confidence": 0.5
+        }
+      },
+      "confidence": {
+        "minConf": 0.42,
+        "avgConf": 0.698
+      },
+      "tokenCost": 0.000071484,
+      "generatedMarkdown": "### Role of **かける** in this Sentence\n\nIn this sentence, **かける** means **\"to put on (glasses)\"**, functioning as the main predicate verb while governing the direct object marked by を.\n\n💡 **Key Nuance:** Focus on how the attached particle connects this word to the main predicate."
+    },
+    "llm": {
+      "elapsedMs": 950,
+      "content": "[LLM Quota Exceeded (HTTP 429)]\nNote: Jev System One finished in 433ms without rate limits.",
+      "tokenCost": 0
+    },
+    "speedup": "2.2x"
+  },
+  "ex_17_vocab_polysemy_toru": {
+    "id": "ex_17_vocab_polysemy_toru",
+    "title": "Polysemy Disambiguation: 取る (Take a Photo)",
+    "mode": "vocab_explanation",
+    "category": "Sense Disambiguation",
+    "card": {
+      "vocab": "取った",
+      "reading": "とった",
+      "meanings": [
+        "to take (in hand)",
+        "to take (a photo)",
+        "to remove / take off",
+        "to obtain / earn"
+      ],
+      "pos": "verb, godan",
+      "sentenceJP": "みんなで記念写真を撮った。",
+      "sentenceEN": "We took a commemorative photo together."
+    },
+    "notes": "Should pick Sense 1 (photo) and direct object attachment.",
+    "routing": {
+      "isPureJevFastPath": true,
+      "decisionReason": "Fast Vocab Explanation: Sense disambiguation and particle attachment resolved by Jev (<200ms)."
+    },
+    "jev": {
+      "elapsedMs": 287,
+      "appliedSense": "sense_1",
+      "role": "main_predicate_verb",
+      "attachment": "sentence_final",
+      "answers": {
+        "applied_meaning": {
+          "type": "choice",
+          "choice": "sense_1",
+          "probabilities": {
+            "sense_1": 1,
+            "sense_2": 0,
+            "sense_0": 0,
+            "sense_3": 0
+          },
+          "confidence": 1
+        },
+        "grammatical_role": {
+          "type": "choice",
+          "choice": "main_predicate_verb",
+          "probabilities": {
+            "main_predicate_verb": 1,
+            "sentence_ending_particle_or_expression": 0,
+            "grammatical_subject": 0,
+            "adverbial_modifier": 0,
+            "subordinate_clause_verb": 0,
+            "direct_object": 0,
+            "indirect_object_or_target": 0,
+            "topic_marker": 0
+          },
+          "confidence": 1
+        },
+        "attachment_and_particles": {
+          "type": "choice",
+          "choice": "sentence_final",
+          "probabilities": {
+            "particle_ni_target": 0,
+            "te_form_connection": 0.05,
+            "sentence_final": 0.89,
+            "particle_wo_object": 0.05,
+            "particle_wa_topic": 0,
+            "direct_noun_modification": 0.01,
+            "particle_ga_subject": 0,
+            "particle_to_quotation": 0
+          },
+          "confidence": 0.88
+        },
+        "inflection_form": {
+          "type": "choice",
+          "choice": "past_ta_form",
+          "probabilities": {
+            "past_ta_form": 1,
+            "polite_masu_desu": 0,
+            "potential_form": 0,
+            "conditional_form": 0,
+            "uninflected_noun_or_particle": 0,
+            "passive_voice": 0,
+            "plain_present_dictionary": 0,
+            "te_form": 0,
+            "causative_or_causative_passive": 0
+          },
+          "confidence": 1
+        },
+        "pedagogical_tip_type": {
+          "type": "choice",
+          "choice": "standard_usage",
+          "probabilities": {
+            "polite_softener_not_literal_contrast": 0,
+            "passive_adversative_nuance": 0,
+            "give_receive_direction": 0,
+            "standard_usage": 0.65,
+            "transitive_vs_intransitive_pair": 0.01,
+            "colloquial_contraction": 0,
+            "idiomatic_set_phrase": 0.34,
+            "potential_vs_intent": 0
+          },
+          "confidence": 0.59
+        }
+      },
+      "confidence": {
+        "minConf": 0.59,
+        "avgConf": 0.8939999999999999
+      },
+      "tokenCost": 0.00007098,
+      "generatedMarkdown": "### Role of **取った** in this Sentence\n\nIn this sentence, **取った** means **\"to take (a photo)\"**, functioning as the main predicate verb (past tense (〜た / 〜だ)) while standing at the end of the clause.\n\n💡 **Key Nuance:** Focus on how the attached particle connects this word to the main predicate."
+    },
+    "llm": {
+      "elapsedMs": 2543,
+      "content": "* **Grammatical Role:** Main verb in the past tense (plain/informal form) of the Group 1 (godan) verb *toru*.\n* **Applied Sense:** **To take (a photo)**. The sentence means: \"We took a commemorative photo together.\"\n* **Usage Tip:** Although pronounced the same (*toru*), different kanji are used based on context. Use **撮る** specifically for taking photos or filming video, whereas **取る** is used for physical grasping, taking off, or obtaining. \n\n*(Note: The prompt's tested vocab wrote 取った, but the sentence correctly uses 撮った).*",
+      "tokenCost": 0.001103
+    },
+    "speedup": "8.9x"
+  },
+  "ex_18_vocab_polysemy_deru": {
+    "id": "ex_18_vocab_polysemy_deru",
+    "title": "Polysemy Disambiguation: 出る (Answer Phone)",
+    "mode": "vocab_explanation",
+    "category": "Sense Disambiguation",
+    "card": {
+      "vocab": "出た",
+      "reading": "でた",
+      "meanings": [
+        "to exit / leave",
+        "to appear (on TV)",
+        "to answer (the phone)",
+        "to attend (meeting)"
+      ],
+      "pos": "verb, ichidan",
+      "sentenceJP": "電話が鳴ったが、誰も出なかった。",
+      "sentenceEN": "The phone rang, but nobody answered."
+    },
+    "notes": "Should pick Sense 2 (answer phone) in negative past form.",
+    "routing": {
+      "isPureJevFastPath": true,
+      "decisionReason": "Fast Vocab Explanation: Sense disambiguation and particle attachment resolved by Jev (<200ms)."
+    },
+    "jev": {
+      "elapsedMs": 206,
+      "appliedSense": "sense_2",
+      "role": "main_predicate_verb",
+      "attachment": "sentence_final",
+      "answers": {
+        "applied_meaning": {
+          "type": "choice",
+          "choice": "sense_2",
+          "probabilities": {
+            "sense_3": 0,
+            "sense_1": 0,
+            "sense_2": 1,
+            "sense_0": 0
+          },
+          "confidence": 1
+        },
+        "grammatical_role": {
+          "type": "choice",
+          "choice": "main_predicate_verb",
+          "probabilities": {
+            "main_predicate_verb": 0.67,
+            "grammatical_subject": 0,
+            "direct_object": 0,
+            "subordinate_clause_verb": 0.33,
+            "sentence_ending_particle_or_expression": 0,
+            "indirect_object_or_target": 0,
+            "topic_marker": 0,
+            "adverbial_modifier": 0
+          },
+          "confidence": 0.62
+        },
+        "attachment_and_particles": {
+          "type": "choice",
+          "choice": "sentence_final",
+          "probabilities": {
+            "particle_ni_target": 0.01,
+            "particle_wa_topic": 0,
+            "particle_to_quotation": 0,
+            "direct_noun_modification": 0.01,
+            "te_form_connection": 0.07,
+            "particle_ga_subject": 0.06,
+            "particle_wo_object": 0.02,
+            "sentence_final": 0.83
+          },
+          "confidence": 0.81
+        },
+        "inflection_form": {
+          "type": "choice",
+          "choice": "past_ta_form",
+          "probabilities": {
+            "te_form": 0,
+            "conditional_form": 0,
+            "plain_present_dictionary": 0,
+            "causative_or_causative_passive": 0,
+            "passive_voice": 0,
+            "past_ta_form": 1,
+            "polite_masu_desu": 0,
+            "potential_form": 0,
+            "uninflected_noun_or_particle": 0
+          },
+          "confidence": 1
+        },
+        "pedagogical_tip_type": {
+          "type": "choice",
+          "choice": "idiomatic_set_phrase",
+          "probabilities": {
+            "standard_usage": 0.4,
+            "transitive_vs_intransitive_pair": 0.04,
+            "polite_softener_not_literal_contrast": 0,
+            "colloquial_contraction": 0,
+            "passive_adversative_nuance": 0,
+            "potential_vs_intent": 0,
+            "give_receive_direction": 0,
+            "idiomatic_set_phrase": 0.55
+          },
+          "confidence": 0.49
+        }
+      },
+      "confidence": {
+        "minConf": 0.49,
+        "avgConf": 0.784
+      },
+      "tokenCost": 0.000070896,
+      "generatedMarkdown": "### Role of **出た** in this Sentence\n\nIn this sentence, **出た** means **\"to answer (the phone)\"**, functioning as the main predicate verb (past tense (〜た / 〜だ)) while standing at the end of the clause.\n\n💡 **Key Nuance:** Focus on how the attached particle connects this word to the main predicate."
+    },
+    "llm": {
+      "elapsedMs": 2313,
+      "content": "**Grammatical Role:** \nMain verb of the second clause, in the past negative form (*deru* → *denakatta*).\n\n**Applied Sense:** \n\"To answer (the phone).\" \n\n**Usage Tip:** \nPair 出る with 電話 (*denwa*) to mean \"answering the phone.\" In Japanese, the focus is on the recipient \"coming out\" to take the call (電話に出る, marked by に), unlike English which uses \"answer.\" \n\n*Full sentence meaning:* \"The phone rang, but nobody answered.\"",
+      "tokenCost": 0.0010955
+    },
+    "speedup": "11.2x"
+  },
+  "ex_19_vocab_adversative_passive": {
+    "id": "ex_19_vocab_adversative_passive",
+    "title": "Adversative Passive Explanation (降られた)",
+    "mode": "vocab_explanation",
+    "category": "Syntactic Function",
+    "card": {
+      "vocab": "降られた",
+      "reading": "ふられた",
+      "meanings": [
+        "to be rained on",
+        "to be dumped",
+        "to have rain fall"
+      ],
+      "pos": "verb, passive",
+      "sentenceJP": "帰り道に雨に降られた。",
+      "sentenceEN": "I got caught in the rain on my way home."
+    },
+    "notes": "Should identify passive form and pedagogical tip for suffering passive.",
+    "routing": {
+      "isPureJevFastPath": true,
+      "decisionReason": "Fast Vocab Explanation: Sense disambiguation and particle attachment resolved by Jev (<200ms)."
+    },
+    "jev": {
+      "elapsedMs": 202,
+      "appliedSense": "sense_0",
+      "role": "main_predicate_verb",
+      "attachment": "sentence_final",
+      "answers": {
+        "applied_meaning": {
+          "type": "choice",
+          "choice": "sense_0",
+          "probabilities": {
+            "sense_1": 0,
+            "sense_0": 1,
+            "sense_2": 0
+          },
+          "confidence": 1
+        },
+        "grammatical_role": {
+          "type": "choice",
+          "choice": "main_predicate_verb",
+          "probabilities": {
+            "main_predicate_verb": 0.99,
+            "topic_marker": 0,
+            "indirect_object_or_target": 0,
+            "sentence_ending_particle_or_expression": 0,
+            "grammatical_subject": 0,
+            "subordinate_clause_verb": 0.01,
+            "direct_object": 0,
+            "adverbial_modifier": 0
+          },
+          "confidence": 0.99
+        },
+        "attachment_and_particles": {
+          "type": "choice",
+          "choice": "sentence_final",
+          "probabilities": {
+            "particle_wo_object": 0.06,
+            "particle_to_quotation": 0,
+            "particle_ga_subject": 0,
+            "sentence_final": 0.84,
+            "particle_ni_target": 0.09,
+            "te_form_connection": 0.01,
+            "direct_noun_modification": 0,
+            "particle_wa_topic": 0
+          },
+          "confidence": 0.81
+        },
+        "inflection_form": {
+          "type": "choice",
+          "choice": "passive_voice",
+          "probabilities": {
+            "conditional_form": 0,
+            "past_ta_form": 0.21,
+            "causative_or_causative_passive": 0.01,
+            "polite_masu_desu": 0,
+            "te_form": 0,
+            "potential_form": 0,
+            "passive_voice": 0.78,
+            "plain_present_dictionary": 0,
+            "uninflected_noun_or_particle": 0
+          },
+          "confidence": 0.75
+        },
+        "pedagogical_tip_type": {
+          "type": "choice",
+          "choice": "passive_adversative_nuance",
+          "probabilities": {
+            "colloquial_contraction": 0,
+            "give_receive_direction": 0,
+            "polite_softener_not_literal_contrast": 0,
+            "potential_vs_intent": 0,
+            "standard_usage": 0,
+            "idiomatic_set_phrase": 0,
+            "passive_adversative_nuance": 0.99,
+            "transitive_vs_intransitive_pair": 0.01
+          },
+          "confidence": 0.98
+        }
+      },
+      "confidence": {
+        "minConf": 0.75,
+        "avgConf": 0.9059999999999999
+      },
+      "tokenCost": 0.000069258,
+      "generatedMarkdown": "### Role of **降られた** in this Sentence\n\nIn this sentence, **降られた** means **\"to be rained on\"**, functioning as the main predicate verb (passive voice (〜られる / 〜れる)) while standing at the end of the clause.\n\n💡 **Key Nuance:** In Japanese, the passive voice often expresses that the subject was negatively affected or troubled by someone else's action (the \"adversative\" or suffering passive)."
+    },
+    "llm": {
+      "elapsedMs": 2440,
+      "content": "**Grammar:** \nPast passive form of 降る (*furu*, to fall). Specifically, it is the **suffering passive** (*meiwaku ukemi*), where the subject is indirectly troubled by an action.\n\n**Applied Sense:** \n\"To be rained on.\" (Literally: \"I was fallen upon by rain on the way home.\")\n\n**Usage Tip:** \nIn the suffering passive, the troublemaker takes the particle **に** (雨**に**降られた). \n*Note:* 振られた (same pronunciation/form, different kanji) means \"got dumped by a romantic partner.\" Don't mix them up!",
+      "tokenCost": 0.0011025
+    },
+    "speedup": "12.1x"
+  },
+  "ex_20_vocab_particle_to_quote": {
+    "id": "ex_20_vocab_particle_to_quote",
+    "title": "Quotative Attachment (〜と言う)",
+    "mode": "vocab_explanation",
+    "category": "Particle Attachment",
+    "card": {
+      "vocab": "言った",
+      "reading": "いった",
+      "meanings": [
+        "said",
+        "stated",
+        "told"
+      ],
+      "pos": "verb, godan",
+      "sentenceJP": "彼が「もう帰る」と言った。",
+      "sentenceEN": "He said, 'I'm heading home now.'"
+    },
+    "notes": "Should identify quotative particle と attachment and main predicate role.",
+    "routing": {
+      "isPureJevFastPath": true,
+      "decisionReason": "Fast Vocab Explanation: Sense disambiguation and particle attachment resolved by Jev (<200ms)."
+    },
+    "jev": {
+      "elapsedMs": 180,
+      "appliedSense": "sense_0",
+      "role": "main_predicate_verb",
+      "attachment": "sentence_final",
+      "answers": {
+        "applied_meaning": {
+          "type": "choice",
+          "choice": "sense_0",
+          "probabilities": {
+            "sense_2": 0,
+            "sense_0": 1,
+            "sense_1": 0
+          },
+          "confidence": 1
+        },
+        "grammatical_role": {
+          "type": "choice",
+          "choice": "main_predicate_verb",
+          "probabilities": {
+            "subordinate_clause_verb": 0.15,
+            "grammatical_subject": 0,
+            "sentence_ending_particle_or_expression": 0,
+            "topic_marker": 0,
+            "direct_object": 0,
+            "indirect_object_or_target": 0,
+            "adverbial_modifier": 0,
+            "main_predicate_verb": 0.85
+          },
+          "confidence": 0.83
+        },
+        "attachment_and_particles": {
+          "type": "choice",
+          "choice": "sentence_final",
+          "probabilities": {
+            "particle_wa_topic": 0,
+            "te_form_connection": 0,
+            "particle_ni_target": 0,
+            "sentence_final": 0.67,
+            "particle_ga_subject": 0.01,
+            "particle_to_quotation": 0.28,
+            "direct_noun_modification": 0,
+            "particle_wo_object": 0.04
+          },
+          "confidence": 0.63
+        },
+        "inflection_form": {
+          "type": "choice",
+          "choice": "past_ta_form",
+          "probabilities": {
+            "plain_present_dictionary": 0,
+            "potential_form": 0,
+            "te_form": 0,
+            "past_ta_form": 1,
+            "causative_or_causative_passive": 0,
+            "polite_masu_desu": 0,
+            "passive_voice": 0,
+            "conditional_form": 0,
+            "uninflected_noun_or_particle": 0
+          },
+          "confidence": 1
+        },
+        "pedagogical_tip_type": {
+          "type": "choice",
+          "choice": "standard_usage",
+          "probabilities": {
+            "transitive_vs_intransitive_pair": 0,
+            "potential_vs_intent": 0,
+            "passive_adversative_nuance": 0,
+            "idiomatic_set_phrase": 0.01,
+            "standard_usage": 0.98,
+            "colloquial_contraction": 0.01,
+            "polite_softener_not_literal_contrast": 0,
+            "give_receive_direction": 0
+          },
+          "confidence": 0.96
+        }
+      },
+      "confidence": {
+        "minConf": 0.63,
+        "avgConf": 0.884
+      },
+      "tokenCost": 0.000068502,
+      "generatedMarkdown": "### Role of **言った** in this Sentence\n\nIn this sentence, **言った** means **\"said\"**, functioning as the main predicate verb (past tense (〜た / 〜だ)) while standing at the end of the clause.\n\n💡 **Key Nuance:** Focus on how the attached particle connects this word to the main predicate."
+    },
+    "llm": {
+      "elapsedMs": 2474,
+      "content": "**Grammatical Role:** \nPast tense (ta-form) of the godan verb 言う (*iu*, to say). It serves as the main predicate.\n\n**Applied Sense:** \n\"Said\" or \"stated.\" Preceded by the quotation particle と (*to*), it marks the end of a direct quote: \"He said, 'I'm going home already.'\"\n\n**Usage Tip:** \nUse **[Quote] + と言った** for past speech. It works for both direct quotes (in quotation marks 「 」) and indirect speech without them (e.g., 彼が帰ると言った - *He said that he would go home*).",
+      "tokenCost": 0.0010984999999999999
+    },
+    "speedup": "13.7x"
+  },
+  "ex_21_complex_causative_passive_neg": {
+    "id": "ex_21_complex_causative_passive_neg",
+    "title": "Stacked: Causative-Passive-Negative-Past (食べさせられなかった)",
+    "mode": "translation_critique",
+    "category": "Complex Stacked Conjugation",
+    "card": {
+      "vocab": "食べさせられなかった",
+      "reading": "たべさせられなかった",
+      "meanings": [
+        "was not made to eat",
+        "was not allowed to eat"
+      ],
+      "pos": "verb, causative-passive-negative",
+      "sentenceJP": "嫌いなピーマンを食べさせられなかった。",
+      "sentenceEN": "I wasn't forced to eat the bell peppers I hate."
+    },
+    "userDraft": "I didn't make him eat the bell peppers.",
+    "notes": "Complex stacked conjugation: Inverted causative-passive voice (active 'I didn't make him' vs passive 'I wasn't forced').",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 246,
+      "score": 3,
+      "bracket": "3_major_error",
+      "critique": "passive_voice_reversed",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.08
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "3_major_error",
+          "probabilities": {
+            "1_fatal_error": 0.02,
+            "3_major_error": 0.98,
+            "8_minor_nuance": 0,
+            "10_flawless": 0,
+            "5_moderate_error": 0
+          },
+          "confidence": 0.97
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "passive_voice_reversed",
+          "probabilities": {
+            "wrong_verb_or_action": 0.01,
+            "wrong_benefactive_or_recipient": 0.1,
+            "minor_nuance_or_word_choice_difference": 0.01,
+            "passive_voice_reversed": 0.75,
+            "subject_object_inverted": 0.13,
+            "no_flaws_accurate": 0,
+            "interrogative_or_question_error": 0,
+            "tense_or_aspect_error": 0,
+            "potential_or_modality_error": 0
+          },
+          "confidence": 0.72
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "recipient_reversed_self_vs_other",
+          "probabilities": {
+            "recipient_reversed_self_vs_other": 0.51,
+            "benefactive_omitted": 0.01,
+            "correct_benefactive_or_not_applicable": 0.48
+          },
+          "confidence": 0.27
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "passive_vs_active_error",
+          "probabilities": {
+            "potential_vs_intent_error": 0,
+            "correct_or_not_applicable": 0.05,
+            "passive_vs_active_error": 0.95,
+            "predicate_omitted_or_wrong": 0,
+            "tense_past_present_error": 0
+          },
+          "confidence": 0.93
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 0.92,
+            "polarity_inverted": 0.08
+          },
+          "confidence": 0.84
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "causative_passive_inverted",
+          "probabilities": {
+            "potential_change_of_state_missed": 0,
+            "double_negative_obligation_inverted": 0,
+            "accurate_or_not_stacked": 0.01,
+            "causative_benefactive_inverted": 0,
+            "causative_passive_inverted": 0.99,
+            "conditional_regret_missed": 0
+          },
+          "confidence": 0.99
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.91
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "not_applicable_if_omitted",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0,
+            "natural_correct_sense": 0.01,
+            "mistranslated_or_wrong_meaning": 0.03,
+            "not_applicable_if_omitted": 0.96
+          },
+          "confidence": 0.94
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.05
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.06,
+            "natural_correct_sense": 0.89,
+            "mistranslated_or_wrong_meaning": 0.05,
+            "not_applicable_if_omitted": 0
+          },
+          "confidence": 0.85
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.02,
+            "natural_correct_sense": 0.13,
+            "mistranslated_or_wrong_meaning": 0.61,
+            "not_applicable_if_omitted": 0.24
+          },
+          "confidence": 0.48
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I didn't make him eat the bell peppers",
+          "probabilities": {
+            "I didn't make him": 0.36,
+            "eat the bell peppers.": 0,
+            "I didn't make him eat the bell peppers": 0.64
+          },
+          "confidence": 0.45
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I wasn't forced",
+          "probabilities": {
+            "I wasn't forced to eat the bell peppers I hate": 0.3,
+            "I wasn't forced": 0.69,
+            "eat the bell peppers I hate": 0.01
+          },
+          "confidence": 0.54
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "causative_reversal",
+          "probabilities": {
+            "accurate_equivalent": 0,
+            "causative_reversal": 0.54,
+            "passive_vs_active_reversal": 0.45,
+            "counterfactual_regret_vs_condition": 0,
+            "benefactive_direction_inverted": 0.01,
+            "obligation_vs_absence": 0,
+            "question_vs_statement": 0,
+            "potential_vs_intent": 0,
+            "word_choice_or_nuance_mismatch": 0
+          },
+          "confidence": 0.48
+        }
+      },
+      "confidence": {
+        "minConf": 0.27,
+        "avgConf": 0.7050000000000001
+      },
+      "tokenCost": 0.000170058,
+      "generatedMarkdown": "**Score: 3/10 (Major Error)**\n\n**Critique:** Instead of translating **食べさせられなかった** as passive (*\"I wasn't forced\"*), your draft translated it actively as *\"I didn't make him eat the bell peppers\"*, reversing who received the action.\n\n**Reference Translation:**\n\"I wasn't forced to eat the bell peppers I hate.\""
+    },
+    "llm": {
+      "elapsedMs": 4398,
+      "content": "**Score: 3/10**\n\n**Criticism:**\n* **Wrong voice:** You translated this as active causative (\"I didn't make him...\"), but **食べさせられなかった** is **causative-passive** (was forced to eat). The subject is the one receiving the action, not causing it.\n* **Missing modifier:** You completely omitted **嫌いな** (that I hate / disliked), which modifies the bell peppers.\n\n**Correct meaning:**\n\"I wasn't made/forced to eat the bell peppers that I hate.\"",
+      "tokenCost": 0.001098
+    },
+    "speedup": "17.9x"
+  },
+  "ex_22_complex_potential_regret": {
+    "id": "ex_22_complex_potential_regret",
+    "title": "Stacked: Potential + Regret Contraction (行けなくなっちゃった)",
+    "mode": "translation_critique",
+    "category": "Complex Stacked Conjugation",
+    "card": {
+      "vocab": "行けなくなっちゃった",
+      "reading": "いけなくなっちゃった",
+      "meanings": [
+        "ended up unable to go",
+        "became unable to go"
+      ],
+      "pos": "verb, potential-regret",
+      "sentenceJP": "急用が入って、行けなくなっちゃった。",
+      "sentenceEN": "Something urgent came up, and I ended up not being able to go."
+    },
+    "userDraft": "Something urgent came up, so I didn't go.",
+    "notes": "Complex stacked conjugation: Missed potential ability and regret change-of-state nuance (ended up becoming unable to).",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 217,
+      "score": 8,
+      "bracket": "8_minor_nuance",
+      "critique": "potential_or_modality_error",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "8_minor_nuance",
+          "probabilities": {
+            "3_major_error": 0.01,
+            "10_flawless": 0.01,
+            "8_minor_nuance": 0.89,
+            "1_fatal_error": 0,
+            "5_moderate_error": 0.09
+          },
+          "confidence": 0.86
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "potential_or_modality_error",
+          "probabilities": {
+            "no_flaws_accurate": 0.01,
+            "wrong_benefactive_or_recipient": 0,
+            "wrong_verb_or_action": 0,
+            "potential_or_modality_error": 0.81,
+            "tense_or_aspect_error": 0,
+            "passive_voice_reversed": 0,
+            "interrogative_or_question_error": 0,
+            "minor_nuance_or_word_choice_difference": 0.18,
+            "subject_object_inverted": 0
+          },
+          "confidence": 0.78
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "benefactive_omitted": 0,
+            "recipient_reversed_self_vs_other": 0,
+            "correct_benefactive_or_not_applicable": 1
+          },
+          "confidence": 1
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "potential_vs_intent_error",
+          "probabilities": {
+            "correct_or_not_applicable": 0.08,
+            "tense_past_present_error": 0,
+            "potential_vs_intent_error": 0.91,
+            "predicate_omitted_or_wrong": 0.01,
+            "passive_vs_active_error": 0
+          },
+          "confidence": 0.88
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_inverted": 0.02,
+            "polarity_preserved": 0.98
+          },
+          "confidence": 0.96
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "potential_change_of_state_missed",
+          "probabilities": {
+            "accurate_or_not_stacked": 0.01,
+            "conditional_regret_missed": 0,
+            "double_negative_obligation_inverted": 0,
+            "causative_benefactive_inverted": 0,
+            "causative_passive_inverted": 0,
+            "potential_change_of_state_missed": 0.99
+          },
+          "confidence": 0.99
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.05
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0,
+            "mistranslated_or_wrong_meaning": 0,
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 1
+          },
+          "confidence": 0.99
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.43
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.01,
+            "awkward_or_literal_misfit": 0.02,
+            "not_applicable_if_omitted": 0.23,
+            "natural_correct_sense": 0.74
+          },
+          "confidence": 0.66
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.64
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.13,
+            "awkward_or_literal_misfit": 0.22,
+            "not_applicable_if_omitted": 0.17,
+            "natural_correct_sense": 0.48
+          },
+          "confidence": 0.31
+        },
+        "word_3_omitted": {
+          "type": "noul",
+          "noul": 0.8
+        },
+        "word_3_sense": {
+          "type": "choice",
+          "choice": "not_applicable_if_omitted",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.05,
+            "mistranslated_or_wrong_meaning": 0.07,
+            "not_applicable_if_omitted": 0.81,
+            "natural_correct_sense": 0.06
+          },
+          "confidence": 0.75
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I didn't go",
+          "probabilities": {
+            "Something urgent came up": 0,
+            "I didn't go": 1
+          },
+          "confidence": 1
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I ended up not being able to go",
+          "probabilities": {
+            "Something urgent came up": 0,
+            "I ended up not being able to go": 1,
+            "I ended up not being able": 0
+          },
+          "confidence": 1
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "potential_vs_intent",
+          "probabilities": {
+            "causative_reversal": 0,
+            "benefactive_direction_inverted": 0,
+            "question_vs_statement": 0,
+            "passive_vs_active_reversal": 0,
+            "potential_vs_intent": 0.56,
+            "counterfactual_regret_vs_condition": 0,
+            "accurate_equivalent": 0.01,
+            "word_choice_or_nuance_mismatch": 0.43,
+            "obligation_vs_absence": 0
+          },
+          "confidence": 0.5
+        }
+      },
+      "confidence": {
+        "minConf": 0.31,
+        "avgConf": 0.8215384615384616
+      },
+      "tokenCost": 0.000177156,
+      "generatedMarkdown": "**Score: 8/10 (Minor Nuance)**\n\n**Critique:** You translated **行けなくなっちゃった** as *\"I didn't go\"*, but the potential form expresses *\"I ended up not being able to go\"* (ability/possibility rather than future certainty).\n\n**Reference Translation:**\n\"Something urgent came up, and I ended up not being able to go.\""
+    },
+    "llm": {
+      "elapsedMs": 3108,
+      "content": "**Score: 7/10**\n\n### Criticism\n* **Missed Potential Form:** 行けなくなっちゃった contains the potential verb 行ける (can go). You translated it as \"I didn't go\" (volitional) instead of \"I **couldn't** go\" / \"became unable to go.\"\n* **Missed Nuance of 〜ちゃう (-chau):** This suffix expresses regret or an unintended outcome (\"ended up...\"). Your translation sounds too deliberate. \n\n### Correction\n\"Something urgent came up, so I **couldn't go**.\" *(More literal: \"...so I ended up not being able to go.\")*",
+      "tokenCost": 0.0011095
+    },
+    "speedup": "14.3x"
+  },
+  "ex_23_complex_conditional_regret": {
+    "id": "ex_23_complex_conditional_regret",
+    "title": "Stacked: Conditional Regret (言わなければよかった)",
+    "mode": "translation_critique",
+    "category": "Complex Stacked Conjugation",
+    "card": {
+      "vocab": "言わなければよかった",
+      "reading": "いわなければよかった",
+      "meanings": [
+        "should not have said",
+        "wish I hadn't said"
+      ],
+      "pos": "expression, conditional-regret",
+      "sentenceJP": "あんなこと、言わなければよかった。",
+      "sentenceEN": "I wish I hadn't said such a thing."
+    },
+    "userDraft": "If I don't say such things, it's good.",
+    "notes": "Complex stacked conjugation: Counterfactual regret translated as literal active condition.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 197,
+      "score": 3,
+      "bracket": "3_major_error",
+      "critique": "tense_or_aspect_error",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.11
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "3_major_error",
+          "probabilities": {
+            "10_flawless": 0,
+            "3_major_error": 0.38,
+            "1_fatal_error": 0.25,
+            "8_minor_nuance": 0.02,
+            "5_moderate_error": 0.35
+          },
+          "confidence": 0.23
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "tense_or_aspect_error",
+          "probabilities": {
+            "minor_nuance_or_word_choice_difference": 0.06999999999999999,
+            "tense_or_aspect_error": 0.89,
+            "no_flaws_accurate": 0,
+            "interrogative_or_question_error": 0,
+            "wrong_verb_or_action": 0,
+            "subject_object_inverted": 0,
+            "potential_or_modality_error": 0.04,
+            "wrong_benefactive_or_recipient": 0,
+            "passive_voice_reversed": 0
+          },
+          "confidence": 0.87
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "benefactive_omitted": 0.02,
+            "recipient_reversed_self_vs_other": 0,
+            "correct_benefactive_or_not_applicable": 0.98
+          },
+          "confidence": 0.97
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "tense_past_present_error",
+          "probabilities": {
+            "predicate_omitted_or_wrong": 0.01,
+            "passive_vs_active_error": 0,
+            "correct_or_not_applicable": 0.04,
+            "potential_vs_intent_error": 0.01,
+            "tense_past_present_error": 0.94
+          },
+          "confidence": 0.93
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 0.57,
+            "polarity_inverted": 0.43
+          },
+          "confidence": 0.14
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "conditional_regret_missed",
+          "probabilities": {
+            "accurate_or_not_stacked": 0,
+            "double_negative_obligation_inverted": 0,
+            "conditional_regret_missed": 1,
+            "causative_benefactive_inverted": 0,
+            "causative_passive_inverted": 0,
+            "potential_change_of_state_missed": 0
+          },
+          "confidence": 1
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.26
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.18,
+            "natural_correct_sense": 0.77,
+            "not_applicable_if_omitted": 0.03,
+            "mistranslated_or_wrong_meaning": 0.02
+          },
+          "confidence": 0.69
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.21
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.16,
+            "natural_correct_sense": 0.82,
+            "not_applicable_if_omitted": 0.01,
+            "mistranslated_or_wrong_meaning": 0.01
+          },
+          "confidence": 0.76
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.72
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.27,
+            "natural_correct_sense": 0.14,
+            "not_applicable_if_omitted": 0.23,
+            "mistranslated_or_wrong_meaning": 0.36
+          },
+          "confidence": 0.16
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I don't say such things",
+          "probabilities": {
+            "it's good": 0.36,
+            "I don't say such things": 0.64
+          },
+          "confidence": 0.27
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I wish I hadn't said such a thing",
+          "probabilities": {
+            "said such a thing.": 0.01,
+            "I wish I hadn't said such a thing": 0.97,
+            "I wish I hadn't": 0.02
+          },
+          "confidence": 0.96
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "counterfactual_regret_vs_condition",
+          "probabilities": {
+            "counterfactual_regret_vs_condition": 1,
+            "accurate_equivalent": 0,
+            "causative_reversal": 0,
+            "obligation_vs_absence": 0,
+            "question_vs_statement": 0,
+            "benefactive_direction_inverted": 0,
+            "passive_vs_active_reversal": 0,
+            "word_choice_or_nuance_mismatch": 0,
+            "potential_vs_intent": 0
+          },
+          "confidence": 1
+        }
+      },
+      "confidence": {
+        "minConf": 0.14,
+        "avgConf": 0.6649999999999999
+      },
+      "tokenCost": 0.000168042,
+      "generatedMarkdown": "**Score: 3/10 (Major Error)**\n\n**Critique:** **言わなければよかった** expresses counterfactual regret (*\"I wish I hadn't said such a thing\"*), rather than a literal factual condition (*\"I don't say such things\"*).\n\n**Reference Translation:**\n\"I wish I hadn't said such a thing.\""
+    },
+    "llm": {
+      "elapsedMs": 2242,
+      "content": "**Score: 3/10**\n\n**Criticism:**\n* **Completely missed the grammar pattern:** You translated it as a general rule/present condition, but **〜なければよかった** is a fixed expression expressing **past regret** (\"I wish I hadn't... / It would have been better if I hadn't...\").\n* **Wrong tense:** The sentence ends in the past tense (**よかった**), which indicates the action already happened. \n\n**Correction:**\n\"I shouldn't have said that.\" / \"I wish I hadn't said such a thing.\"",
+      "tokenCost": 0.0010995
+    },
+    "speedup": "11.4x"
+  },
+  "ex_24_complex_double_neg_obligation": {
+    "id": "ex_24_complex_double_neg_obligation",
+    "title": "Stacked: Double Negative Obligation (行かないわけにはいかない)",
+    "mode": "translation_critique",
+    "category": "Complex Stacked Conjugation",
+    "card": {
+      "vocab": "行かないわけにはいかない",
+      "reading": "いかないわけにはいかない",
+      "meanings": [
+        "have to go",
+        "cannot help but go"
+      ],
+      "pos": "expression, obligation",
+      "sentenceJP": "社長の頼みだから、行かないわけにはいかない。",
+      "sentenceEN": "It's the president's request, so I have no choice but to go."
+    },
+    "userDraft": "It's the president's request, so there's no reason to go.",
+    "notes": "Complex stacked conjugation: Double negative obligation translated as absence of reason.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 367,
+      "score": 1,
+      "bracket": "1_fatal_error",
+      "critique": "potential_or_modality_error",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.02
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "1_fatal_error",
+          "probabilities": {
+            "3_major_error": 0.15,
+            "10_flawless": 0,
+            "8_minor_nuance": 0,
+            "1_fatal_error": 0.85,
+            "5_moderate_error": 0
+          },
+          "confidence": 0.81
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "potential_or_modality_error",
+          "probabilities": {
+            "no_flaws_accurate": 0,
+            "wrong_benefactive_or_recipient": 0,
+            "potential_or_modality_error": 0.7,
+            "wrong_verb_or_action": 0.17,
+            "tense_or_aspect_error": 0,
+            "passive_voice_reversed": 0,
+            "interrogative_or_question_error": 0,
+            "minor_nuance_or_word_choice_difference": 0.13,
+            "subject_object_inverted": 0
+          },
+          "confidence": 0.65
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "benefactive_omitted": 0.05,
+            "recipient_reversed_self_vs_other": 0,
+            "correct_benefactive_or_not_applicable": 0.95
+          },
+          "confidence": 0.92
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "potential_vs_intent_error",
+          "probabilities": {
+            "correct_or_not_applicable": 0.09,
+            "tense_past_present_error": 0,
+            "potential_vs_intent_error": 0.5,
+            "predicate_omitted_or_wrong": 0.41,
+            "passive_vs_active_error": 0
+          },
+          "confidence": 0.37
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_inverted",
+          "probabilities": {
+            "polarity_inverted": 0.97,
+            "polarity_preserved": 0.03
+          },
+          "confidence": 0.94
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "double_negative_obligation_inverted",
+          "probabilities": {
+            "accurate_or_not_stacked": 0,
+            "conditional_regret_missed": 0,
+            "double_negative_obligation_inverted": 1,
+            "causative_benefactive_inverted": 0,
+            "causative_passive_inverted": 0,
+            "potential_change_of_state_missed": 0
+          },
+          "confidence": 1
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.04
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0,
+            "mistranslated_or_wrong_meaning": 0,
+            "not_applicable_if_omitted": 0,
+            "natural_correct_sense": 1
+          },
+          "confidence": 1
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.08
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0,
+            "mistranslated_or_wrong_meaning": 0.01,
+            "not_applicable_if_omitted": 0.01,
+            "natural_correct_sense": 0.98
+          },
+          "confidence": 0.98
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.16
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.02,
+            "mistranslated_or_wrong_meaning": 0.08,
+            "not_applicable_if_omitted": 0.02,
+            "natural_correct_sense": 0.88
+          },
+          "confidence": 0.84
+        },
+        "word_3_omitted": {
+          "type": "noul",
+          "noul": 0.51
+        },
+        "word_3_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.03,
+            "mistranslated_or_wrong_meaning": 0.94,
+            "not_applicable_if_omitted": 0.01,
+            "natural_correct_sense": 0.02
+          },
+          "confidence": 0.93
+        },
+        "word_4_omitted": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "word_4_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.93,
+            "awkward_or_literal_misfit": 0.04,
+            "not_applicable_if_omitted": 0.01,
+            "natural_correct_sense": 0.02
+          },
+          "confidence": 0.9
+        },
+        "word_5_omitted": {
+          "type": "noul",
+          "noul": 0.69
+        },
+        "word_5_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.87,
+            "awkward_or_literal_misfit": 0.01,
+            "not_applicable_if_omitted": 0.08,
+            "natural_correct_sense": 0.04
+          },
+          "confidence": 0.83
+        },
+        "word_6_omitted": {
+          "type": "noul",
+          "noul": 0.53
+        },
+        "word_6_sense": {
+          "type": "choice",
+          "choice": "mistranslated_or_wrong_meaning",
+          "probabilities": {
+            "awkward_or_literal_misfit": 0.02,
+            "mistranslated_or_wrong_meaning": 0.95,
+            "not_applicable_if_omitted": 0.01,
+            "natural_correct_sense": 0.02
+          },
+          "confidence": 0.93
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "there's no reason to go",
+          "probabilities": {
+            "It's the president's request": 0,
+            "there's no reason to go": 1,
+            "there's no reason": 0
+          },
+          "confidence": 0.99
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I have no choice",
+          "probabilities": {
+            "I have no choice": 0.94,
+            "It's the president's request": 0,
+            "to go": 0.06
+          },
+          "confidence": 0.91
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "obligation_vs_absence",
+          "probabilities": {
+            "causative_reversal": 0,
+            "benefactive_direction_inverted": 0,
+            "question_vs_statement": 0,
+            "passive_vs_active_reversal": 0,
+            "potential_vs_intent": 0,
+            "counterfactual_regret_vs_condition": 0,
+            "accurate_equivalent": 0,
+            "word_choice_or_nuance_mismatch": 0,
+            "obligation_vs_absence": 1
+          },
+          "confidence": 1
+        }
+      },
+      "confidence": {
+        "minConf": 0.37,
+        "avgConf": 0.875
+      },
+      "tokenCost": 0.00020622,
+      "generatedMarkdown": "**Score: 1/10 (Fatal Error)**\n\n**Critique:** You translated **行かないわけにはいかない** as *\"there's no reason to go\"*, but the potential form expresses *\"I have no choice\"* (ability/possibility rather than future certainty).\n\n**Reference Translation:**\n\"It's the president's request, so I have no choice but to go.\""
+    },
+    "llm": {
+      "elapsedMs": 3112,
+      "content": "**Score: 3/10**\n\n**Criticism:**\nYou translated the grammar to mean the exact opposite of what it actually means. \n\n* **The error:** You wrote \"there is no reason to go,\" which implies you *won't* go. \n* **The rule:** The double negative pattern **〜ないわけにはいかない** (*nai wake ni wa ikanai*) means \"cannot *not* do\" = **\"must do\"** or **\"have no choice but to do.\"**\n* **Correction:** Because the president asked, you **have to** go.",
+      "tokenCost": 0.001109
+    },
+    "speedup": "8.5x"
+  },
+  "ex_02_flawless_softener": {
+    "id": "ex_02_flawless_softener",
+    "title": "Flawless Conversational Softener (〜んだけど)",
+    "mode": "translation_critique",
+    "category": "Conversational Nuance",
+    "card": {
+      "vocab": "行きたい",
+      "reading": "いきたい",
+      "meanings": [
+        "want to go",
+        "wish to go"
+      ],
+      "pos": "adjective, i-adj",
+      "sentenceJP": "一緒に映画に行きたいんだけど。",
+      "sentenceEN": "I'd like to go to the movies together, but..."
+    },
+    "userDraft": "I'd love to go see a movie together.",
+    "notes": "Should be 10/10. 〜んだけど softens the invitation; translating without literal 'but' is native English.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 309,
+      "score": 8,
+      "bracket": "8_minor_nuance",
+      "critique": "minor_nuance_or_word_choice_difference",
+      "answers": {
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "8_minor_nuance",
+          "probabilities": {
+            "5_moderate_error": 0.07,
+            "8_minor_nuance": 0.79,
+            "10_flawless": 0.01,
+            "3_major_error": 0.13,
+            "1_fatal_error": 0
+          },
+          "confidence": 0.73
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_inverted": 0.02,
+            "polarity_preserved": 0.98
+          },
+          "confidence": 0.95
+        },
+        "word_1_omitted": {
+          "type": "noul",
+          "noul": 0.06
+        },
+        "word_1_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0,
+            "natural_correct_sense": 0.99,
+            "not_applicable_if_omitted": 0,
+            "awkward_or_literal_misfit": 0.01
+          },
+          "confidence": 0.98
+        },
+        "word_3_omitted": {
+          "type": "noul",
+          "noul": 0.17
+        },
+        "word_3_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.02,
+            "natural_correct_sense": 0.84,
+            "not_applicable_if_omitted": 0.01,
+            "awkward_or_literal_misfit": 0.13
+          },
+          "confidence": 0.79
+        },
+        "word_4_sense": {
+          "type": "choice",
+          "choice": "not_applicable_if_omitted",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0.01,
+            "natural_correct_sense": 0,
+            "not_applicable_if_omitted": 0.99,
+            "awkward_or_literal_misfit": 0
+          },
+          "confidence": 0.97
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "minor_nuance_or_word_choice_difference",
+          "probabilities": {
+            "minor_nuance_or_word_choice_difference": 0.93,
+            "potential_or_modality_error": 0.01,
+            "interrogative_or_question_error": 0,
+            "tense_or_aspect_error": 0,
+            "wrong_benefactive_or_recipient": 0,
+            "passive_voice_reversed": 0,
+            "subject_object_inverted": 0,
+            "no_flaws_accurate": 0.05,
+            "wrong_verb_or_action": 0
+          },
+          "confidence": 0.93
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.06
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0,
+            "natural_correct_sense": 1,
+            "not_applicable_if_omitted": 0,
+            "awkward_or_literal_misfit": 0
+          },
+          "confidence": 0.99
+        },
+        "word_2_omitted": {
+          "type": "noul",
+          "noul": 0.11
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "I'd love",
+          "probabilities": {
+            "I'd love": 0.52,
+            "I'd love to go see a movie together": 0.42,
+            "go see a movie together": 0.06
+          },
+          "confidence": 0.28
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "word_choice_or_nuance_mismatch",
+          "probabilities": {
+            "benefactive_direction_inverted": 0,
+            "obligation_vs_absence": 0,
+            "causative_reversal": 0,
+            "accurate_equivalent": 0.13,
+            "potential_vs_intent": 0,
+            "counterfactual_regret_vs_condition": 0,
+            "passive_vs_active_reversal": 0,
+            "question_vs_statement": 0,
+            "word_choice_or_nuance_mismatch": 0.87
+          },
+          "confidence": 0.85
+        },
+        "word_2_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "mistranslated_or_wrong_meaning": 0,
+            "natural_correct_sense": 0.99,
+            "not_applicable_if_omitted": 0.01,
+            "awkward_or_literal_misfit": 0
+          },
+          "confidence": 0.98
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I'd like to go to the movies together",
+          "probabilities": {
+            "I'd like to go to the movies together": 0.54,
+            "I'd like": 0.46,
+            "the movies together": 0
+          },
+          "confidence": 0.3
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "recipient_reversed_self_vs_other": 0,
+            "correct_benefactive_or_not_applicable": 1,
+            "benefactive_omitted": 0
+          },
+          "confidence": 1
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "correct_or_not_applicable",
+          "probabilities": {
+            "tense_past_present_error": 0,
+            "passive_vs_active_error": 0,
+            "predicate_omitted_or_wrong": 0,
+            "correct_or_not_applicable": 0.95,
+            "potential_vs_intent_error": 0.05
+          },
+          "confidence": 0.94
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "accurate_or_not_stacked",
+          "probabilities": {
+            "accurate_or_not_stacked": 1,
+            "causative_benefactive_inverted": 0,
+            "causative_passive_inverted": 0,
+            "potential_change_of_state_missed": 0,
+            "conditional_regret_missed": 0,
+            "double_negative_obligation_inverted": 0
+          },
+          "confidence": 1
+        },
+        "word_4_omitted": {
+          "type": "noul",
+          "noul": 0.93
+        },
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.61
+        }
+      },
+      "confidence": {
+        "minConf": 0.28,
+        "avgConf": 0.835
+      },
+      "tokenCost": 0.000185556,
+      "generatedMarkdown": "**Score: 8/10 (Minor Nuance)**\n\n**Critique:** In this context, **行きたい** naturally translates to *\"I'd like to go to the movies together\"*, whereas *\"I'd love\"* sounds slightly awkward or overly literal.\n\n**Reference Translation:**\n\"I'd like to go to the movies together, but...\""
+    },
+    "llm": {
+      "elapsedMs": 2121,
+      "content": "**Score: 8/10**\n\n**Criticism:**\nYou missed the nuance of **〜んだけど** (*...but / though*). This ending softens the invitation and implies an unspoken \"...would you like to?\" or leaves room for the other person to respond. Your translation is too direct and enthusiastic (\"I'd love to\") compared to the hesitant, trailing-off tone of the original. \n\nA better translation: *\"I'd like to go see a movie together, but... (are you free?)\"*",
+      "tokenCost": 0.0010919999999999999
+    },
+    "speedup": "6.9x"
+  },
+  "ex_05_passive_adversative": {
+    "id": "ex_05_passive_adversative",
+    "title": "Adversative Suffering Passive (雨に降られた)",
+    "mode": "translation_critique",
+    "category": "Passive Voice",
+    "card": {
+      "vocab": "降られた",
+      "reading": "ふられた",
+      "meanings": [
+        "to be rained on",
+        "got caught in rain"
+      ],
+      "pos": "verb, passive",
+      "sentenceJP": "帰り道に雨に降られた。",
+      "sentenceEN": "I got caught in the rain on my way home."
+    },
+    "userDraft": "Rain fell on my way home.",
+    "notes": "Missed suffering nuance (Level 8/10). Translates action but misses adversative impact on speaker.",
+    "routing": {
+      "isPureJevFastPath": false,
+      "decisionReason": "Critique Path: Detailed structured error detected by Jev. Programmatic feedback generated, compared against LLM."
+    },
+    "jev": {
+      "elapsedMs": 200,
+      "score": 8,
+      "bracket": "8_minor_nuance",
+      "critique": "passive_voice_reversed",
+      "answers": {
+        "is_flawless": {
+          "type": "noul",
+          "noul": 0.37
+        },
+        "grade_bracket": {
+          "type": "choice",
+          "choice": "8_minor_nuance",
+          "probabilities": {
+            "5_moderate_error": 0.11,
+            "3_major_error": 0.33,
+            "1_fatal_error": 0,
+            "8_minor_nuance": 0.55,
+            "10_flawless": 0.01
+          },
+          "confidence": 0.44
+        },
+        "sentence_critique_summary": {
+          "type": "choice",
+          "choice": "passive_voice_reversed",
+          "probabilities": {
+            "potential_or_modality_error": 0,
+            "tense_or_aspect_error": 0,
+            "interrogative_or_question_error": 0,
+            "no_flaws_accurate": 0.03,
+            "passive_voice_reversed": 0.59,
+            "subject_object_inverted": 0.01,
+            "wrong_benefactive_or_recipient": 0.01,
+            "wrong_verb_or_action": 0.02,
+            "minor_nuance_or_word_choice_difference": 0.34
+          },
+          "confidence": 0.53
+        },
+        "benefactive_direction": {
+          "type": "choice",
+          "choice": "correct_benefactive_or_not_applicable",
+          "probabilities": {
+            "correct_benefactive_or_not_applicable": 0.98,
+            "recipient_reversed_self_vs_other": 0,
+            "benefactive_omitted": 0.02
+          },
+          "confidence": 0.97
+        },
+        "predicate_mood_and_voice": {
+          "type": "choice",
+          "choice": "passive_vs_active_error",
+          "probabilities": {
+            "potential_vs_intent_error": 0,
+            "correct_or_not_applicable": 0.31,
+            "passive_vs_active_error": 0.68,
+            "tense_past_present_error": 0.01,
+            "predicate_omitted_or_wrong": 0
+          },
+          "confidence": 0.59
+        },
+        "polarity_check": {
+          "type": "choice",
+          "choice": "polarity_preserved",
+          "probabilities": {
+            "polarity_preserved": 0.99,
+            "polarity_inverted": 0.01
+          },
+          "confidence": 0.98
+        },
+        "predicate_complex_conjugation": {
+          "type": "choice",
+          "choice": "accurate_or_not_stacked",
+          "probabilities": {
+            "conditional_regret_missed": 0,
+            "double_negative_obligation_inverted": 0,
+            "causative_benefactive_inverted": 0,
+            "accurate_or_not_stacked": 0.71,
+            "potential_change_of_state_missed": 0,
+            "causative_passive_inverted": 0.29
+          },
+          "confidence": 0.65
+        },
+        "word_0_omitted": {
+          "type": "noul",
+          "noul": 0.04
+        },
+        "word_0_sense": {
+          "type": "choice",
+          "choice": "natural_correct_sense",
+          "probabilities": {
+            "not_applicable_if_omitted": 0,
+            "mistranslated_or_wrong_meaning": 0,
+            "natural_correct_sense": 0.97,
+            "awkward_or_literal_misfit": 0.03
+          },
+          "confidence": 0.96
+        },
+        "flawed_student_excerpt": {
+          "type": "choice",
+          "choice": "Rain fell",
+          "probabilities": {
+            "Rain fell on my way home": 0.29,
+            "my way home": 0,
+            "Rain fell": 0.71
+          },
+          "confidence": 0.56
+        },
+        "correct_reference_excerpt": {
+          "type": "choice",
+          "choice": "I got caught",
+          "probabilities": {
+            "my way home": 0,
+            "I got caught": 0.9,
+            "I got caught in the rain on my way home": 0.09,
+            "the rain": 0.01
+          },
+          "confidence": 0.87
+        },
+        "contrast_relation": {
+          "type": "choice",
+          "choice": "passive_vs_active_reversal",
+          "probabilities": {
+            "word_choice_or_nuance_mismatch": 0.15,
+            "passive_vs_active_reversal": 0.79,
+            "counterfactual_regret_vs_condition": 0,
+            "benefactive_direction_inverted": 0,
+            "potential_vs_intent": 0,
+            "obligation_vs_absence": 0,
+            "causative_reversal": 0.06,
+            "question_vs_statement": 0,
+            "accurate_equivalent": 0
+          },
+          "confidence": 0.76
+        }
+      },
+      "confidence": {
+        "minConf": 0.44,
+        "avgConf": 0.731
+      },
+      "tokenCost": 0.000148428,
+      "generatedMarkdown": "**Score: 8/10 (Minor Nuance)**\n\n**Critique:** Instead of translating **降られた** as passive (*\"I got caught\"*), your draft translated it actively as *\"Rain fell\"*, reversing who received the action.\n\n**Reference Translation:**\n\"I got caught in the rain on my way home.\""
+    },
+    "llm": {
+      "elapsedMs": 2437,
+      "content": "**Score: 5/10**\n\n**Criticism:**\nYou missed the **suffering passive** (*meiwaku ukemi*). The verb **降られた** indicates that the rain was an unwelcome nuisance that negatively affected the speaker. Translating it simply as \"rain fell\" ignores this emotional nuance and the passive voice. \n\n\"I got caught in the rain...\" or \"I was rained on...\" is necessary to capture the meaning of the original sentence.",
+      "tokenCost": 0.001083
+    },
+    "speedup": "12.2x"
+  }
+}

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.80
+// @version      1.0.81
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -661,7 +661,49 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     return cleanTarget ? [cleanTarget] : [clean];
   }
 
-  function parseJevScores(answers, words, targetVocab) {
+  function extractPhraseChunks(text) {
+    if (!text) return [];
+    const clean = text.trim();
+    const chunks = new Set();
+    const clauses = clean.split(/[,;\—\–]|\b(?:and|but|so|because|although|while|if|when)\b/i)
+      .map((s) => s.trim().replace(/^[\.,!?"'\s]+|[\.,!?"'\s]+$/g, ''))
+      .filter((s) => s.length > 0);
+
+    for (const c of clauses) {
+      chunks.add(c);
+      const subParts = c.split(/\b(?:to|for|at|in|on|by|from|with)\b/i)
+        .map((s) => s.trim().replace(/^[\.,!?"'\s]+|[\.,!?"'\s]+$/g, ''))
+        .filter((s) => s.length > 3 && s.includes(' '));
+      subParts.forEach((sp) => chunks.add(sp));
+    }
+
+    if (chunks.size < 2) {
+      const words = clean.split(/\s+/);
+      if (words.length >= 4) {
+        chunks.add(words.slice(0, Math.ceil(words.length / 2)).join(' '));
+        chunks.add(words.slice(Math.floor(words.length / 2)).join(' '));
+      }
+    }
+    return Array.from(chunks).slice(0, 5);
+  }
+
+  function assessConfidence(answers) {
+    let minConf = 1.0;
+    let totalConf = 0;
+    let count = 0;
+
+    for (const [key, ans] of Object.entries(answers || {})) {
+      if (ans && typeof ans.confidence === 'number') {
+        minConf = Math.min(minConf, ans.confidence);
+        totalConf += ans.confidence;
+        count++;
+      }
+    }
+    const avgConf = count > 0 ? (totalConf / count) : 1.0;
+    return { minConf, avgConf };
+  }
+
+  function parseJevScores(answers, words, targetVocab, userDraft, referenceTranslation) {
     if (!answers) return null;
     words = Array.isArray(words) ? words : [];
 
@@ -669,6 +711,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const bracketChoice = answers.grade_bracket?.choice || '8_minor_nuance';
     const rawSeverity = answers.severity?.score;
     const severityScore = (typeof rawSeverity === 'number' && Number.isFinite(rawSeverity) && rawSeverity >= 0 && rawSeverity <= 4) ? rawSeverity : null;
+
+    const { minConf: minConfidence, avgConf: avgConfidence } = assessConfidence(answers);
 
     // 1. Sentence-level structural checks (tokenizer-independent, evaluated independently)
     const sentenceCritiques = [];
@@ -678,12 +722,28 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const interCheck = answers.interrogative_check?.choice;
     const polCheck = answers.polarity_check?.choice;
     const scopeCheck = answers.question_type_and_scope?.choice;
+    const complexChoice = answers.predicate_complex_conjugation?.choice;
 
     if (scopeCheck === 'confused_indefinite_with_wh_word') {
       sentenceCritiques.push({
         code: 'confused_indefinite_with_wh_word',
         severity: 'critical',
         label: 'Question scope error: Confused an indefinite pronoun (e.g. 何か "something" / 誰か "someone") with an open wh-question word ("what" / "who"), turning a yes/no question into an open-ended question.'
+      });
+    }
+
+    if (complexChoice && complexChoice !== 'accurate_or_not_stacked' && complexChoice !== 'stacked_conjugation_not_applicable') {
+      const complexLabels = {
+        causative_passive_inverted: 'Causative-passive inverted: Expresses being subjected to an action ("was made to / was kept waiting"), not that you actively caused it.',
+        causative_benefactive_inverted: 'Causative-benefactive mismatch: Expresses receiving permission or a favor ("let me do it"), not actively forcing someone else.',
+        potential_change_of_state_missed: 'Potential + change of state missed: Expresses becoming unable to do something with regret ("ended up unable to..."), rather than a simple refusal or past negative.',
+        conditional_regret_missed: 'Conditional regret missed: Expresses counterfactual regret ("I should have / wish I hadn\'t"), rather than a factual condition ("if...").',
+        double_negative_obligation_inverted: 'Double-negative obligation inverted: Expresses necessity ("have no choice but to / must do"), but was translated as inability ("cannot do").'
+      };
+      sentenceCritiques.push({
+        code: complexChoice,
+        severity: ['causative_passive_inverted', 'causative_benefactive_inverted', 'double_negative_obligation_inverted'].includes(complexChoice) ? 'critical' : 'moderate',
+        label: complexLabels[complexChoice] || 'Complex conjugation error'
       });
     }
 
@@ -703,7 +763,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     if (predCheck === 'passive_vs_active_error') {
       sentenceCritiques.push({
-        code: 'agent_or_passive_reversed',
+        code: 'passive_voice_reversed',
         severity: 'critical',
         label: 'Grammatical voice reversed: Passive voice was translated as active (or subject/agent inverted).'
       });
@@ -746,7 +806,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     // High-level critique dictionary
     const summaryCritiqueLabels = {
       wrong_benefactive_or_recipient: 'Receiver/beneficiary mismatch: Confused who the action was done for (e.g. translated an action done for someone else or a pet as "me", or confused give/receive direction).',
-      agent_or_passive_reversed: 'Grammatical voice reversed: Confused subject vs object or active vs passive voice (e.g. "was seen" translated as "I saw").',
+      passive_voice_reversed: 'Grammatical voice reversed: Passive voice was translated as active (subject was receiving the action).',
+      subject_object_inverted: 'Subject/object inverted: Confused who did what to whom in an active sentence.',
+      agent_or_passive_reversed: 'Grammatical voice reversed: Confused subject vs object or active vs passive voice.',
       wrong_verb_or_action: 'Core action mismatch: The main verb or core action was mistranslated or misunderstood.',
       tense_or_aspect_error: 'Tense/aspect mismatch: Confused past tense with present/future, or continuous aspect.',
       potential_or_modality_error: "Modality/mood mismatch: Confused ability/potential ('can') with intent ('will'), or certainty with possibility.",
@@ -758,10 +820,23 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       if (!sentenceCritiques.some((sc) => sc.code === summaryCritiqueChoice)) {
         sentenceCritiques.push({
           code: summaryCritiqueChoice,
-          severity: ['wrong_benefactive_or_recipient', 'agent_or_passive_reversed', 'wrong_verb_or_action'].includes(summaryCritiqueChoice) ? 'critical' : 'moderate',
+          severity: ['wrong_benefactive_or_recipient', 'passive_voice_reversed', 'subject_object_inverted', 'agent_or_passive_reversed', 'wrong_verb_or_action'].includes(summaryCritiqueChoice) ? 'critical' : 'moderate',
           label: summaryCritiqueLabels[summaryCritiqueChoice] || 'Translation discrepancy noted.'
         });
       }
+    }
+
+    // Dynamic Excerpt Contrast
+    const stEx = answers.flawed_student_excerpt?.choice;
+    const refEx = answers.correct_reference_excerpt?.choice;
+    const rel = answers.contrast_relation?.choice;
+    let excerptComparison = null;
+    if (stEx && refEx && rel && rel !== 'accurate_equivalent') {
+      excerptComparison = {
+        studentExcerpt: stEx,
+        referenceExcerpt: refEx,
+        relation: rel
+      };
     }
 
     const mistakes = [];
@@ -802,7 +877,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       }
     }
 
-    // 3. Check granular word diagnostics by tokenIndex
+    // 3. Check granular word diagnostics by tokenIndex (content words only)
     const interrogativeWords = ['いつ', 'どこ', 'だれ', '誰', 'なに', '何', 'どう', 'なぜ', '何故', 'どれ', 'どの', 'どちら', 'いくら', 'いくつ', 'どんな'];
 
     for (let i = 0; i < words.length; i++) {
@@ -893,74 +968,67 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       }
     }
 
-    // 4. Sentence-level fallbacks if not tied to a specific word token
-    for (const sc of sentenceCritiques) {
-      if (sc.code === 'confused_indefinite_with_wh_word' && !mistakes.some((m) => m.type === 'mistranslated_or_wrong_meaning')) {
-        mistakes.push({
-          tokenIndex: null,
-          word: 'Sentence: Question Scope',
-          type: 'mistranslated_or_wrong_meaning',
-          description: 'translated indefinite pronoun (e.g. 何か "something") as open wh-question word ("what"), turning yes/no question into wh-question',
-          confidence: answers.question_type_and_scope?.confidence ?? 0
-        });
-      } else if (sc.code === 'wrong_benefactive_or_recipient' && !mistakes.some((m) => m.type === 'recipient_or_beneficiary_error')) {
-        mistakes.push({
-          tokenIndex: null,
-          word: 'Sentence: Benefactive Direction',
-          type: 'recipient_or_beneficiary_error',
-          description: 'confused who the favor was for: action for a third party/pet (~てやる) translated as for oneself ("me")',
-          confidence: answers.benefactive_direction?.confidence ?? 0
-        });
-      } else if (sc.code === 'potential_or_modality_error' && !mistakes.some((m) => m.type === 'modality_or_mood_error')) {
-        mistakes.push({
-          tokenIndex: null,
-          word: 'Sentence: Modality (Potential/Intent)',
-          type: 'modality_or_mood_error',
-          description: "potential form ('can / be able to') was translated as intent ('will')",
-          confidence: answers.predicate_mood_and_voice?.confidence ?? 0
-        });
-      } else if (sc.code === 'agent_or_passive_reversed' && !mistakes.some((m) => m.type === 'voice_passive_active_error')) {
-        mistakes.push({
-          tokenIndex: null,
-          word: 'Sentence: Voice (Passive/Active)',
-          type: 'voice_passive_active_error',
-          description: 'passive voice reversed to active (or subject/agent inverted)',
-          confidence: answers.predicate_mood_and_voice?.confidence ?? 0
-        });
-      } else if (sc.code === 'polarity_inverted' && !mistakes.some((m) => m.type === 'polarity_inverted')) {
-        mistakes.push({
-          tokenIndex: null,
-          word: 'Sentence: Polarity (Affirmative/Negative)',
-          type: 'polarity_inverted',
-          description: 'affirmative vs negative polarity was inverted',
-          confidence: answers.polarity_check?.confidence ?? 0
-        });
-      } else if (sc.code === 'wrong_verb_or_action' && !mistakes.some((m) => m.type === 'wrong_verb_or_action' || m.type === 'omitted_or_missing')) {
-        mistakes.push({
-          tokenIndex: null,
-          word: 'Sentence: Predicate',
-          type: 'wrong_verb_or_action',
-          description: 'the main action/verb was omitted or mistranslated',
-          confidence: answers.predicate_mood_and_voice?.confidence ?? 0
-        });
-      } else if (sc.code === 'benefactive_omitted' && !advisories.some((a) => a.type === 'benefactive_omitted') && !mistakes.some((m) => m.type === 'recipient_or_beneficiary_error')) {
-        advisories.push({
-          tokenIndex: null,
-          word: 'Sentence: Benefactive (~てくれる)',
-          type: 'benefactive_omitted',
-          description: 'benefactive nuance omitted: does not convey that the action was performed for someone',
-          confidence: answers.benefactive_direction?.confidence ?? 0
-        });
+    // 4. Synthesize Dynamic Concise Critique (LLM-style synthesis)
+    const predWord = cleanTarget || 'The predicate';
+    let dynamicCritique = '';
+
+    if (stEx && refEx && rel && rel !== 'accurate_equivalent') {
+      if (rel === 'passive_vs_active_reversal' || summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') {
+        dynamicCritique = `Instead of translating "${predWord}" as passive ("${refEx}"), your draft translated it actively as "${stEx}", reversing who received the action.`;
+      } else if (rel === 'causative_reversal' || complexChoice === 'causative_passive_inverted') {
+        dynamicCritique = `In Japanese, the causative-passive "${predWord}" expresses being subjected to an action ("${refEx}"), but you translated it as causing the action ("${stEx}").`;
+      } else if (rel === 'benefactive_direction_inverted' || summaryCritiqueChoice === 'wrong_benefactive_or_recipient' || benefactiveChoice === 'recipient_reversed_self_vs_other') {
+        dynamicCritique = `You translated "${predWord}" as "${stEx}", but it indicates a favor received from someone else ("${refEx}"), not a favor you performed.`;
+      } else if (rel === 'potential_vs_intent' || summaryCritiqueChoice === 'potential_or_modality_error' || predCheck === 'potential_vs_intent_error') {
+        dynamicCritique = `You translated "${predWord}" as "${stEx}", but the potential form expresses "${refEx}" (ability/possibility rather than future certainty).`;
+      } else if (rel === 'obligation_vs_absence' || complexChoice === 'double_negative_obligation_inverted') {
+        dynamicCritique = `"${predWord}" expresses an obligation ("${refEx}"), but your translation "${stEx}" turned it into an absence of obligation.`;
+      } else if (rel === 'counterfactual_regret_vs_condition' || complexChoice === 'conditional_regret_missed') {
+        dynamicCritique = `"${predWord}" expresses counterfactual regret ("${refEx}"), rather than a literal factual condition ("${stEx}").`;
+      } else if (rel === 'question_vs_statement' || summaryCritiqueChoice === 'interrogative_or_question_error' || scopeCheck === 'confused_indefinite_with_wh_word') {
+        dynamicCritique = `You translated this as an open question ("${stEx}"), but "${predWord}" is an indefinite pronoun in a statement ("${refEx}").`;
+      } else {
+        dynamicCritique = `In this context, "${predWord}" naturally translates to "${refEx}", whereas "${stEx}" sounds slightly awkward or overly literal.`;
       }
+    } else if (complexChoice && complexChoice !== 'accurate_or_not_stacked' && complexChoice !== 'stacked_conjugation_not_applicable') {
+      if (complexChoice === 'causative_passive_inverted') {
+        dynamicCritique = `You inverted the causative-passive: "${predWord}" expresses being subjected to an action ("was made to / was kept waiting"), not that you actively made someone else wait.`;
+      } else if (complexChoice === 'causative_benefactive_inverted') {
+        dynamicCritique = `You misunderstood the causative-benefactive: "${predWord}" expresses being granted permission or receiving a favor ("let me do it"), not actively forcing someone else.`;
+      } else if (complexChoice === 'potential_change_of_state_missed') {
+        dynamicCritique = `"${predWord}" expresses becoming unable to do something with regret ("ended up unable to..."), rather than a simple refusal or past negative.`;
+      } else if (complexChoice === 'conditional_regret_missed') {
+        dynamicCritique = `"${predWord}" expresses counterfactual regret ("I should have / wish I hadn't"), rather than a factual condition ("if...").`;
+      } else if (complexChoice === 'double_negative_obligation_inverted') {
+        dynamicCritique = `"${predWord}" is an obligation pattern meaning "have no choice but to / must do", but you translated it as an inability ("cannot do").`;
+      }
+    } else if (polCheck === 'polarity_inverted') {
+      dynamicCritique = `Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).`;
+    } else if (summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') {
+      dynamicCritique = `You reversed the passive voice: "${predWord}" indicates the subject is receiving the action, not initiating it.`;
+    } else if (summaryCritiqueChoice === 'subject_object_inverted') {
+      dynamicCritique = `You inverted who did what to whom: the grammatical subject and object were swapped.`;
+    } else if (summaryCritiqueChoice === 'wrong_benefactive_or_recipient' || benefactiveChoice === 'recipient_reversed_self_vs_other') {
+      dynamicCritique = `You reversed the favor direction: "${predWord}" indicates an action performed for someone else rather than for oneself (or vice versa).`;
+    } else if (scopeCheck === 'confused_indefinite_with_wh_word' || summaryCritiqueChoice === 'interrogative_or_question_error') {
+      dynamicCritique = `You translated this as an open question ("what"), but "${predWord}" is an indefinite pronoun ("something/anything") in a statement.`;
+    } else if (summaryCritiqueChoice === 'potential_or_modality_error' || predCheck === 'potential_vs_intent_error') {
+      dynamicCritique = `"${predWord}" is in the potential form ("can do"), but you translated it as simple future intent ("will do").`;
+    } else if (predCheck === 'tense_past_present_error' || summaryCritiqueChoice === 'tense_or_aspect_error') {
+      dynamicCritique = `Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).`;
+    } else if (summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference') {
+      if (predWord === '今度') {
+        dynamicCritique = `In an invitation context, 今度 naturally means "sometime soon" or "next time", whereas translating it literally as "this time" sounds awkward in English.`;
+      } else {
+        dynamicCritique = `The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.`;
+      }
+    } else if (summaryCritiqueChoice === 'wrong_verb_or_action') {
+      dynamicCritique = `The core verb or action was misunderstood or mistranslated.`;
     }
 
     // 5. Strict Scoring and Presentation Reconciliation:
-    // Invariant: A score of 10/10 REQUIRES mistakes.length === 0 AND sentenceCritiques.length === 0.
-    // If advisories.length > 0 (only minor nuance/awkward phrasing), overall score is 8 or 9 (never 10), and rendered in amber (not red).
     const hasCriticalFault = mistakes.length > 0 || sentenceCritiques.some((sc) => sc.severity === 'critical');
     const hasModerateFault = sentenceCritiques.some((sc) => sc.severity === 'moderate');
-    // If every single word token was validated as natural/correct (0 mistakes, 0 advisories, 0 critiques),
-    // and isFlawlessProb >= 0.80, do not let reference-translation synonym mismatch penalize to advisory!
     const isCleanFlawless = (!hasCriticalFault && !hasModerateFault && mistakes.length === 0 && advisories.length === 0 && sentenceCritiques.length === 0 && isFlawlessProb >= 0.80);
     const hasAdvisory = advisories.length > 0 || (!isCleanFlawless && summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference');
 
@@ -973,7 +1041,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       overall = 8;
     } else {
       if (bracketChoice === '10_flawless') {
-        overall = hasCriticalFault ? 5 : 8; // capped because structural faults exist
+        overall = hasCriticalFault ? 5 : 8;
       } else if (bracketChoice === '8_minor_nuance') {
         overall = (mistakes.length === 0 && sentenceCritiques.length === 0 && isFlawlessProb >= 0.75) ? 10 : (hasCriticalFault ? 6 : 8);
       } else if (bracketChoice === '5_moderate_error') {
@@ -987,42 +1055,72 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       }
     }
 
-    const summaryCritiqueText = sentenceCritiques.length > 0 ? sentenceCritiques[0].label : '';
+    const bracketLabels = {
+      '10_flawless': 'Flawless',
+      '8_minor_nuance': 'Minor Nuance',
+      '5_moderate_error': 'Moderate Error',
+      '3_major_error': 'Major Error',
+      '1_fatal_error': 'Fatal Error'
+    };
+    const bracketLabel = bracketLabels[bracketChoice] || (overall === 10 ? 'Flawless' : 'Evaluation');
+
+    const summaryCritiqueText = dynamicCritique || (sentenceCritiques.length > 0 ? sentenceCritiques[0].label : '');
     const scoreLabel = `${overall}/10`;
     const scoreClass = overall === 10 ? 'high' : (overall >= 7 ? 'med' : 'low');
+
+    // Filter granular mistakes/advisories to avoid repeating the target vocab or morpheme splinters if dynamic critique already explains it
+    const displayMistakes = summaryCritiqueText ? mistakes.filter((m) => m.word !== cleanTarget && !m.word.startsWith('Sentence:')) : mistakes;
+    const displayAdvisories = summaryCritiqueText ? advisories.filter((a) => a.word !== cleanTarget && !a.word.startsWith('Sentence:')) : advisories;
 
     return {
       overall,
       scoreLabel,
       scoreClass,
+      bracketLabel,
       summaryCritiqueText,
+      dynamicCritique,
+      excerptComparison,
       sentenceCritiques,
       mistakes,
       advisories,
+      displayMistakes,
+      displayAdvisories,
       isFlawlessProb,
       severityScore,
       bracket: bracketChoice,
       words,
+      minConfidence,
+      avgConfidence,
       rawAnswers: answers
     };
   }
 
   function renderJevCard(metrics, modelName) {
     if (!metrics) return '';
-    const { overall, scoreLabel, scoreClass, summaryCritiqueText, sentenceCritiques, mistakes, advisories, words } = metrics;
+    const { overall, scoreLabel, scoreClass, bracketLabel, summaryCritiqueText, excerptComparison, displayMistakes, displayAdvisories, words } = metrics;
     const isMinor = overall >= 7;
 
-    const hasMistakes = mistakes && mistakes.length > 0;
-    const hasAdvisories = advisories && advisories.length > 0;
+    const mistakesToShow = displayMistakes || [];
+    const advisoriesToShow = displayAdvisories || [];
+    const hasMistakes = mistakesToShow.length > 0;
+    const hasAdvisories = advisoriesToShow.length > 0;
     const tag = modelName || CFG.jevModel || DEFAULT_JEV_MODEL;
 
     return `
       <details class="jpdb-ai-jev-card" open>
         <summary class="jpdb-ai-jev-head" title="Click to collapse/expand breakdown">
           <span class="jpdb-ai-jev-title">⚡ Instant Assessment <span class="jpdb-ai-jev-tag">${escapeHtml(tag)}</span></span>
-          <span class="jpdb-ai-jev-score ${scoreClass}" title="Calculated instant score: ${overall}/10">${scoreLabel}</span>
+          <span class="jpdb-ai-jev-score ${scoreClass}" title="Calculated instant score: ${overall}/10">${scoreLabel}${bracketLabel ? ` (${escapeHtml(bracketLabel)})` : ''}</span>
         </summary>
         <div class="jpdb-ai-jev-body">
+          ${excerptComparison ? `
+            <div class="jpdb-ai-jev-excerpt">
+              <span class="jpdb-ai-jev-pill err" title="Your draft excerpt">"${escapeHtml(excerptComparison.studentExcerpt)}"</span>
+              <span class="jpdb-ai-jev-arrow">➔</span>
+              <span class="jpdb-ai-jev-pill ok" title="Reference translation excerpt">"${escapeHtml(excerptComparison.referenceExcerpt)}"</span>
+            </div>
+          ` : ''}
+
           ${summaryCritiqueText ? `
             <div class="jpdb-ai-jev-summary ${isMinor ? 'minor' : ''}">
               <span class="jpdb-ai-jev-summary-icon">⚠️</span>
@@ -1034,7 +1132,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             <div class="jpdb-ai-jev-mistakes">
               <div class="jpdb-ai-jev-mistakes-title">Detected Issues:</div>
               <ul class="jpdb-ai-jev-mistakes-list">
-                ${mistakes.map((m) => `
+                ${mistakesToShow.map((m) => `
                   <li>
                     <span class="jpdb-ai-jev-word">${escapeHtml(m.word)}</span>: 
                     <span class="jpdb-ai-jev-desc">${escapeHtml(m.description)}</span>
@@ -1048,7 +1146,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             <div class="jpdb-ai-jev-advisories" style="${hasMistakes ? 'margin-top:6px;' : ''}">
               <div class="jpdb-ai-jev-advisories-title">Nuance Notes:</div>
               <ul class="jpdb-ai-jev-advisories-list">
-                ${advisories.map((a) => `
+                ${advisoriesToShow.map((a) => `
                   <li>
                     <span class="jpdb-ai-jev-word advisory">${escapeHtml(a.word)}</span>: 
                     <span class="jpdb-ai-jev-desc">${escapeHtml(a.description)}</span>
@@ -1071,8 +1169,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           ${words && words.length > 0 ? `
             <div class="jpdb-ai-jev-tokens">
               ${words.map((w, idx) => {
-                const isErr = mistakes && mistakes.some((m) => m.tokenIndex === idx || (m.tokenIndex === null && (m.word === w || m.word.includes(w) || w.includes(m.word))));
-                const isAdv = !isErr && advisories && advisories.some((a) => a.tokenIndex === idx || (a.tokenIndex === null && (a.word === w || a.word.includes(w) || w.includes(a.word))));
+                const isErr = (metrics.mistakes || []).some((m) => m.tokenIndex === idx || (m.tokenIndex === null && (m.word === w || m.word.includes(w) || w.includes(m.word))));
+                const isAdv = !isErr && (metrics.advisories || []).some((a) => a.tokenIndex === idx || (a.tokenIndex === null && (a.word === w || a.word.includes(w) || w.includes(a.word))));
                 const tokenClass = isErr ? 'err' : (isAdv ? 'advisory' : 'ok');
                 return `<span class="jpdb-ai-jev-token ${tokenClass}">${escapeHtml(w)}</span>`;
               }).join(' ')}
@@ -1116,7 +1214,12 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       const cleanJp = (info.sentenceJP || '').replace(/\([^)]*\)/g, '').trim();
       const cleanTarget = (info.vocab || '').replace(/\([^)]*\)/g, '').trim();
       const targetText = userDraft || info.sentenceEN || '';
-      const words = getJapaneseSentenceWords(info.sentenceJP, info.vocab);
+      const allWords = getJapaneseSentenceWords(info.sentenceJP, info.vocab);
+      const contentWords = (allWords || []).filter((w) => w && w.length > 1 && !['から', 'まで', 'より', 'けど', 'ので', 'のに', 'んだ'].includes(w));
+      const words = contentWords.length > 0 ? contentWords : allWords;
+
+      const studentChunks = extractPhraseChunks(targetText);
+      const refChunks = extractPhraseChunks(info.sentenceEN || '');
 
       const state = {
         japanese_sentence: cleanJp || info.sentenceJP || '',
@@ -1124,10 +1227,12 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         target_vocabulary: cleanTarget || info.vocab || '',
         target_meanings: (info.meanings || []).slice(0, 3),
         reference_translation: info.sentenceEN || '',
-        words: words
+        words: words,
+        student_chunks: studentChunks,
+        reference_chunks: refChunks
       };
 
-            const questions = {
+      const questions = {
         is_flawless: {
           type: 'noul',
           instructions: {
@@ -1165,7 +1270,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           options: [
             'no_flaws_accurate',
             'wrong_benefactive_or_recipient',
-            'agent_or_passive_reversed',
+            'passive_voice_reversed',
+            'subject_object_inverted',
             'wrong_verb_or_action',
             'tense_or_aspect_error',
             'potential_or_modality_error',
@@ -1175,7 +1281,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           criteria: {
             no_flaws_accurate: 'Accurate, faithful, and natural translation with no notable errors (including valid synonyms, direct translations like "thought" for 思っていた, idiomatic equivalents, conversational softeners, and minor English typos or homophones where Japanese meaning is understood).',
             wrong_benefactive_or_recipient: 'Confused the recipient or beneficiary of the action (e.g. translated ~てやってくれ as doing a favor for "me" instead of a third party/pet, or confused give/receive direction).',
-            agent_or_passive_reversed: 'Reversed who did the action to whom, or passive was translated as active.',
+            passive_voice_reversed: 'Reversed passive voice into active (e.g. "was told" translated as "I told"), where subject was receiving the action.',
+            subject_object_inverted: 'Inverted the grammatical subject and object/agent in an active sentence (who did what to whom).',
             wrong_verb_or_action: 'The core verb or action was mistranslated or misunderstood.',
             tense_or_aspect_error: 'Past vs present/future tense was confused.',
             potential_or_modality_error: "Potential ('can') vs intent ('will'), or certainty vs possibility.",
@@ -1220,6 +1327,29 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             predicate_omitted_or_wrong: 'The main action/verb was omitted or mistranslated.'
           }
         },
+        predicate_complex_conjugation: {
+          type: 'choice',
+          instructions: {
+            question: 'Analyze any compound, stacked, or heavily inflected predicate in `japanese_sentence` (e.g. causative-passive 〜させられる/〜される, causative-benefactive 〜させてくれる/〜させてやる, potential change-of-state 〜なくなっちゃった, conditional regret 〜なければよかった, double-negative obligation 〜ないわけにはいかない). Did `user_translation` accurately convey the full combination of forms?',
+            focus: 'Identify if any layer of the stacked conjugation was inverted, misinterpreted, or dropped.'
+          },
+          options: [
+            'accurate_or_not_stacked',
+            'causative_passive_inverted',
+            'causative_benefactive_inverted',
+            'potential_change_of_state_missed',
+            'conditional_regret_missed',
+            'double_negative_obligation_inverted'
+          ],
+          criteria: {
+            accurate_or_not_stacked: 'The combined meanings of all stacked affixes (causative, passive, tense, benefactive) are accurately conveyed, or predicate is simple.',
+            causative_passive_inverted: 'Causative-passive (〜させられる / 〜される, e.g. 待たされた) was translated as active causative or simple active, inverting who was subjected to the action (e.g. "I made them wait" instead of "I was kept waiting").',
+            causative_benefactive_inverted: 'Causative-benefactive (〜させてくれる / 〜させてやる, e.g. 行かせてくれた) was misunderstood regarding who granted permission or who performed the action.',
+            potential_change_of_state_missed: 'Potential + change of state / regret (〜なくなっちゃった) was translated as simple past negative rather than becoming unable to do.',
+            conditional_regret_missed: 'Conditional regret (〜ばよかった / 〜なければよかった) was translated as an active factual condition rather than regret ("I should have / I shouldn\'t have").',
+            double_negative_obligation_inverted: 'Double negative or bound obligation pattern (〜ないわけにはいかない, 〜ざるを得ない) was translated as a negative/inability rather than an obligation ("must go / have no choice").'
+          }
+        },
         interrogative_check: {
           type: 'choice',
           instructions: 'If `japanese_sentence` contains a question word or interrogative (e.g. いつ/when, どこ/where, 誰/who, 何/what, どう/how), was it translated accurately in `user_translation`?',
@@ -1250,6 +1380,60 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           }
         }
       };
+
+      if (studentChunks.length > 0 && refChunks.length > 0) {
+        const toCriteria = (arr) => Object.fromEntries(arr.map((k) => [k, null]));
+
+        questions.flawed_student_excerpt = {
+          type: 'choice',
+          instructions: {
+            question: `Which excerpt in \`student_chunks\` contains the mistranslation or conflicting meaning of "${cleanTarget}"?`,
+            focus: 'Pick the specific phrase chunk where the student translation diverges from the Japanese sentence.'
+          },
+          options: studentChunks,
+          criteria: toCriteria(studentChunks)
+        };
+
+        questions.correct_reference_excerpt = {
+          type: 'choice',
+          instructions: {
+            question: `Which excerpt in \`reference_chunks\` correctly expresses "${cleanTarget}" in English?`,
+            focus: 'Pick the corresponding proper English phrase for this Japanese vocabulary.'
+          },
+          options: refChunks,
+          criteria: toCriteria(refChunks)
+        };
+
+        questions.contrast_relation = {
+          type: 'choice',
+          instructions: {
+            question: `Contrast the student excerpt with the reference excerpt for "${cleanTarget}".`,
+            focus: 'Characterize the exact difference between the student phrasing and the reference translation.'
+          },
+          options: [
+            'passive_vs_active_reversal',
+            'causative_reversal',
+            'benefactive_direction_inverted',
+            'potential_vs_intent',
+            'obligation_vs_absence',
+            'counterfactual_regret_vs_condition',
+            'question_vs_statement',
+            'word_choice_or_nuance_mismatch',
+            'accurate_equivalent'
+          ],
+          criteria: {
+            passive_vs_active_reversal: 'Student translated as active subject, reference is passive recipient.',
+            causative_reversal: 'Student translated as active causer, reference is subjected person.',
+            benefactive_direction_inverted: 'Favor direction reversed (doing favor for someone vs receiving favor).',
+            potential_vs_intent: 'Potential ability/can vs future certainty/will.',
+            obligation_vs_absence: 'Obligation (must do) vs absence of obligation.',
+            counterfactual_regret_vs_condition: 'Counterfactual wish/regret vs literal condition.',
+            question_vs_statement: 'Open question vs indefinite pronoun statement.',
+            word_choice_or_nuance_mismatch: 'Literal phrasing or nuance misfit.',
+            accurate_equivalent: 'Student phrasing and reference phrasing are equivalent in meaning.'
+          }
+        };
+      }
 
       const grammarCriteria = {
         correct_grammar_or_not_applicable: 'Tense, voice, aspect, and mood are correctly translated, or this word is an uninflected noun, pronoun, or particle.',
@@ -1296,7 +1480,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       if (res.status >= 200 && res.status < 300) {
         const data = JSON.parse(res.responseText);
         if (data && data.answers) {
-          const metrics = parseJevScores(data.answers, words, cleanTarget);
+          const metrics = parseJevScores(data.answers, words, cleanTarget, targetText, info.sentenceEN);
           return {
             cardHtml: renderJevCard(metrics, model),
             metrics,
@@ -1757,10 +1941,13 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         updateDiagFooterLink();
         renderDiagList();
       },
+      downloadOne: downloadSpecificDiagnostic,
+      parseJevScores: parseJevScores,
+      extractPhraseChunks: extractPhraseChunks,
+      renderJevCard: renderJevCard
     };
     targetWin.__jpdbAiExportSettings = exportSettingsJson;
     targetWin.__jpdbAiImportSettings = applyImportedSettings;
-    targetWin.__jpdbAiDiagnostics.downloadOne = downloadSpecificDiagnostic;
   } catch {}
 
   function buildRateTranslationPrompt(info, userDraft) {
@@ -1885,8 +2072,16 @@ html.dark-mode .jpdb-ai-jev-tokens{border-color:rgba(147,197,253,.2)}
 .jpdb-ai-jev-token.ok{background:rgba(22,163,74,.1);color:#15803d}
 html.dark-mode .jpdb-ai-jev-token.ok{background:rgba(22,163,74,.2);color:#86efac}
 .jpdb-ai-jev-token.err{background:rgba(239,68,68,.12);color:#b91c1c;font-weight:700}
-html.dark-mode .jpdb-ai-jev-token.err{background:rgba(239,68,68,.25);color:#fca5a5}
 .jpdb-ai-jev-waiting{margin-top:10px;font-size:11.5px;opacity:.75;font-style:italic;display:flex;align-items:center;gap:5px}
+.jpdb-ai-jev-excerpt{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 10px;background:rgba(0,0,0,.03);border-radius:6px;border:1px solid rgba(0,0,0,.06);font-size:12px;flex-wrap:wrap}
+html.dark-mode .jpdb-ai-jev-excerpt{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1)}
+.jpdb-ai-jev-pill{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:600;font-size:11.5px;line-height:1.4}
+.jpdb-ai-jev-pill.err{background:rgba(239,68,68,.15);color:#b91c1c;border:1px solid rgba(239,68,68,.3)}
+html.dark-mode .jpdb-ai-jev-pill.err{background:rgba(239,68,68,.25);color:#fca5a5;border-color:rgba(239,68,68,.4)}
+.jpdb-ai-jev-pill.ok{background:rgba(22,163,74,.15);color:#15803d;border:1px solid rgba(22,163,74,.3)}
+html.dark-mode .jpdb-ai-jev-pill.ok{background:rgba(22,163,74,.25);color:#86efac;border-color:rgba(22,163,74,.4)}
+.jpdb-ai-jev-arrow{color:#6b7280;font-weight:700;font-size:12px}
+html.dark-mode .jpdb-ai-jev-arrow{color:#9ca3af}
 
 .jpdb-ai-msg.md{white-space:normal}
 .jpdb-ai-msg.md p{margin:.35em 0}
@@ -2338,6 +2533,22 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         history.push({ role: 'assistant', content: flawlessReply });
         saveSession();
         recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, flawlessReply, 10, 0);
+        return;
+      }
+
+      // Step 2b: Fast-pass for confident complex conjugation / dynamic critique!
+      // If Jev identified a high-confidence dynamic critique (minConf >= 0.80 or avgConf >= 0.88), deliver instant critique without LLM latency!
+      if (jevMetrics && jevMetrics.dynamicCritique && (jevMetrics.minConfidence >= 0.80 || jevMetrics.avgConfidence >= 0.88)) {
+        const scoreBracket = jevMetrics.bracketLabel || `${jevMetrics.overall}/10`;
+        const fastReply = `**Score: ${jevMetrics.overall}/10 (${scoreBracket})**\n\n${jevMetrics.dynamicCritique}` +
+          (info.sentenceEN ? `\n\n**Reference Translation:**\n"${info.sentenceEN}"` : '');
+        setMsgMarkdown(thinking, fastReply, jevCardHtml);
+        const logEntry = { role: 'assistant', text: fastReply, jevHtml: jevCardHtml, isErr: false };
+        msgLog.push(logEntry);
+        history.push({ role: 'user', content: userPrompt });
+        history.push({ role: 'assistant', content: fastReply });
+        saveSession();
+        recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, fastReply, jevMetrics.overall, 0);
         return;
       }
 

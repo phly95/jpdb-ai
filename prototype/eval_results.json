@@ -1,0 +1,72 @@
+[
+  {
+    "id": "passive_inverted",
+    "type": "translation_critique",
+    "jevElapsed": 367,
+    "llmElapsed": 864,
+    "speedup": "2.4x",
+    "jevScore": 3,
+    "jevCritique": "passive_voice_reversed",
+    "tokenCost": 0.000197988
+  },
+  {
+    "id": "benefactive_reversed",
+    "type": "translation_critique",
+    "jevElapsed": 230,
+    "llmElapsed": 699,
+    "speedup": "3.0x",
+    "jevScore": 3,
+    "jevCritique": "subject_object_inverted",
+    "tokenCost": 0.000188622
+  },
+  {
+    "id": "potential_vs_intent",
+    "type": "translation_critique",
+    "jevElapsed": 193,
+    "llmElapsed": 851,
+    "speedup": "4.4x",
+    "jevScore": 5,
+    "jevCritique": "potential_or_modality_error",
+    "tokenCost": 0.000142506
+  },
+  {
+    "id": "flawless_synonym",
+    "type": "translation_critique",
+    "jevElapsed": 195,
+    "llmElapsed": 869,
+    "speedup": "4.5x",
+    "jevScore": 10,
+    "jevCritique": "no_flaws_accurate",
+    "tokenCost": 0.00016086
+  },
+  {
+    "id": "indefinite_vs_wh",
+    "type": "translation_critique",
+    "jevElapsed": 204,
+    "llmElapsed": 818,
+    "speedup": "4.0x",
+    "jevScore": 3,
+    "jevCritique": "interrogative_or_question_error",
+    "tokenCost": 0.000151368
+  },
+  {
+    "id": "vocab_role_polysemous",
+    "type": "vocab_explanation",
+    "jevElapsed": 224,
+    "llmElapsed": 1132,
+    "speedup": "5.1x",
+    "appliedSense": "sense_2",
+    "role": "main_predicate_verb",
+    "tokenCost": 0.000071484
+  },
+  {
+    "id": "vocab_role_adversative_passive",
+    "type": "vocab_explanation",
+    "jevElapsed": 171,
+    "llmElapsed": 880,
+    "speedup": "5.1x",
+    "appliedSense": "sense_0",
+    "role": "main_predicate_verb",
+    "tokenCost": 0.000069258
+  }
+]
