@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.85
+// @version      1.0.86
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1173,7 +1173,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           ${overall < 10 && summaryCritiqueText ? `
             <div class="jpdb-ai-jev-summary ${isMinor ? 'minor' : ''}">
               <span class="jpdb-ai-jev-summary-icon">⚠️</span>
-              <div>${escapeHtml(summaryCritiqueText)}</div>
+              <div>${renderInline(escapeHtml(summaryCritiqueText))}</div>
             </div>
           ` : ''}
 
@@ -1184,7 +1184,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
                 ${mistakesToShow.map((m) => `
                   <li>
                     <span class="jpdb-ai-jev-word">${escapeHtml(m.word)}</span>: 
-                    <span class="jpdb-ai-jev-desc">${escapeHtml(m.description)}</span>
+                    <span class="jpdb-ai-jev-desc">${renderInline(escapeHtml(m.description))}</span>
                   </li>
                 `).join('')}
               </ul>
@@ -1198,7 +1198,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
                 ${advisoriesToShow.map((a) => `
                   <li>
                     <span class="jpdb-ai-jev-word advisory">${escapeHtml(a.word)}</span>: 
-                    <span class="jpdb-ai-jev-desc">${escapeHtml(a.description)}</span>
+                    <span class="jpdb-ai-jev-desc">${renderInline(escapeHtml(a.description))}</span>
                   </li>
                 `).join('')}
               </ul>
