@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.83
+// @version      1.0.84
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -724,6 +724,11 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const scopeCheck = answers.question_type_and_scope?.choice;
     const complexChoice = answers.predicate_complex_conjugation?.choice;
 
+    const typoCheck = answers.english_typo_check?.choice;
+    const typoConf = answers.english_typo_check?.confidence ?? 0;
+    const typoWord = answers.suspected_typo_word?.choice;
+    const isTypo = typoCheck === 'likely_english_typo_with_sound_comprehension' && typoConf >= 0.70;
+
     if (scopeCheck === 'confused_indefinite_with_wh_word') {
       sentenceCritiques.push({
         code: 'confused_indefinite_with_wh_word',
@@ -979,8 +984,13 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const targetWord = isTargetFlawed ? cleanTarget : (specificWordIssue?.word || null);
     let dynamicCritique = '';
 
-    // Pedagogical priority 1: Check if a specific modifier or word was omitted (e.g. そう "very/so", あまり, ちょっと)
-    if (omittedItem && (!isTargetFlawed || omittedItem.word === cleanTarget)) {
+    if (isTypo) {
+      if (typoWord && typoWord !== 'none') {
+        dynamicCritique = `Your Japanese comprehension is sound, but "**${typoWord}**" appears to be an English typo or autocorrect slip in your translation.`;
+      } else {
+        dynamicCritique = `Your Japanese comprehension is sound, but your translation appears to contain a minor English keyboard typo or autocorrect slip.`;
+      }
+    } else if (omittedItem && (!isTargetFlawed || omittedItem.word === cleanTarget)) {
       if (stEx && refEx) {
         dynamicCritique = `Your draft ("${stEx}") missed **${omittedItem.word}**, omitting the degree nuance conveyed in the reference translation ("${refEx}").`;
       } else {
@@ -1057,7 +1067,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const isFlawlessCandidate = (isFlawlessProb >= 0.85 && bracketChoice === '10_flawless' && (severityScore === null || severityScore >= 3.5));
 
     let overall = 8;
-    if (!hasCriticalFault && !hasModerateFault && !hasAdvisory && (isCleanFlawless || isFlawlessCandidate || bracketChoice === '10_flawless' || isFlawlessProb >= 0.85)) {
+    if (isTypo) {
+      overall = 8;
+    } else if (!hasCriticalFault && !hasModerateFault && !hasAdvisory && (isCleanFlawless || isFlawlessCandidate || bracketChoice === '10_flawless' || isFlawlessProb >= 0.85)) {
       overall = 10;
     } else if (bracketChoice === '10_flawless') {
       overall = hasCriticalFault ? 5 : (hasModerateFault ? 7 : 8);
@@ -1080,10 +1092,10 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       '3_major_error': 'Major Error',
       '1_fatal_error': 'Fatal Error'
     };
-    const bracketLabel = bracketLabels[bracketChoice] || (overall === 10 ? 'Flawless' : 'Evaluation');
+    const bracketLabel = isTypo ? 'Minor Nuance' : (bracketLabels[bracketChoice] || (overall === 10 ? 'Flawless' : 'Evaluation'));
 
-    if (overall === 10) {
-      dynamicCritique = '';
+    if (overall === 10 || isTypo) {
+      if (overall === 10) dynamicCritique = '';
       excerptComparison = null;
     }
 
@@ -1092,8 +1104,17 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const scoreClass = overall === 10 ? 'high' : (overall >= 7 ? 'med' : 'low');
 
     // Filter granular mistakes/advisories to avoid repeating the target vocab or morpheme splinters if dynamic critique already explains it
-    const displayMistakes = overall === 10 ? [] : (summaryCritiqueText ? mistakes.filter((m) => m.word !== cleanTarget && !m.word.startsWith('Sentence:')) : mistakes);
-    const displayAdvisories = overall === 10 ? [] : (summaryCritiqueText ? advisories.filter((a) => a.word !== cleanTarget && !a.word.startsWith('Sentence:')) : advisories);
+    const displayMistakes = (overall === 10 || isTypo) ? [] : (summaryCritiqueText ? mistakes.filter((m) => m.word !== cleanTarget && !m.word.startsWith('Sentence:')) : mistakes);
+    const displayAdvisories = (overall === 10 || isTypo) ? [] : (summaryCritiqueText ? advisories.filter((a) => a.word !== cleanTarget && !a.word.startsWith('Sentence:')) : advisories);
+
+    // Decision-level confidence assessment
+    const bracketConf = answers.grade_bracket?.confidence ?? 0;
+    const isClearComplexError = complexChoice && complexChoice !== 'accurate_or_not_stacked' && complexChoice !== 'stacked_conjugation_not_applicable' && (answers.predicate_complex_conjugation?.confidence ?? 0) >= 0.75;
+    const isClearBenefactiveError = benefactiveChoice === 'recipient_reversed_self_vs_other' && (answers.benefactive_direction?.confidence ?? 0) >= 0.80;
+    const isClearVoiceError = (summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') && ((answers.sentence_critique_summary?.confidence ?? 0) >= 0.75 || (answers.predicate_mood_and_voice?.confidence ?? 0) >= 0.75);
+    const isClearPotentialError = (summaryCritiqueChoice === 'potential_or_modality_error' || predCheck === 'potential_vs_intent_error') && ((answers.sentence_critique_summary?.confidence ?? 0) >= 0.75 || (answers.predicate_mood_and_voice?.confidence ?? 0) >= 0.75);
+    const isClearSummaryError = summaryCritiqueChoice && summaryCritiqueChoice !== 'no_flaws_accurate' && (answers.sentence_critique_summary?.confidence ?? 0) >= 0.80;
+    const isDecisionConfident = (isClearComplexError || isClearBenefactiveError || isClearVoiceError || isClearPotentialError || isClearSummaryError);
 
     return {
       overall,
@@ -1110,10 +1131,15 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       displayAdvisories,
       isFlawlessProb,
       severityScore,
-      bracket: bracketChoice,
+      bracket: isTypo ? '8_minor_nuance' : bracketChoice,
       words,
       minConfidence,
       avgConfidence,
+      isTypo,
+      typoConfidence: typoConf,
+      typoWord: (typoWord && typoWord !== 'none') ? typoWord : null,
+      bracketConfidence: bracketConf,
+      isDecisionConfident,
       rawAnswers: answers
     };
   }
@@ -1243,6 +1269,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
       const studentChunks = extractPhraseChunks(targetText);
       const refChunks = extractPhraseChunks(info.sentenceEN || '');
+      const userWords = (targetText || '').trim().split(/\s+/).map((w) => w.replace(/^[\.,!?"'\s]+|[\.,!?"'\s]+$/g, '')).filter((w) => w.length > 0);
 
       const state = {
         japanese_sentence: cleanJp || info.sentenceJP || '',
@@ -1251,6 +1278,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         target_meanings: (info.meanings || []).slice(0, 3),
         reference_translation: info.sentenceEN || '',
         words: words,
+        user_words: userWords,
         student_chunks: studentChunks,
         reference_chunks: refChunks
       };
@@ -1263,13 +1291,30 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             focus: 'Translations that convey the natural communicative meaning, pragmatic tone, or idiomatic sense count as flawless (1.0). Minor English typos, phonetic homophones (e.g. their/there, its/it\'s, hear/here), or autocorrect slips do not disqualify a translation if Japanese comprehension is accurate. CRITICAL EXCEPTION: Confusing an indefinite pronoun like 何か ("something/anything") with an open wh-question word like 何 ("what"), turning a yes/no question into an open-ended wh-question, is a clear semantic error and MUST return 0.0 (false).'
           }
         },
+        english_typo_check: {
+          type: 'choice',
+          instructions: {
+            question: 'Does `user_translation` contain an English keyboard typo, homophone, or autocorrect slip (e.g. "now" for "not", "their" for "there", "we\'ll" for "well", "hear" for "here", "to" for "too", "its" for "it\'s") where the underlying Japanese comprehension was otherwise accurate?',
+            focus: 'Determine whether a word discrepancy is a harmless English keyboard/autocorrect slip or a genuine Japanese comprehension failure.'
+          },
+          options: [
+            'no_typos_clean_english',
+            'likely_english_typo_with_sound_comprehension',
+            'genuine_japanese_comprehension_error'
+          ],
+          criteria: {
+            no_typos_clean_english: 'English is spelled correctly or has only trivial punctuation variation.',
+            likely_english_typo_with_sound_comprehension: 'An English word looks like an obvious keyboard typo or autocorrect slip (e.g. typing "now" instead of "not" in "it\'s okay to now know that") where the Japanese grammar was clearly understood.',
+            genuine_japanese_comprehension_error: 'The discrepancy is due to mistranslating the Japanese meaning, grammar, or vocabulary, not an English keyboard typo.'
+          }
+        },
         grade_bracket: {
           type: 'choice',
-          instructions: 'Grade this translation on the 10/10 scale considering contextual accuracy and natural English phrasing compared to `reference_translation`. Note: Natural synonyms and direct translations (e.g. "what I thought" for 思っていた when reference says "expected", "talked to" for 話した, "found" for 見つけた), idiomatic expressions, conversational softeners, natural equivalents, and minor English typos/homophones capture the communicative intent perfectly and should receive 10_flawless (do not downgrade to 8_minor_nuance merely because synonyms differ from reference_translation).',
+          instructions: 'Grade this translation on the 10/10 scale considering contextual accuracy and natural English phrasing compared to `reference_translation`. Note: Natural synonyms and direct translations (e.g. "what I thought" for 思っていた when reference says "expected", "talked to" for 話した, "found" for 見つけた), idiomatic expressions, conversational softeners, and natural equivalents capture the communicative intent perfectly and should receive 10_flawless. Obvious English typos or homophones (like typing "now" for "not") where Japanese comprehension is accurate should be graded as 8_minor_nuance (8/10), NOT a major or fatal error.',
           options: ['10_flawless', '8_minor_nuance', '5_moderate_error', '3_major_error', '1_fatal_error'],
           criteria: {
             '10_flawless': 'Flawless, natural, and contextually idiomatic translation (including minor English typos, punctuation slips, or phonetic homophones like their/there, we\'ll/well). Conveys the communicative intent and tone with no deductions.',
-            '8_minor_nuance': 'Good translation that captures the overall meaning, but has a noticeable nuance gap, dropped modifier, or awkward phrasing.',
+            '8_minor_nuance': 'Good translation with minor nuance difference, dropped secondary modifier, or harmless English typo with sound Japanese comprehension.',
             '5_moderate_error': 'Noticeable grammatical or vocabulary error (e.g. potential vs intent, certainty vs possibility, wrong tense, or missed key grammar point).',
             '3_major_error': 'Major error: wrong core verb, reversed passive/active, inverted subject/object, or vital clause missing.',
             '1_fatal_error': 'Fatal error: completely wrong meaning, inverted polarity, unrelated hallucination, or nonsense.'
@@ -1404,8 +1449,19 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         }
       };
 
+      const toCriteria = (arr) => Object.fromEntries(arr.map((k) => [k, null]));
+
+      if (userWords.length > 0) {
+        const typoCandidates = ['none', ...userWords.slice(0, 10)];
+        questions.suspected_typo_word = {
+          type: 'choice',
+          instructions: 'Which word in `user_translation` is the suspected typo or keyboard slip? If there are no typos, select none.',
+          options: typoCandidates,
+          criteria: toCriteria(typoCandidates)
+        };
+      }
+
       if (studentChunks.length > 0 && refChunks.length > 0) {
-        const toCriteria = (arr) => Object.fromEntries(arr.map((k) => [k, null]));
 
         questions.flawed_student_excerpt = {
           type: 'choice',
@@ -2561,9 +2617,15 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         return;
       }
 
-      // Step 2b: Fast-pass for confident complex conjugation / dynamic critique!
-      // If Jev identified a high-confidence dynamic critique (minConf >= 0.80 or avgConf >= 0.88), deliver instant critique without LLM latency!
-      if (jevMetrics && jevMetrics.dynamicCritique && (jevMetrics.minConfidence >= 0.80 || jevMetrics.avgConfidence >= 0.88)) {
+      // Step 2b: Safe fast-pass expansion:
+      // 1. High-confidence English typo detection with sound Japanese comprehension
+      // 2. High-confidence decision-level structural error detection with dynamic critique
+      // 3. Fallback high global confidence (minConf >= 0.80 or avgConf >= 0.88)
+      const isTypoFastPath = jevMetrics && jevMetrics.isTypo && (jevMetrics.typoConfidence >= 0.80);
+      const isStructuralDecisionFastPath = jevMetrics && jevMetrics.isDecisionConfident && (jevMetrics.bracketConfidence >= 0.65) && jevMetrics.dynamicCritique;
+      const isGlobalConfidentFastPath = jevMetrics && jevMetrics.dynamicCritique && (jevMetrics.minConfidence >= 0.80 || jevMetrics.avgConfidence >= 0.88);
+
+      if (isTypoFastPath || isStructuralDecisionFastPath || isGlobalConfidentFastPath) {
         const scoreBracket = jevMetrics.bracketLabel || `${jevMetrics.overall}/10`;
         const fastReply = `**Score: ${jevMetrics.overall}/10 (${scoreBracket})**\n\n${jevMetrics.dynamicCritique}` +
           (info.sentenceEN ? `\n\n**Reference Translation:**\n"${info.sentenceEN}"` : '');
