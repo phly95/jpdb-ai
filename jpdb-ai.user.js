@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.82
+// @version      1.0.83
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1082,13 +1082,18 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     };
     const bracketLabel = bracketLabels[bracketChoice] || (overall === 10 ? 'Flawless' : 'Evaluation');
 
-    const summaryCritiqueText = dynamicCritique || (sentenceCritiques.length > 0 ? sentenceCritiques[0].label : '');
+    if (overall === 10) {
+      dynamicCritique = '';
+      excerptComparison = null;
+    }
+
+    const summaryCritiqueText = overall === 10 ? '' : (dynamicCritique || (sentenceCritiques.length > 0 ? sentenceCritiques[0].label : ''));
     const scoreLabel = `${overall}/10`;
     const scoreClass = overall === 10 ? 'high' : (overall >= 7 ? 'med' : 'low');
 
     // Filter granular mistakes/advisories to avoid repeating the target vocab or morpheme splinters if dynamic critique already explains it
-    const displayMistakes = summaryCritiqueText ? mistakes.filter((m) => m.word !== cleanTarget && !m.word.startsWith('Sentence:')) : mistakes;
-    const displayAdvisories = summaryCritiqueText ? advisories.filter((a) => a.word !== cleanTarget && !a.word.startsWith('Sentence:')) : advisories;
+    const displayMistakes = overall === 10 ? [] : (summaryCritiqueText ? mistakes.filter((m) => m.word !== cleanTarget && !m.word.startsWith('Sentence:')) : mistakes);
+    const displayAdvisories = overall === 10 ? [] : (summaryCritiqueText ? advisories.filter((a) => a.word !== cleanTarget && !a.word.startsWith('Sentence:')) : advisories);
 
     return {
       overall,
@@ -1131,7 +1136,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           <span class="jpdb-ai-jev-score ${scoreClass}" title="Calculated instant score: ${overall}/10">${scoreLabel}${bracketLabel ? ` (${escapeHtml(bracketLabel)})` : ''}</span>
         </summary>
         <div class="jpdb-ai-jev-body">
-          ${excerptComparison ? `
+          ${overall < 10 && excerptComparison ? `
             <div class="jpdb-ai-jev-excerpt">
               <span class="jpdb-ai-jev-pill err" title="Your draft excerpt">"${escapeHtml(excerptComparison.studentExcerpt)}"</span>
               <span class="jpdb-ai-jev-arrow">➔</span>
@@ -1139,14 +1144,14 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             </div>
           ` : ''}
 
-          ${summaryCritiqueText ? `
+          ${overall < 10 && summaryCritiqueText ? `
             <div class="jpdb-ai-jev-summary ${isMinor ? 'minor' : ''}">
               <span class="jpdb-ai-jev-summary-icon">⚠️</span>
               <div>${escapeHtml(summaryCritiqueText)}</div>
             </div>
           ` : ''}
 
-          ${hasMistakes ? `
+          ${overall < 10 && hasMistakes ? `
             <div class="jpdb-ai-jev-mistakes">
               <div class="jpdb-ai-jev-mistakes-title">Detected Issues:</div>
               <ul class="jpdb-ai-jev-mistakes-list">
@@ -1160,7 +1165,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             </div>
           ` : ''}
 
-          ${hasAdvisories ? `
+          ${overall < 10 && hasAdvisories ? `
             <div class="jpdb-ai-jev-advisories" style="${hasMistakes ? 'margin-top:6px;' : ''}">
               <div class="jpdb-ai-jev-advisories-title">Nuance Notes:</div>
               <ul class="jpdb-ai-jev-advisories-list">
@@ -1174,7 +1179,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             </div>
           ` : ''}
 
-          ${!hasMistakes && !hasAdvisories && overall === 10 ? `
+          ${overall === 10 ? `
             <div class="jpdb-ai-jev-flawless">
               <span class="jpdb-ai-jev-check">✓</span> Flawless translation — all words &amp; nuances accurately conveyed!
             </div>
@@ -1187,8 +1192,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           ${words && words.length > 0 ? `
             <div class="jpdb-ai-jev-tokens">
               ${words.map((w, idx) => {
-                const isErr = (metrics.mistakes || []).some((m) => m.tokenIndex === idx || (m.tokenIndex === null && (m.word === w || m.word.includes(w) || w.includes(m.word))));
-                const isAdv = !isErr && (metrics.advisories || []).some((a) => a.tokenIndex === idx || (a.tokenIndex === null && (a.word === w || a.word.includes(w) || w.includes(a.word))));
+                const isErr = overall < 10 && (metrics.mistakes || []).some((m) => m.tokenIndex === idx || (m.tokenIndex === null && (m.word === w || m.word.includes(w) || w.includes(m.word))));
+                const isAdv = overall < 10 && !isErr && (metrics.advisories || []).some((a) => a.tokenIndex === idx || (a.tokenIndex === null && (a.word === w || a.word.includes(w) || w.includes(a.word))));
                 const tokenClass = isErr ? 'err' : (isAdv ? 'advisory' : 'ok');
                 return `<span class="jpdb-ai-jev-token ${tokenClass}">${escapeHtml(w)}</span>`;
               }).join(' ')}
