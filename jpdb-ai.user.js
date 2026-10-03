@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.93
+// @version      1.0.94
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1571,7 +1571,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     // between flawless and minor nuance (e.g. 67% vs 32%), giving ~0.56 choice confidence despite 0% on any error.
     // We permit bracketConf >= 0.50 and summaryConf >= 0.40 ONLY when top-tier non-error probability mass is >= 0.90.
     const bracketOkFor10 = bracketChoice === '10_flawless' && (bracketConf >= 0.75 || (bracketConf >= 0.50 && topTierBracketProb >= 0.90));
-    const summaryOkFor10 = summaryCritiqueChoice === 'no_flaws_accurate' && (summaryConf >= 0.65 || (summaryConf >= 0.40 && cleanSummaryProb >= 0.90));
+    const summaryOkFor10 = summaryCritiqueChoice === 'no_flaws_accurate' && (summaryConf >= 0.65 || (summaryConf >= 0.35 && cleanSummaryProb >= 0.90));
 
     const isStrict10Consensus = (
       bracketOkFor10 &&
@@ -1862,7 +1862,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           type: 'noul',
           instructions: {
             question: 'Is `user_translation` an accurate, faithful, natural, or idiomatic translation of `japanese_sentence` in context?',
-            focus: 'Translations that convey the natural communicative meaning, pragmatic tone, or idiomatic sense count as flawless (1.0). Natural English nominalization or equivalent phrasing (e.g. translating an embedded question clause 何を意味するのか as "the meaning of this word" rather than literally "what this word means") counts as flawless (1.0). Minor English typos, phonetic homophones (e.g. their/there, its/it\'s, hear/here), or autocorrect slips do not disqualify a translation if Japanese comprehension is accurate. CRITICAL EXCEPTION: Confusing an indefinite pronoun like 何か ("something/anything") with an open wh-question word like 何 ("what"), turning a yes/no question into an open-ended wh-question, is a clear semantic error and MUST return 0.0 (false).'
+            focus: 'Translations that convey the natural communicative meaning, pragmatic tone, or idiomatic sense count as flawless (1.0). Ignore capitalization, punctuation, and casing differences (e.g. "mr smith" is fully valid for "Mr. Smith"). Natural English aspect variations for Japanese completed actions (~た / ~ました) translating as either simple past ("came") or present perfect ("has come") are completely natural and count as flawless (1.0). Natural English nominalization or equivalent phrasing (e.g. translating an embedded question clause 何を意味するのか as "the meaning of this word" rather than literally "what this word means") counts as flawless (1.0). Minor English typos, phonetic homophones (e.g. their/there, its/it\'s, hear/here), or autocorrect slips do not disqualify a translation if Japanese comprehension is accurate. CRITICAL EXCEPTION: Confusing an indefinite pronoun like 何か ("something/anything") with an open wh-question word like 何 ("what"), turning a yes/no question into an open-ended wh-question, is a clear semantic error and MUST return 0.0 (false).'
           }
         },
         english_typo_check: {
@@ -1884,10 +1884,10 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         },
         grade_bracket: {
           type: 'choice',
-          instructions: 'Grade this translation on the 10/10 scale considering contextual accuracy and natural English phrasing compared to `reference_translation`. Note: Natural synonyms, equivalent phrasings, and natural nominalizations of embedded clauses (e.g. "the meaning of this word" for 何を意味するのか, direct translations like "what I thought" for 思っていた, "talked to" for 話した, "found" for 見つけた), idiomatic expressions, conversational softeners, and natural equivalents capture the communicative intent perfectly and should receive 10_flawless. Obvious English typos or homophones (like typing "now" for "not") where Japanese comprehension is accurate should be graded as 8_minor_nuance (8/10), NOT a major or fatal error.',
+          instructions: 'Grade this translation on the 10/10 scale considering contextual accuracy and natural English phrasing compared to `reference_translation`. Ignore capitalization, punctuation, and casing differences (e.g. "mr smith" is fully acceptable for "Mr. Smith"). Note: Natural synonyms, equivalent phrasings, natural English aspect variations (e.g. translating 来ました/来た as either "came" or "has come", 行きました as "went" or "has gone"), natural nominalizations of embedded clauses (e.g. "the meaning of this word" for 何を意味するのか, direct translations like "what I thought" for 思っていた, "talked to" for 話した, "found" for 見つけた), idiomatic expressions, conversational softeners, and natural equivalents capture the communicative intent perfectly and should receive 10_flawless. Obvious English typos or homophones (like typing "now" for "not") where Japanese comprehension is accurate should be graded as 8_minor_nuance (8/10), NOT a major or fatal error.',
           options: ['10_flawless', '8_minor_nuance', '5_moderate_error', '3_major_error', '1_fatal_error'],
           criteria: {
-            '10_flawless': 'Flawless, natural, and contextually idiomatic translation (including conversational synonyms and natural nominalizations of embedded clauses). Conveys the communicative intent and tone with no deductions.',
+            '10_flawless': 'Flawless, natural, and contextually idiomatic translation (including conversational synonyms, aspect variations like "came" vs "has come" for 来ました, ignoring casing/punctuation, and natural nominalizations of embedded clauses). Conveys the communicative intent and tone with no deductions.',
             '8_minor_nuance': 'Good translation with minor nuance difference, dropped secondary modifier, or harmless English typo with sound Japanese comprehension.',
             '5_moderate_error': 'Noticeable grammatical or vocabulary error (e.g. potential vs intent, certainty vs possibility, wrong tense, or missed key grammar point).',
             '3_major_error': 'Major error: wrong core verb, reversed passive/active, inverted subject/object, or vital clause missing.',
@@ -1896,19 +1896,19 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         },
         severity: {
           type: 'score',
-          instructions: 'Rate overall accuracy on the 5-point severity scale from 0 (fatal error) to 4 (flawless). Flawless and natural idiomatic translations, as well as translations with minor English typos or homophones (e.g. their/there, we\'ll/well) where Japanese comprehension is accurate, must receive Level 4 (flawless).',
+          instructions: 'Rate overall accuracy on the 5-point severity scale from 0 (fatal error) to 4 (flawless). Ignore capitalization and punctuation differences. Flawless and natural idiomatic translations (including aspect equivalents like "came" vs "has come" for 来ました), as well as translations with minor English typos or homophones (e.g. their/there, we\'ll/well) where Japanese comprehension is accurate, must receive Level 4 (flawless).',
           legend: ['fatal_error', 'major_error', 'moderate_error', 'minor_nuance', 'flawless'],
           criteria: [
             'Fatal error (Level 0): completely wrong message, nonsense, or inverted meaning',
             'Major error (Level 1): wrong core verb, reversed subject/object/passive, or vital clause missing',
             'Moderate error (Level 2): key grammar point or target vocab misunderstood',
             'Minor nuance (Level 3): good translation, but slight nuance shift, awkward word choice, or minor omission',
-            'Flawless (Level 4): natural, accurate, faithful English translation with no deductions'
+            'Flawless (Level 4): natural, accurate, faithful English translation with no deductions (ignore casing/punctuation; includes aspect equivalents like "came" vs "has come")'
           ]
         },
         sentence_critique_summary: {
           type: 'choice',
-          instructions: 'Identify the primary translation flaw or deduction reason in `user_translation` compared to `japanese_sentence` and `reference_translation`. If the translation is idiomatic and accurately conveys the intent (including natural nominalization of embedded clauses like "the meaning of this word" for 何を意味するのか), select no_flaws_accurate.',
+          instructions: 'Identify the primary translation flaw or deduction reason in `user_translation` compared to `japanese_sentence` and `reference_translation`. Ignore capitalization, punctuation, and casing differences. If the translation is idiomatic and accurately conveys the intent (including aspect equivalents like "came" vs "has come" for 来ました/来た, or natural nominalization of embedded clauses like "the meaning of this word" for 何を意味するのか), select no_flaws_accurate.',
           options: [
             'no_flaws_accurate',
             'wrong_benefactive_or_recipient',
@@ -1921,15 +1921,15 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             'minor_nuance_or_word_choice_difference'
           ],
           criteria: {
-            no_flaws_accurate: 'Accurate, faithful, and natural translation with no notable errors (including valid synonyms, natural nominalization of embedded clauses like "the meaning of this word" for 何を意味するのか, direct translations like "thought" for 思っていた, idiomatic equivalents, conversational softeners, and minor English typos or homophones where Japanese meaning is understood).',
+            no_flaws_accurate: 'Accurate, faithful, and natural translation with no notable errors (ignore casing/punctuation like "mr smith" vs "Mr. Smith"; includes valid aspect equivalents like "came" vs "has come" for completed actions 来ました/来た, valid synonyms, natural nominalization of embedded clauses like "the meaning of this word" for 何を意味するのか, direct translations like "thought" for 思っていた, idiomatic equivalents, conversational softeners, and minor English typos or homophones where Japanese meaning is understood).',
             wrong_benefactive_or_recipient: 'Confused the recipient or beneficiary of the action (e.g. translated ~てやってくれ as doing a favor for "me" instead of a third party/pet, or confused give/receive direction).',
             passive_voice_reversed: 'Reversed passive voice into active (e.g. "was told" translated as "I told"), where subject was receiving the action.',
             subject_object_inverted: 'Inverted the grammatical subject and object/agent in an active sentence (who did what to whom).',
             wrong_verb_or_action: 'The core verb or action was mistranslated or misunderstood.',
-            tense_or_aspect_error: 'Past vs present/future tense was confused.',
+            tense_or_aspect_error: 'Past vs present/future tense was confused (do NOT select this for English simple past vs present perfect like "came" vs "has come" for completed actions).',
             potential_or_modality_error: "Potential ('can') vs intent ('will'), or certainty vs possibility.",
             interrogative_or_question_error: 'A genuine question word or question structure was missed or changed in a way that damages the meaning.',
-            minor_nuance_or_word_choice_difference: 'A genuine semantic nuance difference, dropped modifier, or awkward phrasing (do NOT select this for valid synonyms or direct translations like "thought" for 思っていた).'
+            minor_nuance_or_word_choice_difference: 'A genuine semantic nuance difference, dropped modifier, or awkward phrasing (do NOT select this for casing/punctuation or valid aspect equivalents like "came" for 来ました).'
           }
         },
         benefactive_direction: {
@@ -1962,10 +1962,10 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           instructions: 'Evaluate the main verb/predicate of `japanese_sentence` in `user_translation` for tense, voice (passive/active), and mood (potential "can" vs intent "will").',
           options: ['correct_or_not_applicable', 'potential_vs_intent_error', 'passive_vs_active_error', 'tense_past_present_error', 'predicate_omitted_or_wrong'],
           criteria: {
-            correct_or_not_applicable: 'The predicate tense, voice, and mood are accurately translated (e.g. やりなさい -> "do it", 言われた -> "were told"), or sentence has no inflected verb.',
+            correct_or_not_applicable: 'The predicate tense, voice, and mood are accurately translated (e.g. やりなさい -> "do it", 言われた -> "were told", 来ました -> "came" or "has come"), or sentence has no inflected verb.',
             potential_vs_intent_error: 'Potential form ("can / be able to") was translated as simple intent ("will") or vice versa.',
             passive_vs_active_error: 'Passive voice ("was seen", "was told") was reversed to active ("I saw", "I told") or agent/object inverted.',
-            tense_past_present_error: 'Past tense translated as present/future, or vice versa.',
+            tense_past_present_error: 'Past tense translated as present/future, or vice versa (do NOT select this for English simple past vs present perfect like "came" vs "has come" for completed actions).',
             predicate_omitted_or_wrong: 'The main action/verb was omitted or mistranslated.'
           }
         },
