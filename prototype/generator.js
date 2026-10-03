@@ -257,6 +257,22 @@ function generateVocabExplanation(answers, cardInfo) {
     } else {
       roleExplanation = `${hedgeVerb} an attributive / relative clause directly modifying the following noun`;
     }
+  } else if (role === 'formal_noun_or_compound_pattern') {
+    const jpClean = (cardInfo.sentenceJP || '').replace(/\([^)]*\)/g, '');
+    const afterMatch = jpClean.slice(jpClean.indexOf(cleanTarget) + cleanTarget.length).match(/^([はがをにでのともへ]{1,2}|から|まで|より|だけ|ほど|ばかり|なら|たら)/)?.[0] || '';
+    const patternText = `〜${cleanTarget}${afterMatch}`;
+
+    const targetIdx = jpClean.indexOf(cleanTarget);
+    const cleanTargetWord = targetWord ? targetWord.replace(/[はがをにでとのへ]+$/, '') : '';
+    const isPreceding = cleanTargetWord && targetIdx !== -1 && jpClean.slice(0, targetIdx).includes(cleanTargetWord);
+
+    if (isPreceding) {
+      roleExplanation = `${hedgeVerb} a formal noun (形式名詞) in the compound pattern **${patternText}**, attaching to the verb **${targetWord}** to express the condition or scope under which the predicate applies`;
+    } else if (targetWord) {
+      roleExplanation = `${hedgeVerb} a formal noun (形式名詞) in the compound pattern **${patternText}**, connecting to **${targetWord}** to express the condition or scope under which the predicate applies`;
+    } else {
+      roleExplanation = `${hedgeVerb} a formal noun (形式名詞) in the compound pattern **${patternText}**, nominalizing the preceding clause to express condition or scope`;
+    }
   } else if (role === 'adverbial_modifier') {
     roleExplanation = targetWord
       ? `${hedgeVerb} an adverbial modifier modifying the predicate **${targetWord}**`
@@ -288,12 +304,15 @@ function generateVocabExplanation(answers, cardInfo) {
     potential_vs_intent: 'Potential forms express capability or opportunity ("can do"), not just future intention.',
     polite_softener_not_literal_contrast: 'Sentence-ending softeners like 〜けど or 〜んだけど soften the tone and avoid abruptness; they rarely mean a harsh "but".',
     colloquial_contraction: 'Note the conversational contraction used here in casual speech.',
+    idiomatic_set_phrase: 'This is part of a common Japanese idiomatic set phrase or compound formal noun pattern.',
     transitive_vs_intransitive_pair: 'Watch out for transitive vs. intransitive verb pairing in this construction.',
     polysemous_idiomatic_sense: `Notice how context dictates this specific sense over other dictionary definitions.`,
     case_particle_governance: 'Pay close attention to which particle marks this word (を for direct object, が for subject, に for target, で for location/means).',
     standard_usage: role === 'demonstrative_determiner'
       ? 'Remember the ko-so-a-do system: この refers to something physically or contextually close to the speaker.'
-      : 'Focus on how the attached particle or inflection connects this word to the main predicate.'
+      : (role === 'formal_noun_or_compound_pattern'
+        ? 'Notice how this formal noun acts as a grammaticalized boundary or condition connecting the preceding clause to the predicate.'
+        : 'Focus on how the attached particle or inflection connects this word to the main predicate.')
   };
 
   const lines = [

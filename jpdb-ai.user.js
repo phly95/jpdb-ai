@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.98
+// @version      1.0.99
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -2159,6 +2159,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         'location_or_means',
         'demonstrative_determiner',
         'noun_modifying_relative_clause',
+        'formal_noun_or_compound_pattern',
         'main_predicate_verb',
         'connective_te_form',
         'subordinate_clause_verb',
@@ -2174,6 +2175,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         location_or_means: 'Location of action, instrument, or means (marked by で).',
         demonstrative_determiner: 'Demonstrative or pre-noun adjectival determiner (連体詞) directly modifying a following noun (e.g. この, その, あの, どの, 大きな, 小さな).',
         noun_modifying_relative_clause: 'Verb, adjective, or clause acting as an attributive / relative clause modifying a noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
+        formal_noun_or_compound_pattern: 'Formal noun (形式名詞) or bound grammaticalizer forming a compound grammar construction or clause nominalizer (e.g. 〜分には, 〜わけだ, 〜ものだ, 〜はずだ, 〜ところだ, 〜ことにする).',
         main_predicate_verb: 'The primary verb, adjective, or predicate of the sentence or clause (including inflected forms like past 〜た, polite 〜ます, negative 〜ない).',
         connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
         subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
@@ -2295,7 +2297,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     // 2. Role vs inflection cross-check (two independent questions that must not contradict each other)
     if (inflect && inflectConf >= 0.75) {
-      const nounish = ['direct_object', 'grammatical_subject', 'topic_marker', 'indirect_object_or_destination', 'location_or_means', 'demonstrative_determiner'];
+      const nounish = ['direct_object', 'grammatical_subject', 'topic_marker', 'indirect_object_or_destination', 'location_or_means', 'demonstrative_determiner', 'formal_noun_or_compound_pattern'];
       if (nounish.includes(role) && VERB_FORMS.includes(inflect)) return { ok: false, reason: 'noun_role_but_verb_inflection' };
       if (role === 'connective_te_form' && inflect !== 'te_form') return { ok: false, reason: 'te_role_but_other_inflection' };
       if (role === 'main_predicate_verb' && ['te_form', 'adverbial_form', 'conditional_form'].includes(inflect)) return { ok: false, reason: 'main_predicate_but_non_final_inflection' };
@@ -2318,6 +2320,16 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     if (role === 'adverbial_modifier' || role === 'connective_te_form') {
       // Japanese is predicate-final: the governed predicate must come after the word.
       return hits.some((h) => h.after.includes(noun)) ? targetWord : null;
+    }
+    if (role === 'formal_noun_or_compound_pattern') {
+      // For formal nouns, connected word can precede as modifying verb/clause OR follow as main predicate
+      const targetIdx = jp.indexOf(cleanTarget);
+      if (targetIdx !== -1) {
+        const beforeText = jp.slice(0, targetIdx);
+        const afterText = jp.slice(targetIdx + cleanTarget.length);
+        if (beforeText.includes(noun) || afterText.includes(noun)) return targetWord;
+      }
+      return null;
     }
     return targetWord;
   }
@@ -2464,6 +2476,23 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       } else {
         roleExplanation = `${hedgeVerb} an attributive / relative clause directly modifying the following noun`;
       }
+    } else if (role === 'formal_noun_or_compound_pattern') {
+      const jpClean = (cardInfo.sentenceJP || '').replace(/\([^)]*\)/g, '');
+      const hits = textAfterTarget(jpClean, cleanTarget);
+      const followingParticle = hits[0] ? (hits[0].after.match(/^([はがをにでのともへ]{1,2}|から|まで|より|だけ|ほど|ばかり|なら|たら)/)?.[0] || '') : '';
+      const patternText = `〜${cleanTarget}${followingParticle}`;
+
+      const targetIdx = jpClean.indexOf(cleanTarget);
+      const cleanTargetWord = targetWord ? targetWord.replace(/[はがをにでとのへ]+$/, '') : '';
+      const isPreceding = cleanTargetWord && targetIdx !== -1 && jpClean.slice(0, targetIdx).includes(cleanTargetWord);
+
+      if (isPreceding) {
+        roleExplanation = `${hedgeVerb} a formal noun (形式名詞) in the compound pattern **${patternText}**, attaching to the verb **${targetWord}** to express the condition or scope under which the predicate applies`;
+      } else if (targetWord) {
+        roleExplanation = `${hedgeVerb} a formal noun (形式名詞) in the compound pattern **${patternText}**, connecting to **${targetWord}** to express the condition or scope under which the predicate applies`;
+      } else {
+        roleExplanation = `${hedgeVerb} a formal noun (形式名詞) in the compound pattern **${patternText}**, nominalizing the preceding clause to express condition or scope`;
+      }
     } else if (role === 'adverbial_modifier') {
       roleExplanation = targetWord
         ? `${hedgeVerb} an adverbial modifier modifying the predicate **${targetWord}**`
@@ -2495,12 +2524,15 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       potential_vs_intent: 'Potential forms express capability or opportunity ("can do"), not just future intention.',
       polite_softener_not_literal_contrast: 'Sentence-ending softeners like 〜けど or 〜んだけど soften the tone and avoid abruptness; they rarely mean a harsh "but".',
       colloquial_contraction: 'Note the conversational contraction used here in casual speech.',
-      idiomatic_set_phrase: 'This is part of a common Japanese idiomatic set phrase.',
+      idiomatic_set_phrase: 'This is part of a common Japanese idiomatic set phrase or compound formal noun pattern.',
+      formal_noun_or_compound_pattern: 'This word functions as a formal noun (形式名詞), grammaticalizing the preceding clause into a condition, scope, or nominal concept.',
       transitive_vs_intransitive_pair: 'Watch the transitive/intransitive pair: pay close attention to whether the subject performs the action or undergoes it.',
       case_particle_governance: 'Pay close attention to which particle marks this word (を for direct object, が for subject, に for target, で for location/means).',
       standard_usage: role === 'demonstrative_determiner'
         ? 'Remember the ko-so-a-do system: この refers to something physically or contextually close to the speaker.'
-        : 'Focus on how the attached particle or inflection connects this word to the main predicate.'
+        : (role === 'formal_noun_or_compound_pattern'
+          ? 'Notice how this formal noun acts as a grammaticalized boundary or condition connecting the preceding clause to the predicate.'
+          : 'Focus on how the attached particle or inflection connects this word to the main predicate.')
     };
 
     const nuanceTip = tipsMap[tip] || 'Focus on how the attached particle or inflection connects this word to the main predicate.';
