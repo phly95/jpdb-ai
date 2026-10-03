@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.97
+// @version      1.0.98
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -2591,7 +2591,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             role: gen.role,
             isFastPath,
             elapsedMs: Date.now() - t0,
-            answers: data.answers
+            answers: data.answers,
+            gen: gen
           };
         }
       } else {
@@ -2600,7 +2601,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     } catch (err) {
       console.warn('[JPDB AI] Jev vocab explanation call failed:', err);
     }
-    return { cardHtml: '', markdown: '', role: null, isFastPath: false, elapsedMs: Date.now() - t0 };
+    return { cardHtml: '', markdown: '', role: null, isFastPath: false, elapsedMs: Date.now() - t0, answers: null, gen: null };
   }
 
   // ---------- Translation Rating Diagnostics & Divergence Tracking ----------
@@ -2742,13 +2743,58 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     const displayed = diagFilterDivergent ? list.filter((e) => e.divergence?.diverged) : list;
     if (displayed.length === 0) {
-      listEl.innerHTML = `<div style="text-align:center;padding:24px 10px;opacity:.6;font-size:12px">No ${diagFilterDivergent ? 'divergent ' : ''}diagnostics recorded yet. Rate translations to collect data!</div>`;
+      listEl.innerHTML = `<div style="text-align:center;padding:24px 10px;opacity:.6;font-size:12px">No ${diagFilterDivergent ? 'flagged ' : ''}diagnostics recorded yet. Rate translations or explain vocab to collect data!</div>`;
       return;
     }
 
     listEl.innerHTML = displayed.map((item) => {
       const isDiv = !!item.divergence?.diverged;
       const timeStr = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+      const itemId = item.id || ('diag_' + (item.timestamp || ''));
+
+      if (item.type === 'explain') {
+        const isFast = !!item.jev?.fastPath;
+        const roleLabel = item.jev?.role ? (item.jev.role.replace(/_/g, ' ')) : 'unclassified';
+        const roleConfPct = typeof item.jev?.roleConfidence === 'number' ? Math.round(item.jev.roleConfidence * 100) + '%' : '';
+        const roleBadgeClass = isFast ? 'high' : (item.jev?.roleConfidence >= 0.6 ? 'med' : 'low');
+        const badgeTag = isFast 
+          ? `<span class="jpdb-ai-diag-badge-fp" style="background:rgba(22,163,74,.15);color:#16a34a;font-weight:700;font-size:10px;padding:1px 6px;border-radius:3px">⚡ 250ms Fast-Path</span>`
+          : `<span class="jpdb-ai-diag-badge-div" title="${escapeHtml(item.divergence?.reason || 'Escalated to LLM')}">🤖 Escalated</span>`;
+
+        return `
+          <div class="jpdb-ai-diag-item ${isDiv ? 'diverged' : ''}" data-id="${escapeHtml(itemId)}">
+            <div class="jpdb-ai-diag-item-top">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-weight:700;color:#2563eb">${escapeHtml(item.card?.vocab || 'Card')}</span>
+                <span style="font-size:10.5px;color:#7c3aed;background:rgba(124,58,237,.1);padding:1px 5px;border-radius:3px;font-weight:600">Explain Vocab</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px">
+                ${badgeTag}
+                <span class="jpdb-ai-diag-time">${escapeHtml(timeStr)}</span>
+                <button type="button" class="jpdb-ai-diag-btn-action jpdb-ai-diag-btn-copy" data-id="${escapeHtml(itemId)}" title="Copy diagnostic JSON to clipboard">📋 Copy</button>
+                <button type="button" class="jpdb-ai-diag-btn-action jpdb-ai-diag-btn-dl" data-id="${escapeHtml(itemId)}" title="Download diagnostic JSON file">💾 JSON</button>
+              </div>
+            </div>
+            <div style="margin-bottom:3px"><strong>JP:</strong> ${escapeHtml(item.card?.sentenceJP || '(none)')}</div>
+            ${item.card?.sentenceEN ? `<div style="margin-bottom:3px;opacity:0.8;font-size:11.5px"><strong>Ref:</strong> "${escapeHtml(item.card?.sentenceEN)}"</div>` : ''}
+            
+            <div class="jpdb-ai-diag-scores">
+              <span title="Jev latency: ${item.jev?.elapsedMs || 0}ms">⚡ Role: <b class="jpdb-ai-jev-score ${roleBadgeClass}" style="display:inline-block;padding:1px 7px;font-size:10.5px">${escapeHtml(roleLabel)}${roleConfPct ? ` (${roleConfPct})` : ''}</b></span>
+              <span>·</span>
+              <span title="${isFast ? 'Fast-path generated without LLM' : `LLM latency: ${item.llm?.elapsedMs || 0}ms`}">${isFast ? '⚡ <b>No LLM needed</b>' : `🤖 LLM: <b>${item.llm?.elapsedMs || 0}ms</b>`}</span>
+            </div>
+
+            ${item.jev?.chosenSense ? `<div style="margin-top:4px;font-size:11px"><strong>Sense:</strong> <span style="color:#0284c7">${escapeHtml(item.jev.chosenSense)}</span></div>` : ''}
+            ${item.jev?.rejectedBy ? `<div style="margin-top:4px;font-size:11px;color:#b91c1c">⚠️ <strong>Guard rejected:</strong> ${escapeHtml(item.jev.rejectedBy)}</div>` : ''}
+
+            <details class="jpdb-ai-diag-details">
+              <summary>${isFast ? 'View Generated Explanation (⚡ Fast-Path)' : 'View LLM Explanation'}</summary>
+              <div class="jpdb-ai-diag-critique">${escapeHtml(item.llm?.text || '(no text)')}</div>
+            </details>
+          </div>
+        `;
+      }
+
       const jevScore = typeof item.jev?.overall === 'number' ? `${item.jev.overall}/10` : (item.jev?.badge || '?');
       const jevBadgeClass = item.jev?.overall === 10 ? 'high' : (item.jev?.overall >= 7 ? 'med' : 'low');
       const llmScoreVal = (item.llm?.isFastPathReply || item.llm?.elapsedMs === 0) && typeof item.llm?.score !== 'number' ? '⚡ skipped (no LLM yet)' : (typeof item.llm?.score === 'number' ? `${item.llm.score}/10` : '?');
@@ -2765,7 +2811,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         return item.jev ? `<div style="margin-top:4px;font-size:11px;color:#15803d;font-weight:600">✓ Flawless (no issues detected)</div>` : '';
       })();
 
-      const itemId = item.id || ('diag_' + (item.timestamp || ''));
       return `
         <div class="jpdb-ai-diag-item ${isDiv ? 'diverged' : ''}" data-id="${escapeHtml(itemId)}">
           <div class="jpdb-ai-diag-item-top">
@@ -2859,6 +2904,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
       const entry = {
         id: entryId,
+        type: 'rate',
         timestamp: new Date().toISOString(),
         card: {
           token: getCardToken(),
@@ -2924,6 +2970,85 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     }
   }
 
+  function recordVocabDiagnosticEntry(info, jevRes, jevElapsedMs, llmReply, llmElapsedMs, meta) {
+    try {
+      const list = getDiagnosticsLog();
+      const entryId = 'diag_vocab_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      const isFastPath = !!(meta && meta.fastPath);
+      const answers = jevRes?.answers || null;
+      const gen = jevRes?.gen || null;
+      const role = gen?.role || answers?.grammatical_role?.choice || null;
+      const roleConf = answers?.grammatical_role?.confidence ?? null;
+      const sense = gen?.chosenSense || null;
+      const senseConf = answers?.applied_meaning?.confidence ?? null;
+
+      let diverged = false;
+      let divergenceReason = '';
+      if (!isFastPath && jevRes) {
+        diverged = true;
+        divergenceReason = gen?.rejectedBy 
+          ? `Guard rejected: ${gen.rejectedBy}` 
+          : (roleConf && roleConf < 0.65 ? `Low role confidence (${roleConf})` : 'Escalated to LLM');
+      }
+
+      const entry = {
+        id: entryId,
+        type: 'explain',
+        timestamp: new Date().toISOString(),
+        card: {
+          token: getCardToken(),
+          vocab: info.vocab || '',
+          meanings: (info.meanings || []).slice(0, 5),
+          sentenceJP: info.sentenceJP || '',
+          sentenceEN: info.sentenceEN || '',
+        },
+        input: {
+          kind: 'explain',
+          prompt: `What does "${info.vocab || 'this word'}" do in this sentence?`,
+        },
+        jev: jevRes ? {
+          model: CFG.jevModel || DEFAULT_JEV_MODEL,
+          elapsedMs: jevElapsedMs,
+          role: role,
+          roleConfidence: roleConf,
+          chosenSense: sense,
+          senseConfidence: senseConf,
+          inflection: answers?.inflection_form?.choice || null,
+          inflectionConfidence: answers?.inflection_form?.confidence ?? null,
+          pedagogicalTip: answers?.pedagogical_tip_type?.choice || null,
+          connectedWord: gen?.targetWord || answers?.connected_target_word?.choice || null,
+          fastPath: isFastPath,
+          rejectedBy: gen?.rejectedBy || null,
+          answers: answers,
+        } : null,
+        llm: {
+          model: CFG.model,
+          elapsedMs: llmElapsedMs,
+          text: llmReply,
+          isFastPathReply: isFastPath,
+        },
+        divergence: {
+          diverged,
+          scoreDiff: null,
+          reason: divergenceReason,
+        }
+      };
+
+      list.unshift(entry);
+      if (list.length > 200) list.length = 200;
+      saveDiagnosticsLog(list);
+      updateDiagFooterLink();
+      const diagView = document.getElementById('jpdb-ai-diag-view');
+      if (diagView && diagView.style.display === 'flex') {
+        renderDiagList();
+      }
+      return entry;
+    } catch (err) {
+      console.warn('[JPDB AI] Failed to record vocab diagnostic entry:', err);
+      return null;
+    }
+  }
+
   function updateDiagnosticWithShadowLlm(entryId, llmReply, llmScore, llmElapsedMs) {
     try {
       const list = getDiagnosticsLog();
@@ -2938,7 +3063,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         isShadow: true
       };
 
-      if (entry.jev && typeof llmScore === 'number' && typeof entry.jev.overall === 'number') {
+      if (entry.type !== 'explain' && entry.jev && typeof llmScore === 'number' && typeof entry.jev.overall === 'number') {
         const scoreDiff = Number(Math.abs(entry.jev.overall - llmScore).toFixed(1));
         const jevTier = entry.jev.overall >= 7 ? 'Good' : (entry.jev.overall >= 5 ? 'Borderline' : 'Needs Work');
         const llmTier = llmScore >= 7.0 ? 'Good' : (llmScore >= 4.0 ? 'Borderline' : 'Needs Work');
@@ -2979,9 +3104,10 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const url = URL.createObjectURL(blob);
     const dlAnchor = document.createElement('a');
     dlAnchor.href = url;
+    const prefix = entry.type === 'explain' ? 'explain_' : '';
     const vocabSafe = (entry.card?.vocab || 'item').replace(/[^a-zA-Z0-9_\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/g, '_');
     const timeSafe = (entry.timestamp || new Date().toISOString()).replace(/[:.]/g, '-').slice(0, 19);
-    dlAnchor.download = `jpdb_diag_${vocabSafe}_${timeSafe}.json`;
+    dlAnchor.download = `jpdb_diag_${prefix}${vocabSafe}_${timeSafe}.json`;
     document.body.appendChild(dlAnchor);
     dlAnchor.click();
     dlAnchor.remove();
@@ -2995,7 +3121,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const url = URL.createObjectURL(blob);
     const dlAnchor = document.createElement('a');
     dlAnchor.href = url;
-    dlAnchor.download = `jpdb_ai_translation_diagnostics_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    dlAnchor.download = `jpdb_ai_diagnostics_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     document.body.appendChild(dlAnchor);
     dlAnchor.click();
     dlAnchor.remove();
@@ -3644,25 +3770,29 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     setBusy(true);
 
     // Fast-path: Instant System One Vocab Explainer (<250ms)
+    let jevVocabRes = null;
+    let jevPromise = null;
     if (kind === 'explain') {
       try {
-        const jevPromise = callJevVocabExplanation(info);
+        jevPromise = callJevVocabExplanation(info);
         const jevTimeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
-        const jevRes = await Promise.race([jevPromise, jevTimeoutPromise]);
+        jevVocabRes = await Promise.race([jevPromise, jevTimeoutPromise]);
 
-        if (jevRes && jevRes.isFastPath && jevRes.markdown) {
-          setMsgMarkdown(thinking, jevRes.markdown, jevRes.cardHtml);
-          msgLog.push({ role: 'assistant', text: jevRes.markdown, jevHtml: jevRes.cardHtml, isErr: false });
+        if (jevVocabRes && jevVocabRes.isFastPath && jevVocabRes.markdown) {
+          setMsgMarkdown(thinking, jevVocabRes.markdown, jevVocabRes.cardHtml);
+          msgLog.push({ role: 'assistant', text: jevVocabRes.markdown, jevHtml: jevVocabRes.cardHtml, isErr: false });
           history.push({ role: 'user', content: userPrompt });
-          history.push({ role: 'assistant', content: jevRes.markdown });
+          history.push({ role: 'assistant', content: jevVocabRes.markdown });
           saveSession();
+          const entry = recordVocabDiagnosticEntry(info, jevVocabRes, jevVocabRes.elapsedMs, jevVocabRes.markdown, 0, { fastPath: true });
+          scheduleVocabShadowEval(entry, userPrompt, SHADOW_RATE_VOCAB);
           busy = false;
           setBusy(false);
           return;
         }
 
-        if (thinking && jevRes && jevRes.cardHtml) {
-          thinking.innerHTML = jevRes.cardHtml + '<div class="jpdb-ai-jev-waiting">Thinking… generating detailed analysis…</div>';
+        if (thinking && jevVocabRes && jevVocabRes.cardHtml) {
+          thinking.innerHTML = jevVocabRes.cardHtml + '<div class="jpdb-ai-jev-waiting">Thinking… generating detailed analysis…</div>';
         }
       } catch (err) {
         console.warn('[JPDB AI] Fast-path vocab explanation fallback to LLM:', err);
@@ -3671,13 +3801,30 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
 
     try {
       // Ratings and explanations are fresh, independent evaluations and do not include prior chat history
+      const t0_llm = Date.now();
       const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: userPrompt }];
       const reply = await callLLM(msgs);
-      setMsgMarkdown(thinking, reply);
-      msgLog.push({ role: 'assistant', text: reply, isErr: false });
+      const llmElapsed = Date.now() - t0_llm;
+
+      if (kind === 'explain' && !jevVocabRes && jevPromise) {
+        try {
+          const lateRes = await Promise.race([jevPromise, Promise.resolve(null)]);
+          if (lateRes && lateRes.answers) {
+            jevVocabRes = lateRes;
+          }
+        } catch {}
+      }
+
+      const jevCardHtml = (jevVocabRes && jevVocabRes.cardHtml) ? jevVocabRes.cardHtml : '';
+      setMsgMarkdown(thinking, reply, jevCardHtml);
+      msgLog.push({ role: 'assistant', text: reply, jevHtml: jevCardHtml, isErr: false });
       history.push({ role: 'user', content: userPrompt });
       history.push({ role: 'assistant', content: reply });
       saveSession();
+
+      if (kind === 'explain') {
+        recordVocabDiagnosticEntry(info, jevVocabRes, jevVocabRes?.elapsedMs || 0, reply, llmElapsed, { fastPath: false });
+      }
     } catch (e) {
       msgLog.push({ role: 'assistant', text: 'Error: ' + (e.message || e), isErr: true });
       thinking.textContent = 'Error: ' + (e.message || e);
@@ -3696,6 +3843,21 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
   const SHADOW_RATE_FLAWLESS = 0.5;
   const SHADOW_RATE_TYPO = 0.5;
   const SHADOW_RATE_CRITIQUE = 0.2;
+  const SHADOW_RATE_VOCAB = 0.25;
+
+  function scheduleVocabShadowEval(entry, userPrompt, rate) {
+    if (!entry || !(Math.random() < rate)) return;
+    (async () => {
+      try {
+        const t0_shadow = Date.now();
+        const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: userPrompt }];
+        const shadowReply = await callLLM(msgs);
+        updateDiagnosticWithShadowLlm(entry.id, shadowReply, null, Date.now() - t0_shadow);
+      } catch (err) {
+        console.warn('[JPDB AI] Shadow LLM execution error for vocab:', err);
+      }
+    })();
+  }
 
   function scheduleShadowEval(entry, userPrompt, rate) {
     if (!entry || !(Math.random() < rate)) return;
