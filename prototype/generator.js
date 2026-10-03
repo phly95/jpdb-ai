@@ -201,7 +201,7 @@ function generateVocabExplanation(answers, cardInfo) {
   const tipConf = pedagogical_tip_type?.confidence ?? 0;
   const tip = (tipConf >= 0.70 && pedagogical_tip_type?.choice) ? pedagogical_tip_type.choice : 'standard_usage';
 
-  const isHighConf = roleConfidence >= 0.85;
+  const isHighConf = roleConfidence >= 0.80;
   const hedgeVerb = isHighConf ? 'functioning as' : 'likely functioning as';
   const hedgeServes = isHighConf ? 'serving as' : 'likely serving as';
   const hedgeIndicating = isHighConf ? 'indicating' : 'likely indicating';

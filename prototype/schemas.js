@@ -330,12 +330,12 @@ function buildVocabExplanationQuestions(info) {
       location_or_means: 'Location of action, instrument, or means (marked by で).',
       demonstrative_determiner: 'Demonstrative or pre-noun adjectival determiner (連体詞) directly modifying a following noun (e.g. この, その, あの, どの, 大きな, 小さな).',
       noun_modifying_relative_clause: 'Verb, adjective, or clause acting as an attributive / relative clause modifying a noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
-      main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
+      main_predicate_verb: 'The primary verb, adjective, or predicate of the sentence or clause (including inflected forms like past 〜た, polite 〜ます, negative 〜ない).',
       connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
       subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
       adverbial_modifier: 'An adverb, time expression, or modifier altering the verb/adjective (e.g. ゆっくり, とても).',
       particle_or_sentence_ender: 'Colloquial particle, conversational softener, or sentence-ending expression (e.g. ね, よ, けど).',
-      other_or_unclear: 'Syntactic role does not cleanly fit any of the above categories, or is ambiguous.'
+      other_or_unclear: 'Use ONLY if the word has an idiosyncratic syntactic role that strictly cannot be classified as a subject, object, determiner, modifier, particle, or verb.'
     }
   };
 

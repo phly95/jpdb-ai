@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.90
+// @version      1.0.91
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -728,17 +728,26 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
   // ---------- Code-side Numeral & Counter Value Verification ----------
   const KANJI_DIGITS = { '〇': 0, '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+  // Only distinct native Japanese counting words (single-syllable kana like に, ご, さん, はち removed to prevent substring false-matches)
   const KANA_NUM_MAP = {
-    'ひとつ': 1, 'ふたつ': 2, 'みっつ': 3, 'よっつ': 4, 'いつつ': 5, 'むっつ': 6, 'ななつ': 7, 'やっつ': 8, 'ここのつ': 9, 'とお': 10,
-    'ひとり': 1, 'ふたり': 2, 'さんにん': 3, 'よにん': 4, 'ごにん': 5, 'ろくにん': 6, 'ななにん': 7, 'はちにん': 8, 'きゅうにん': 9, 'じゅうにん': 10,
-    'いち': 1, 'に': 2, 'さん': 3, 'よん': 4, 'ご': 5, 'ろく': 6, 'なな': 7, 'はち': 8, 'きゅう': 9, 'じゅう': 10
+    'ひとつ': 1, 'ふたつ': 2, 'みっつ': 3, 'よっつ': 4, 'いつつ': 5,
+    'むっつ': 6, 'ななつ': 7, 'やっつ': 8, 'ここのつ': 9, 'とお': 10,
+    'ひとり': 1, 'ふたり': 2
   };
 
-  const ENGLISH_WORD_NUMS = {
+  const SMALL_ENGLISH_NUMS = {
     'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
     'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15, 'sixteen': 16,
     'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20, 'thirty': 30, 'forty': 40, 'fifty': 50,
     'sixty': 60, 'seventy': 70, 'eighty': 80, 'ninety': 90
+  };
+
+  const ORDINAL_MAP = {
+    'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5,
+    'sixth': 6, 'seventh': 7, 'eighth': 8, 'ninth': 9, 'tenth': 10,
+    'eleventh': 11, 'twelfth': 12, 'thirteenth': 13, 'fourteenth': 14, 'fifteenth': 15,
+    'sixteenth': 16, 'seventeenth': 17, 'eighteenth': 18, 'nineteenth': 19, 'twentieth': 20,
+    'thirtieth': 30
   };
 
   function parseCompoundKanjiNum(str) {
@@ -783,7 +792,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     let clean = str.normalize('NFKC');
 
     // 1. Remove non-numeric idioms containing 一 or other kanji
-    clean = clean.replace(/(?:一方で|一方|一緒|一番|一人で|一切|一般|一生|一度|万一|十中八九)/g, '');
+    clean = clean.replace(/(?:一方で|一方|一緒|一番|一人で|一切|一般|一生|一度|万一|十中八九|七転び八起き|三日坊主)/g, '');
 
     // 2. Arabic digits in Japanese text
     const digits = clean.match(/\d+/g);
@@ -794,7 +803,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       nums.add(30);
     }
 
-    // 4. Kana numerals
+    // 4. Kana numerals (only distinct native words)
     for (const [k, v] of Object.entries(KANA_NUM_MAP)) {
       if (clean.includes(k)) nums.add(v);
     }
@@ -814,52 +823,84 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
   function extractEnglishNumbers(str) {
     const nums = new Set();
     if (!str) return nums;
-    const clean = str.normalize('NFKC').toLowerCase();
+    let clean = str.normalize('NFKC').toLowerCase();
 
-    // 1. Digits (e.g. 25, 300)
+    // 1. Strip thousands separators (e.g. 3,000 -> 3000, 12,000 -> 12000)
+    clean = clean.replace(/(\d+),(\d+)/g, '$1$2');
+
+    // 2. Strip ordinal suffixes on digits (e.g. 7th -> 7, 1st -> 1, 5th -> 5)
+    clean = clean.replace(/\b(\d+)(?:st|nd|rd|th)\b/g, '$1');
+
+    // 3. Strip pronoun and non-numeric uses of 'one'
+    clean = clean.replace(/\b(?:this|that|which|each|every|another|some|any|no)\s+one\b/g, ' ');
+    clean = clean.replace(/\b(?:the|a|an)\s+(?:[a-z]+\s+)?one\b/g, ' ');
+    clean = clean.replace(/\bone\s+another\b/g, ' ');
+    clean = clean.replace(/\bone\s+of\b/g, ' ');
+
+    // 4. Digits
     const digits = clean.match(/\b\d+\b/g);
     if (digits) digits.forEach((d) => nums.add(parseInt(d, 10)));
 
-    // 2. Idiomatic durations: "half an hour" / "half hour" -> 30 (minutes)
+    // 5. Idiomatic durations: "half an hour" / "half hour" -> 30 (minutes)
     if (/\bhalf\s+(?:an\s+)?hour\b/.test(clean)) {
       nums.add(30);
     }
 
-    // 3. Filter out non-numeral pronouns containing "one": "no one", "someone", "anyone", "everyone", "one another"
-    const words = clean.replace(/\b(?:no\s+one|someone|anyone|everyone|one\s+another)\b/g, '')
-      .replace(/[^a-z\s-]/g, ' ')
-      .split(/\s+/);
+    // 6. Tokenize words for compound scale parsing
+    const words = clean.replace(/[^a-z\s-]/g, ' ').split(/\s+/);
+    let currentGroup = 0;
+    let total = 0;
+    let inNum = false;
 
     for (let i = 0; i < words.length; i++) {
-      const w = words[i];
-      if (!w) continue;
+      const raw = words[i];
+      if (!raw) continue;
 
-      // Handle hyphenated numbers like "twenty-five"
-      if (w.includes('-')) {
-        const parts = w.split('-');
-        if (parts.length === 2 && ENGLISH_WORD_NUMS[parts[0]] !== undefined && ENGLISH_WORD_NUMS[parts[1]] !== undefined) {
-          nums.add(ENGLISH_WORD_NUMS[parts[0]] + ENGLISH_WORD_NUMS[parts[1]]);
-          continue;
+      if (ORDINAL_MAP[raw] !== undefined) {
+        if (inNum) {
+          nums.add(total + currentGroup);
+          currentGroup = 0; total = 0; inNum = false;
+        }
+        nums.add(ORDINAL_MAP[raw]);
+        continue;
+      }
+
+      let hyphenVal = 0;
+      if (raw.includes('-')) {
+        const parts = raw.split('-');
+        if (parts.length === 2 && SMALL_ENGLISH_NUMS[parts[0]] !== undefined && SMALL_ENGLISH_NUMS[parts[1]] !== undefined) {
+          hyphenVal = SMALL_ENGLISH_NUMS[parts[0]] + SMALL_ENGLISH_NUMS[parts[1]];
         }
       }
 
-      // Handle multi-word compound numbers like "twenty five" or "three hundred"
-      if (ENGLISH_WORD_NUMS[w] !== undefined) {
-        let val = ENGLISH_WORD_NUMS[w];
-        if (i + 1 < words.length && ENGLISH_WORD_NUMS[words[i + 1]] !== undefined && ENGLISH_WORD_NUMS[words[i + 1]] < 10) {
-          val += ENGLISH_WORD_NUMS[words[i + 1]];
-          i++;
-        } else if (i + 1 < words.length && words[i + 1] === 'hundred') {
-          val *= 100;
-          i++;
-          if (i + 1 < words.length && ENGLISH_WORD_NUMS[words[i + 1]] !== undefined) {
-            val += ENGLISH_WORD_NUMS[words[i + 1]];
-            i++;
-          }
+      if (hyphenVal > 0) {
+        currentGroup += hyphenVal;
+        inNum = true;
+      } else if (SMALL_ENGLISH_NUMS[raw] !== undefined) {
+        currentGroup += SMALL_ENGLISH_NUMS[raw];
+        inNum = true;
+      } else if (raw === 'hundred') {
+        currentGroup = (currentGroup === 0 ? 1 : currentGroup) * 100;
+        inNum = true;
+      } else if (raw === 'thousand') {
+        total += (currentGroup === 0 ? 1 : currentGroup) * 1000;
+        currentGroup = 0;
+        inNum = true;
+      } else if (raw === 'million') {
+        total += (currentGroup === 0 ? 1 : currentGroup) * 1000000;
+        currentGroup = 0;
+        inNum = true;
+      } else {
+        if (inNum) {
+          nums.add(total + currentGroup);
+          currentGroup = 0;
+          total = 0;
+          inNum = false;
         }
-        nums.add(val);
       }
     }
+    if (inNum) nums.add(total + currentGroup);
+
     return nums;
   }
 
@@ -867,8 +908,16 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const jpNums = extractJapaneseNumbers(sentenceJP);
     const refNums = extractEnglishNumbers(refEN);
 
-    // If neither Japanese nor reference translation mentions a numeral, clean!
+    // If neither Japanese nor reference translation mentions a numeral:
     if (jpNums.size === 0 && refNums.size === 0) {
+      const studentNums = extractEnglishNumbers(studentEN);
+      // Student hallucinates a number not in JP or Ref
+      if (studentNums.size > 0) {
+        return {
+          status: 'mismatch',
+          reason: `Student translation contains number ${Array.from(studentNums).join(', ')} not present in Japanese sentence.`
+        };
+      }
       return { status: 'clean', reason: '' };
     }
 
@@ -1210,6 +1259,12 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     let triggeringConfidence = bracketConf;
     let critiqueSource = 'grade_bracket';
 
+    const excerptConf = Math.min(
+      answers.flawed_student_excerpt?.confidence ?? 0,
+      answers.correct_reference_excerpt?.confidence ?? 0,
+      answers.contrast_relation?.confidence ?? 0
+    );
+
     if (isTypo) {
       critiqueSource = 'english_typo_check';
       triggeringConfidence = typoConf;
@@ -1226,9 +1281,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       } else {
         dynamicCritique = `Your translation missed the word **${omittedItem.word}**, omitting the nuance of degree in this context.`;
       }
-    } else if (stEx && refEx && rel && rel !== 'accurate_equivalent') {
+    } else if (stEx && refEx && rel && rel !== 'accurate_equivalent' && excerptConf >= 0.70) {
       critiqueSource = 'contrast_relation';
-      triggeringConfidence = answers.contrast_relation?.confidence ?? (answers.flawed_student_excerpt?.confidence ?? 0.80);
+      triggeringConfidence = excerptConf;
       if (rel === 'passive_vs_active_reversal' || summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') {
         dynamicCritique = `Instead of translating "${predWord}" as passive ("${refEx}"), your draft translated it actively as "${stEx}", reversing who received the action.`;
       } else if (rel === 'causative_reversal' || complexChoice === 'causative_passive_inverted') {
@@ -1270,29 +1325,59 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       critiqueSource = 'polarity_check';
       triggeringConfidence = answers.polarity_check?.confidence ?? 0;
       dynamicCritique = `Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).`;
-    } else if (summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') {
-      critiqueSource = predCheck === 'passive_vs_active_error' ? 'predicate_mood_and_voice' : 'sentence_critique_summary';
-      triggeringConfidence = Math.max(answers.predicate_mood_and_voice?.confidence ?? 0, answers.sentence_critique_summary?.confidence ?? 0);
+    } else if (predCheck === 'passive_vs_active_error') {
+      critiqueSource = 'predicate_mood_and_voice';
+      const predConf = answers.predicate_mood_and_voice?.confidence ?? 0;
+      const sumConf = answers.sentence_critique_summary?.confidence ?? 0;
+      triggeringConfidence = (summaryCritiqueChoice === 'passive_voice_reversed') ? Math.min(predConf, sumConf) : predConf;
+      dynamicCritique = `You reversed the passive voice: "${predWord}" indicates the subject is receiving the action, not initiating it.`;
+    } else if (summaryCritiqueChoice === 'passive_voice_reversed') {
+      critiqueSource = 'sentence_critique_summary';
+      triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
       dynamicCritique = `You reversed the passive voice: "${predWord}" indicates the subject is receiving the action, not initiating it.`;
     } else if (summaryCritiqueChoice === 'subject_object_inverted') {
       critiqueSource = 'sentence_critique_summary';
       triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
       dynamicCritique = `You inverted who did what to whom: the grammatical subject and object were swapped.`;
-    } else if (summaryCritiqueChoice === 'wrong_benefactive_or_recipient' || benefactiveChoice === 'recipient_reversed_self_vs_other') {
-      critiqueSource = benefactiveChoice === 'recipient_reversed_self_vs_other' ? 'benefactive_direction' : 'sentence_critique_summary';
-      triggeringConfidence = Math.max(answers.benefactive_direction?.confidence ?? 0, answers.sentence_critique_summary?.confidence ?? 0);
+    } else if (benefactiveChoice === 'recipient_reversed_self_vs_other') {
+      critiqueSource = 'benefactive_direction';
+      const benConf = answers.benefactive_direction?.confidence ?? 0;
+      const sumConf = answers.sentence_critique_summary?.confidence ?? 0;
+      triggeringConfidence = (summaryCritiqueChoice === 'wrong_benefactive_or_recipient') ? Math.min(benConf, sumConf) : benConf;
       dynamicCritique = `You reversed the favor direction: "${predWord}" indicates an action performed for someone else rather than for oneself (or vice versa).`;
-    } else if (scopeCheck === 'confused_indefinite_with_wh_word' || summaryCritiqueChoice === 'interrogative_or_question_error') {
-      critiqueSource = scopeCheck === 'confused_indefinite_with_wh_word' ? 'question_type_and_scope' : 'sentence_critique_summary';
-      triggeringConfidence = Math.max(answers.question_type_and_scope?.confidence ?? 0, answers.sentence_critique_summary?.confidence ?? 0);
+    } else if (summaryCritiqueChoice === 'wrong_benefactive_or_recipient') {
+      critiqueSource = 'sentence_critique_summary';
+      triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
+      dynamicCritique = `You reversed the favor direction: "${predWord}" indicates an action performed for someone else rather than for oneself (or vice versa).`;
+    } else if (scopeCheck === 'confused_indefinite_with_wh_word') {
+      critiqueSource = 'question_type_and_scope';
+      const scConf = answers.question_type_and_scope?.confidence ?? 0;
+      const sumConf = answers.sentence_critique_summary?.confidence ?? 0;
+      triggeringConfidence = (summaryCritiqueChoice === 'interrogative_or_question_error') ? Math.min(scConf, sumConf) : scConf;
       dynamicCritique = `You translated this as an open question ("what"), but "${predWord}" is an indefinite pronoun ("something/anything") in a statement.`;
-    } else if (summaryCritiqueChoice === 'potential_or_modality_error' || predCheck === 'potential_vs_intent_error') {
-      critiqueSource = predCheck === 'potential_vs_intent_error' ? 'predicate_mood_and_voice' : 'sentence_critique_summary';
-      triggeringConfidence = Math.max(answers.predicate_mood_and_voice?.confidence ?? 0, answers.sentence_critique_summary?.confidence ?? 0);
+    } else if (summaryCritiqueChoice === 'interrogative_or_question_error') {
+      critiqueSource = 'sentence_critique_summary';
+      triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
+      dynamicCritique = `You translated this as an open question ("what"), but "${predWord}" is an indefinite pronoun ("something/anything") in a statement.`;
+    } else if (predCheck === 'potential_vs_intent_error') {
+      critiqueSource = 'predicate_mood_and_voice';
+      const predConf = answers.predicate_mood_and_voice?.confidence ?? 0;
+      const sumConf = answers.sentence_critique_summary?.confidence ?? 0;
+      triggeringConfidence = (summaryCritiqueChoice === 'potential_or_modality_error') ? Math.min(predConf, sumConf) : predConf;
       dynamicCritique = `"${predWord}" is in the potential form ("can do"), but you translated it as simple future intent ("will do").`;
-    } else if (predCheck === 'tense_past_present_error' || summaryCritiqueChoice === 'tense_or_aspect_error') {
-      critiqueSource = predCheck === 'tense_past_present_error' ? 'predicate_mood_and_voice' : 'sentence_critique_summary';
-      triggeringConfidence = Math.max(answers.predicate_mood_and_voice?.confidence ?? 0, answers.sentence_critique_summary?.confidence ?? 0);
+    } else if (summaryCritiqueChoice === 'potential_or_modality_error') {
+      critiqueSource = 'sentence_critique_summary';
+      triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
+      dynamicCritique = `"${predWord}" is in the potential form ("can do"), but you translated it as simple future intent ("will do").`;
+    } else if (predCheck === 'tense_past_present_error') {
+      critiqueSource = 'predicate_mood_and_voice';
+      const predConf = answers.predicate_mood_and_voice?.confidence ?? 0;
+      const sumConf = answers.sentence_critique_summary?.confidence ?? 0;
+      triggeringConfidence = (summaryCritiqueChoice === 'tense_or_aspect_error') ? Math.min(predConf, sumConf) : predConf;
+      dynamicCritique = `Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).`;
+    } else if (summaryCritiqueChoice === 'tense_or_aspect_error') {
+      critiqueSource = 'sentence_critique_summary';
+      triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
       dynamicCritique = `Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).`;
     } else if (summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference') {
       critiqueSource = 'sentence_critique_summary';
@@ -1406,6 +1491,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       minConfidence,
       avgConfidence,
       triggeringConfidence,
+      critiqueSource,
       isStrict10Consensus,
       hasNumeralMismatch,
       isTypo,
@@ -1911,12 +1997,12 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         location_or_means: 'Location of action, instrument, or means (marked by で).',
         demonstrative_determiner: 'Demonstrative or pre-noun adjectival determiner (連体詞) directly modifying a following noun (e.g. この, その, あの, どの, 大きな, 小さな).',
         noun_modifying_relative_clause: 'Verb, adjective, or clause acting as an attributive / relative clause modifying a noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
-        main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
+        main_predicate_verb: 'The primary verb, adjective, or predicate of the sentence or clause (including inflected forms like past 〜た, polite 〜ます, negative 〜ない).',
         connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
         subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
         adverbial_modifier: 'An adverb, time expression, or modifier altering the verb/adjective (e.g. ゆっくり, とても).',
         particle_or_sentence_ender: 'Colloquial particle, conversational softener, or sentence-ending expression (e.g. ね, よ, けど).',
-        other_or_unclear: 'Syntactic role does not cleanly fit any of the above categories, or is ambiguous.'
+        other_or_unclear: 'Use ONLY if the word has an idiosyncratic syntactic role that strictly cannot be classified as a subject, object, determiner, modifier, particle, or verb.'
       }
     };
 
@@ -2075,7 +2161,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const tipConf = pedagogical_tip_type?.confidence ?? 0;
     const tip = (tipConf >= 0.70 && pedagogical_tip_type?.choice) ? pedagogical_tip_type.choice : 'standard_usage';
 
-    const isHighConf = roleConfidence >= 0.85;
+    const isHighConf = roleConfidence >= 0.80;
     const hedgeVerb = isHighConf ? 'functioning as' : 'likely functioning as';
     const hedgeServes = isHighConf ? 'serving as' : 'likely serving as';
     const hedgeIndicating = isHighConf ? 'indicating' : 'likely indicating';
