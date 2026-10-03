@@ -155,8 +155,16 @@ function generateVocabExplanation(answers, cardInfo) {
   
   const cleanTarget = (cardInfo.vocab || '').replace(/\([^)]*\)/g, '').trim();
   const meanings = cardInfo.meanings || [];
+  if (!meanings.length) {
+    return {
+      markdown: '',
+      role: null,
+      chosenSense: '',
+      targetWord: null
+    };
+  }
   
-  let chosenSense = meanings[0] || 'target definition';
+  let chosenSense = meanings[0] || '';
   if (applied_meaning && applied_meaning.choice) {
     const match = applied_meaning.choice.match(/sense_(\d+)/);
     if (match && meanings[parseInt(match[1], 10)]) {
@@ -176,7 +184,8 @@ function generateVocabExplanation(answers, cardInfo) {
 
   const role = grammatical_role?.choice;
   const roleConfidence = grammatical_role?.confidence ?? 0;
-  const targetWord = (connected_target_word?.choice && connected_target_word.choice !== 'none_or_independent') ? connected_target_word.choice : null;
+  const targetWordConf = connected_target_word?.confidence ?? 0;
+  const targetWord = (targetWordConf >= 0.70 && connected_target_word?.choice && connected_target_word.choice !== 'none_or_independent') ? connected_target_word.choice : null;
 
   // Reject fast-path if role is unclear, other, or below docs-compliant threshold (>= 0.65)
   if (!role || role === 'other_or_unclear' || roleConfidence < 0.65) {
@@ -189,7 +198,8 @@ function generateVocabExplanation(answers, cardInfo) {
   }
 
   const inflect = inflection_form?.choice;
-  const tip = pedagogical_tip_type?.choice;
+  const tipConf = pedagogical_tip_type?.confidence ?? 0;
+  const tip = (tipConf >= 0.70 && pedagogical_tip_type?.choice) ? pedagogical_tip_type.choice : 'standard_usage';
 
   const isHighConf = roleConfidence >= 0.85;
   const hedgeVerb = isHighConf ? 'functioning as' : 'likely functioning as';
@@ -259,8 +269,15 @@ function generateVocabExplanation(answers, cardInfo) {
     roleExplanation = `${hedgeVerb} the verb within an embedded, conditional, or subordinate clause`;
   } else if (role === 'particle_or_sentence_ender') {
     roleExplanation = `${isHighConf ? 'functions as' : 'likely functions as'} a conversational particle or sentence-ending expression providing pragmatic nuance`;
-  } else {
+  } else if (role === 'main_predicate_verb') {
     roleExplanation = `${hedgeServes} the main predicate verb of the sentence${inflectionText}`;
+  } else {
+    return {
+      markdown: '',
+      role: null,
+      chosenSense: cleanSense,
+      targetWord
+    };
   }
 
   const tipsMap = {
