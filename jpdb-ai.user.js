@@ -1746,8 +1746,14 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     return { url, headers, model };
   }
 
-  async function callJevEvaluation(info, userDraft) {
+  async function callJevEvaluation(info, userDraft, options = {}) {
     const t0 = Date.now();
+    const isProbe = options && options.probeReference === true;
+    const cleanDraft = (userDraft || '').trim();
+    if (!cleanDraft && !isProbe) {
+      return { cardHtml: '', metrics: null, elapsedMs: 0 };
+    }
+    const targetText = isProbe ? (info.sentenceEN || '').trim() : cleanDraft;
     try {
       const conn = getJevConnection();
       const url = conn.url;
@@ -1756,7 +1762,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
       const cleanJp = (info.sentenceJP || '').replace(/\([^)]*\)/g, '').trim();
       const cleanTarget = (info.vocab || '').replace(/\([^)]*\)/g, '').trim();
-      const targetText = userDraft || info.sentenceEN || '';
       const allWords = getJapaneseSentenceWords(info.sentenceJP, info.vocab);
       const contentWords = (allWords || []).filter((w) => w && w.length > 1 && !['から', 'まで', 'より', 'けど', 'ので', 'のに', 'んだ'].includes(w));
       const words = contentWords.length > 0 ? contentWords : allWords;

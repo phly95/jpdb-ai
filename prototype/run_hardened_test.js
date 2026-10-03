@@ -264,7 +264,20 @@ async function runAsyncTests() {
     ok(missingKeys.length === 0, `All backticked question keys exist in state for "${tc.info.vocab}"`, missingKeys.length ? JSON.stringify(missingKeys) : 'all keys match state');
   }
 
-  results.push({ name: 'Grading request state contract', pass, fail });
+  // S2.5: Empty draft guard & probeReference diagnostic flag
+  X.__sb.__lastCapturedRequest = null;
+  const emptyRes = await X.callJevEvaluation({ sentenceJP: '猫が好きです。', vocab: '猫', sentenceEN: 'I like cats.' }, '');
+  ok(emptyRes.metrics === null && X.__sb.__lastCapturedRequest === null, 'Empty draft string does not call Jev');
+  
+  X.__sb.__lastCapturedRequest = null;
+  const whitespaceRes = await X.callJevEvaluation({ sentenceJP: '猫が好きです。', vocab: '猫', sentenceEN: 'I like cats.' }, '   ');
+  ok(whitespaceRes.metrics === null && X.__sb.__lastCapturedRequest === null, 'Whitespace-only draft does not call Jev');
+
+  X.__sb.__lastCapturedRequest = null;
+  await X.callJevEvaluation({ sentenceJP: '猫が好きです。', vocab: '猫', sentenceEN: 'I like cats.' }, '', { probeReference: true });
+  ok(X.__sb.__lastCapturedRequest !== null && X.__sb.__lastCapturedRequest.state.user_translation === 'I like cats.', 'probeReference flag triggers evaluation using reference translation');
+
+  results.push({ name: 'Grading request state contract & draft guards', pass, fail });
 }
 
 async function live() {
