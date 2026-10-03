@@ -11,3 +11,5 @@ Thumbs.db
 # Temporary / node logs
 *.log
 node_modules/
+prototype/config.local.json
+.env

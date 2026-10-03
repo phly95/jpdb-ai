@@ -2,14 +2,21 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 
-// Primary AI backend router config
+// Load local credentials if present (not tracked in git)
+let localConfig = {};
+try {
+  if (fs.existsSync(__dirname + '/config.local.json')) {
+    localConfig = JSON.parse(fs.readFileSync(__dirname + '/config.local.json', 'utf8'));
+  }
+} catch (e) {}
+
 let config = {
-  jevEndpoint: 'https://openrouter.ai/api/alpha/decisions',
-  jevModel: 'typesafe/jev-1.13',
-  jevKey: 'YOUR_API_KEY',
-  llmBase: 'http://100.117.72.11:20128/v1',
-  llmModel: 'ag/gemini-3.8-flash-low',
-  llmKey: 'sk-32c602f2a3bf0a64-sc09zk-98456489'
+  jevEndpoint: process.env.JEV_ENDPOINT || localConfig.jevEndpoint || 'https://openrouter.ai/api/alpha/decisions',
+  jevModel: process.env.JEV_MODEL || localConfig.jevModel || 'typesafe/jev-1.13',
+  jevKey: process.env.JEV_KEY || process.env.OPENROUTER_API_KEY || localConfig.jevKey || '',
+  llmBase: process.env.LLM_BASE || localConfig.llmBase || 'http://100.117.72.11:20128/v1',
+  llmModel: process.env.LLM_MODEL || localConfig.llmModel || 'ag/gemini-3.8-flash-low',
+  llmKey: process.env.LLM_KEY || localConfig.llmKey || ''
 };
 
 function postJson(urlStr, headers, bodyObj, timeoutMs = 20000) {
