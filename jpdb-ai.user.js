@@ -1753,7 +1753,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     if (!cleanDraft && !isProbe) {
       return { cardHtml: '', metrics: null, elapsedMs: 0 };
     }
-    const targetText = isProbe ? (info.sentenceEN || '').trim() : cleanDraft;
+    const targetText = isProbe ? (info.sentenceEN || '').trim() : (userDraft || '');
     try {
       const conn = getJevConnection();
       const url = conn.url;
