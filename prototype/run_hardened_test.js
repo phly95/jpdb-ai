@@ -105,6 +105,21 @@ const P=(a,o={})=>X.parseJevScores(a,o.words||WORDS,o.tv||'好き',o.draft||'I l
 
 console.log('--- strict 10/10 is fail-closed ---');
 let m=P(clean()); ok(m.overall===10&&m.isStrict10Consensus,'complete, realistic answers -> 10/10');
+// Real-world human synonym calibration (67% flawless vs 32% nuance, bracketConf=0.58, summaryConf=0.45):
+m=P(clean({
+  grade_bracket:{choice:'10_flawless',confidence:0.58,probabilities:{'10_flawless':0.67,'8_minor_nuance':0.32,'5_moderate_error':0.01}},
+  sentence_critique_summary:{choice:'no_flaws_accurate',confidence:0.45,probabilities:{'no_flaws_accurate':0.51,'minor_nuance_or_word_choice_difference':0.48}},
+  is_flawless:{noul:0.90},
+  severity:{score:3.56}
+}));
+ok(m.overall===10&&m.isStrict10Consensus,'natural synonym entropy split (0.58 conf, 99% top-tier) -> 10/10 fast path');
+// Error leakage test (60% flawless vs 40% major error -> topTier < 0.90):
+m=P(clean({
+  grade_bracket:{choice:'10_flawless',confidence:0.55,probabilities:{'10_flawless':0.60,'3_major_error':0.40}},
+  is_flawless:{noul:0.90},
+  severity:{score:3.56}
+}));
+ok(!m.isStrict10Consensus,'error bracket leakage (40% major error) blocks 10/10');
 for(const k of ['polarity_check','benefactive_direction','predicate_mood_and_voice','predicate_complex_conjugation','interrogative_check','question_type_and_scope','target_vocab_handling']){
   const a=clean(); delete a[k]; m=P(a); ok(!m.isStrict10Consensus&&m.overall!==10,`missing ${k} blocks 10/10`,`failed=${m.failedGuards}`);
 }

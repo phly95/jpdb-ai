@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.92
+// @version      1.0.93
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1560,14 +1560,23 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const wordsAnswered = words.filter((w, i) => answers['word_' + i + '_sense'] && answers['word_' + i + '_grammar']).length;
     const wordCoverageOk = words.length === 0 || (wordsAnswered / words.length) >= 0.8;
 
+    const bracketProbs = answers.grade_bracket?.probabilities || {};
+    const topTierBracketProb = (bracketProbs['10_flawless'] || 0) + (bracketProbs['8_minor_nuance'] || 0);
+    const summaryProbs = answers.sentence_critique_summary?.probabilities || {};
+    const cleanSummaryProb = (summaryProbs['no_flaws_accurate'] || 0) + (summaryProbs['minor_nuance_or_word_choice_difference'] || 0);
+
     // Multi-signal strict consensus for 10/10 flawless:
-    // Fail-closed: Requires explicit positive confirmation across all signals
+    // Fail-closed: Requires explicit positive confirmation across all signals.
+    // Natural human synonyms (e.g. "good" vs "fine", "looking at" vs "watching") cause Jev to split probability
+    // between flawless and minor nuance (e.g. 67% vs 32%), giving ~0.56 choice confidence despite 0% on any error.
+    // We permit bracketConf >= 0.50 and summaryConf >= 0.40 ONLY when top-tier non-error probability mass is >= 0.90.
+    const bracketOkFor10 = bracketChoice === '10_flawless' && (bracketConf >= 0.75 || (bracketConf >= 0.50 && topTierBracketProb >= 0.90));
+    const summaryOkFor10 = summaryCritiqueChoice === 'no_flaws_accurate' && (summaryConf >= 0.65 || (summaryConf >= 0.40 && cleanSummaryProb >= 0.90));
+
     const isStrict10Consensus = (
-      bracketChoice === '10_flawless' &&
-      bracketConf >= 0.75 &&
+      bracketOkFor10 &&
       isFlawlessProb >= 0.85 &&
-      summaryCritiqueChoice === 'no_flaws_accurate' &&
-      summaryConf >= 0.65 &&
+      summaryOkFor10 &&
       severityScore !== null &&
       severityScore >= 3.5 &&
       mistakes.length === 0 &&
