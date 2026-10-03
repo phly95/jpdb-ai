@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.94
+// @version      1.0.95
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1653,7 +1653,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const fastPathBlockers = [];
     if (!dynamicCritique) fastPathBlockers.push('no_critique_text');
     if (triggeringConfidence < 0.75) fastPathBlockers.push('low_triggering_confidence');
-    if (bracketConf < 0.65) fastPathBlockers.push('low_bracket_confidence');
+    if (bracketConf < 0.55) fastPathBlockers.push('low_bracket_confidence');
     if (dynamicCritique && critiqueKind === 'none') fastPathBlockers.push('unclassified_critique');
     if (critiqueKind === 'minor' && (errorSideBracket || hasCriticalFault)) fastPathBlockers.push('critique_undersells_error');
     if (critiqueKind === 'error' && !errorSideBracket) fastPathBlockers.push('error_critique_vs_lenient_bracket');
