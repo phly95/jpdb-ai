@@ -1068,7 +1068,10 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     const summaryCritiqueChoice = answers.sentence_critique_summary?.choice;
     const benefactiveChoice = answers.benefactive_direction?.choice;
-    const predCheck = answers.predicate_mood_and_voice?.choice;
+    const voiceCheck = answers.predicate_voice?.choice;
+    const tenseCheck = answers.predicate_tense?.choice;
+    const modalityCheck = answers.predicate_modality?.choice;
+    const actionCheck = answers.predicate_action?.choice;
     const interCheck = answers.interrogative_check?.choice;
     const polCheck = answers.polarity_check?.choice;
     const scopeCheck = answers.question_type_and_scope?.choice;
@@ -1128,25 +1131,28 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       });
     }
 
-    if (predCheck === 'passive_vs_active_error') {
+    if (voiceCheck === 'passive_vs_active_error') {
       sentenceCritiques.push({
         code: 'passive_voice_reversed',
         severity: 'critical',
         label: 'Grammatical voice reversed: Passive voice was translated as active (or subject/agent inverted).'
       });
-    } else if (predCheck === 'potential_vs_intent_error') {
+    }
+    if (modalityCheck === 'potential_vs_intent_error') {
       sentenceCritiques.push({
         code: 'potential_or_modality_error',
         severity: 'moderate',
         label: "Modality mismatch: Potential form ('can / be able to') was translated as intent ('will')."
       });
-    } else if (predCheck === 'tense_past_present_error') {
+    }
+    if (tenseCheck === 'tense_past_present_error') {
       sentenceCritiques.push({
         code: 'tense_or_aspect_error',
         severity: 'moderate',
         label: 'Tense/aspect mismatch: Confused past tense with present/future, or continuous aspect.'
       });
-    } else if (predCheck === 'predicate_omitted_or_wrong') {
+    }
+    if (actionCheck === 'predicate_omitted_or_wrong') {
       sentenceCritiques.push({
         code: 'wrong_verb_or_action',
         severity: 'critical',
@@ -1369,9 +1375,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       critiqueSource = 'polarity_check';
       triggeringConfidence = answers.polarity_check?.confidence ?? 0;
       dynamicCritique = `Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).`;
-    } else if (predCheck === 'passive_vs_active_error') {
-      critiqueSource = 'predicate_mood_and_voice';
-      const predConf = answers.predicate_mood_and_voice?.confidence ?? 0;
+    } else if (voiceCheck === 'passive_vs_active_error') {
+      critiqueSource = 'predicate_voice';
+      const predConf = answers.predicate_voice?.confidence ?? 0;
       const sumConf = answers.sentence_critique_summary?.confidence ?? 0;
       triggeringConfidence = (summaryCritiqueChoice === 'passive_voice_reversed') ? Math.min(predConf, sumConf) : predConf;
       dynamicCritique = `You reversed the passive voice: "${predWord}" indicates the subject is receiving the action, not initiating it.`;
@@ -1403,9 +1409,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       critiqueSource = 'sentence_critique_summary';
       triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
       dynamicCritique = `You translated this as an open question ("what"), but "${predWord}" is an indefinite pronoun ("something/anything") in a statement.`;
-    } else if (predCheck === 'potential_vs_intent_error') {
-      critiqueSource = 'predicate_mood_and_voice';
-      const predConf = answers.predicate_mood_and_voice?.confidence ?? 0;
+    } else if (modalityCheck === 'potential_vs_intent_error') {
+      critiqueSource = 'predicate_modality';
+      const predConf = answers.predicate_modality?.confidence ?? 0;
       const sumConf = answers.sentence_critique_summary?.confidence ?? 0;
       triggeringConfidence = (summaryCritiqueChoice === 'potential_or_modality_error') ? Math.min(predConf, sumConf) : predConf;
       dynamicCritique = `"${predWord}" is in the potential form ("can do"), but you translated it as simple future intent ("will do").`;
@@ -1413,9 +1419,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       critiqueSource = 'sentence_critique_summary';
       triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
       dynamicCritique = `"${predWord}" is in the potential form ("can do"), but you translated it as simple future intent ("will do").`;
-    } else if (predCheck === 'tense_past_present_error') {
-      critiqueSource = 'predicate_mood_and_voice';
-      const predConf = answers.predicate_mood_and_voice?.confidence ?? 0;
+    } else if (tenseCheck === 'tense_past_present_error') {
+      critiqueSource = 'predicate_tense';
+      const predConf = answers.predicate_tense?.confidence ?? 0;
       const sumConf = answers.sentence_critique_summary?.confidence ?? 0;
       triggeringConfidence = (summaryCritiqueChoice === 'tense_or_aspect_error') ? Math.min(predConf, sumConf) : predConf;
       dynamicCritique = `Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).`;
@@ -1423,6 +1429,16 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       critiqueSource = 'sentence_critique_summary';
       triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
       dynamicCritique = `Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).`;
+    } else if (actionCheck === 'predicate_omitted_or_wrong') {
+      critiqueSource = 'predicate_action';
+      const predConf = answers.predicate_action?.confidence ?? 0;
+      const sumConf = answers.sentence_critique_summary?.confidence ?? 0;
+      triggeringConfidence = (summaryCritiqueChoice === 'wrong_verb_or_action') ? Math.min(predConf, sumConf) : predConf;
+      dynamicCritique = `The core verb or action was misunderstood or mistranslated.`;
+    } else if (summaryCritiqueChoice === 'wrong_verb_or_action') {
+      critiqueSource = 'sentence_critique_summary';
+      triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
+      dynamicCritique = `The core verb or action was misunderstood or mistranslated.`;
     } else if (summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference') {
       critiqueSource = 'sentence_critique_summary';
       triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
@@ -1431,10 +1447,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       } else {
         dynamicCritique = `The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.`;
       }
-    } else if (summaryCritiqueChoice === 'wrong_verb_or_action') {
-      critiqueSource = 'sentence_critique_summary';
-      triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
-      dynamicCritique = `The core verb or action was misunderstood or mistranslated.`;
     } else if (hasNumeralMismatch) {
       critiqueSource = 'numeral_mismatch';
       triggeringConfidence = 1.0;
@@ -1455,7 +1467,10 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     // (Previously a dropped/missing answer silently counted as "no error found".)
     const GUARD_OK_FLOOR = 0.60;
     const guardSpecs = [
-      ['predicate_mood_and_voice', ['correct_or_not_applicable']],
+      ['predicate_voice', ['correct_or_not_applicable']],
+      ['predicate_tense', ['correct_or_not_applicable']],
+      ['predicate_modality', ['correct_or_not_applicable']],
+      ['predicate_action', ['correct_or_not_applicable']],
       ['benefactive_direction', ['correct_benefactive_or_not_applicable']],
       ['predicate_complex_conjugation', ['accurate_or_not_stacked']],
       ['interrogative_check', ['correct_or_no_interrogative']],
@@ -1557,7 +1572,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         critiqueKind = 'minor';
       } else if (critiqueSource === 'sentence_critique_summary') {
         critiqueKind = summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference' ? 'minor' : 'error';
-      } else if (['predicate_complex_conjugation', 'polarity_check', 'predicate_mood_and_voice', 'benefactive_direction', 'question_type_and_scope'].includes(critiqueSource)) {
+      } else if (['predicate_complex_conjugation', 'polarity_check', 'predicate_voice', 'predicate_tense', 'predicate_modality', 'predicate_action', 'benefactive_direction', 'question_type_and_scope'].includes(critiqueSource)) {
         critiqueKind = 'error';
       }
     }
@@ -1575,8 +1590,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     const isClearComplexError = complexChoice && complexChoice !== 'accurate_or_not_stacked' && complexChoice !== 'stacked_conjugation_not_applicable' && (answers.predicate_complex_conjugation?.confidence ?? 0) >= 0.75;
     const isClearBenefactiveError = benefactiveChoice === 'recipient_reversed_self_vs_other' && (answers.benefactive_direction?.confidence ?? 0) >= 0.80;
-    const isClearVoiceError = (summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') && ((answers.sentence_critique_summary?.confidence ?? 0) >= 0.75 || (answers.predicate_mood_and_voice?.confidence ?? 0) >= 0.75);
-    const isClearPotentialError = (summaryCritiqueChoice === 'potential_or_modality_error' || predCheck === 'potential_vs_intent_error') && ((answers.sentence_critique_summary?.confidence ?? 0) >= 0.75 || (answers.predicate_mood_and_voice?.confidence ?? 0) >= 0.75);
+    const isClearVoiceError = (summaryCritiqueChoice === 'passive_voice_reversed' || voiceCheck === 'passive_vs_active_error') && ((answers.sentence_critique_summary?.confidence ?? 0) >= 0.75 || (answers.predicate_voice?.confidence ?? 0) >= 0.75);
+    const isClearPotentialError = (summaryCritiqueChoice === 'potential_or_modality_error' || modalityCheck === 'potential_vs_intent_error') && ((answers.sentence_critique_summary?.confidence ?? 0) >= 0.75 || (answers.predicate_modality?.confidence ?? 0) >= 0.75);
     const isClearSummaryError = summaryCritiqueChoice && summaryCritiqueChoice !== 'no_flaws_accurate' && (answers.sentence_critique_summary?.confidence ?? 0) >= 0.80;
     const isDecisionConfident = (isClearComplexError || isClearBenefactiveError || isClearVoiceError || isClearPotentialError || isClearSummaryError);
 
@@ -1879,15 +1894,39 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
             omitted_or_missing: 'An essential lexical word was completely omitted from the translation without pragmatic reflection.'
           }
         },
-        predicate_mood_and_voice: {
+        predicate_voice: {
           type: 'choice',
-          instructions: 'Evaluate the main verb/predicate of `japanese_sentence` in `user_translation` for tense, voice (passive/active), and mood (potential "can" vs intent "will").',
-          options: ['correct_or_not_applicable', 'potential_vs_intent_error', 'passive_vs_active_error', 'tense_past_present_error', 'predicate_omitted_or_wrong'],
+          instructions: 'Evaluate the grammatical voice (passive vs active) of the main verb/predicate of `japanese_sentence` in `user_translation`.',
+          options: ['correct_or_not_applicable', 'passive_vs_active_error'],
           criteria: {
-            correct_or_not_applicable: 'The predicate tense, voice, and mood are accurately translated (e.g. やりなさい -> "do it", 言われた -> "were told", 来ました -> "came" or "has come"), or sentence has no inflected verb.',
-            potential_vs_intent_error: 'Potential form ("can / be able to") was translated as simple intent ("will") or vice versa.',
-            passive_vs_active_error: 'Passive voice ("was seen", "was told") was reversed to active ("I saw", "I told") or agent/object inverted.',
-            tense_past_present_error: 'Past tense translated as present/future, or vice versa (do NOT select this for English simple past vs present perfect like "came" vs "has come" for completed actions).',
+            correct_or_not_applicable: 'Passive or active voice is accurately translated (e.g. 言われた -> "were told", やりなさい -> "do it"), or sentence has no passive verb.',
+            passive_vs_active_error: 'Passive voice ("was seen", "was told") was reversed to active ("I saw", "I told") or agent/object inverted.'
+          }
+        },
+        predicate_tense: {
+          type: 'choice',
+          instructions: 'Evaluate the tense and aspect of the main verb/predicate of `japanese_sentence` in `user_translation`.',
+          options: ['correct_or_not_applicable', 'tense_past_present_error'],
+          criteria: {
+            correct_or_not_applicable: 'Predicate tense and aspect are accurately translated (e.g. 来ました -> "came" or "has come"), or sentence has no inflected verb.',
+            tense_past_present_error: 'Past tense translated as present/future, or vice versa (do NOT select this for English simple past vs present perfect like "came" vs "has come" for completed actions).'
+          }
+        },
+        predicate_modality: {
+          type: 'choice',
+          instructions: 'Evaluate the mood and modality (potential "can" vs intent "will") of the main verb/predicate of `japanese_sentence` in `user_translation`.',
+          options: ['correct_or_not_applicable', 'potential_vs_intent_error'],
+          criteria: {
+            correct_or_not_applicable: 'Predicate mood and modality are accurately translated (e.g. やりなさい -> "do it"), or sentence has no potential/modal verb.',
+            potential_vs_intent_error: 'Potential form ("can / be able to") was translated as simple intent ("will") or vice versa.'
+          }
+        },
+        predicate_action: {
+          type: 'choice',
+          instructions: 'Evaluate whether the core action or main verb of `japanese_sentence` was accurately translated in `user_translation`.',
+          options: ['correct_or_not_applicable', 'predicate_omitted_or_wrong'],
+          criteria: {
+            correct_or_not_applicable: 'The main action or core verb is accurately translated, or sentence has no verb.',
             predicate_omitted_or_wrong: 'The main action/verb was omitted or mistranslated.'
           }
         },

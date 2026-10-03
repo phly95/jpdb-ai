@@ -107,7 +107,10 @@ const clean=(over={})=>({
   sentence_critique_summary:{choice:'no_flaws_accurate',confidence:0.9},
   english_typo_check:{choice:'no_typos_clean_english',confidence:0.95},
   suspected_typo_word:{choice:'none',confidence:0.95},
-  predicate_mood_and_voice:{choice:'correct_or_not_applicable',confidence:0.98},
+  predicate_voice:{choice:'correct_or_not_applicable',confidence:0.98},
+  predicate_tense:{choice:'correct_or_not_applicable',confidence:0.98},
+  predicate_modality:{choice:'correct_or_not_applicable',confidence:0.98},
+  predicate_action:{choice:'correct_or_not_applicable',confidence:0.98},
   benefactive_direction:{choice:'correct_benefactive_or_not_applicable',confidence:0.99},
   predicate_complex_conjugation:{choice:'accurate_or_not_stacked',confidence:0.99},
   interrogative_check:{choice:'correct_or_no_interrogative',confidence:0.99},
@@ -136,9 +139,29 @@ m=P(clean({
   severity:{score:3.56}
 }));
 ok(!m.isStrict10Consensus,'error bracket leakage (40% major error) blocks 10/10');
-for(const k of ['polarity_check','benefactive_direction','predicate_mood_and_voice','predicate_complex_conjugation','interrogative_check','question_type_and_scope','target_vocab_handling']){
+for(const k of ['polarity_check','benefactive_direction','predicate_voice','predicate_tense','predicate_modality','predicate_action','predicate_complex_conjugation','interrogative_check','question_type_and_scope','target_vocab_handling']){
   const a=clean(); delete a[k]; m=P(a); ok(!m.isStrict10Consensus&&m.overall!==10,`missing ${k} blocks 10/10`,`failed=${m.failedGuards}`);
 }
+for(const [qKey, errChoice] of [
+  ['predicate_voice', 'passive_vs_active_error'],
+  ['predicate_tense', 'tense_past_present_error'],
+  ['predicate_modality', 'potential_vs_intent_error'],
+  ['predicate_action', 'predicate_omitted_or_wrong']
+]){
+  m=P(clean({[qKey]:{choice:'correct_or_not_applicable',confidence:0.50}}));
+  ok(!m.isStrict10Consensus&&m.overall!==10,`low-confidence ${qKey} (0.50) blocks 10/10`);
+  m=P(clean({[qKey]:{choice:errChoice,confidence:0.90}}));
+  ok(!m.isStrict10Consensus&&m.overall!==10,`non-accurate ${qKey} (${errChoice}) blocks 10/10`);
+}
+m=P(clean({predicate_voice:{choice:'passive_vs_active_error',confidence:0.90}}));
+ok(m.sentenceCritiques.some(c=>c.code==='passive_voice_reversed'&&c.severity==='critical'),'predicate_voice error produces critical passive_voice_reversed critique');
+m=P(clean({predicate_tense:{choice:'tense_past_present_error',confidence:0.90}}));
+ok(m.sentenceCritiques.some(c=>c.code==='tense_or_aspect_error'&&c.severity==='moderate'),'predicate_tense error produces moderate tense_or_aspect_error critique');
+m=P(clean({predicate_modality:{choice:'potential_vs_intent_error',confidence:0.90}}));
+ok(m.sentenceCritiques.some(c=>c.code==='potential_or_modality_error'&&c.severity==='moderate'),'predicate_modality error produces moderate potential_or_modality_error critique');
+m=P(clean({predicate_action:{choice:'predicate_omitted_or_wrong',confidence:0.90}}));
+ok(m.sentenceCritiques.some(c=>c.code==='wrong_verb_or_action'&&c.severity==='critical'),'predicate_action error produces critical wrong_verb_or_action critique');
+
 m=P(clean({polarity_check:{choice:'polarity_preserved',confidence:0.5}})); ok(!m.isStrict10Consensus,'coin-flip polarity_preserved (0.50) blocks 10/10');
 {const a=clean(); delete a.word_0_sense; delete a.word_1_grammar; m=P(a); ok(!m.isStrict10Consensus,'missing per-word answers (50% coverage) blocks 10/10');}
 
@@ -161,7 +184,7 @@ m=P(clean({grade_bracket:{choice:'10_flawless',confidence:0.9},sentence_critique
 ok(!m.critiqueFastPathOk&&m.fastPathBlockers.includes('error_critique_vs_lenient_bracket'),'"passive reversed" + flawless bracket conflict is blocked',m.fastPathBlockers.join());
 m=P(clean({grade_bracket:{choice:'5_moderate_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.45}}));
 ok(m.triggeringConfidence===0.45&&!m.critiqueFastPathOk,'summary 0.45 vs "correct" voice 0.98 stays 0.45 and is blocked',`trig=${m.triggeringConfidence}`);
-m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9},predicate_mood_and_voice:{choice:'passive_vs_active_error',confidence:0.9}}));
+m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9},predicate_voice:{choice:'passive_vs_active_error',confidence:0.9}}));
 ok(m.critiqueFastPathOk&&m.critiqueKind==='error'&&m.overall===3,'legit, corroborated passive reversal passes the gate',`${m.fastPathBlockers.join()||'no blockers'} | ${m.dynamicCritique.slice(0,70)}`);
 m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9}}),{draft:'There are five cats',ref:'There are three cats',jp:'猫が三匹いる'});
 ok(m.hasNumeralMismatch&&!m.critiqueFastPathOk&&m.fastPathBlockers.includes('numeral_mismatch_unreported'),'numeral mismatch is never hidden behind another critique',m.fastPathBlockers.join());
