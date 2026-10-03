@@ -9,9 +9,6 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_registerMenuCommand
-// @connect      100.117.72.11
-// @connect      openrouter.ai
-// @connect      generativelanguage.googleapis.com
 // @connect      *
 // @run-at       document-idle
 // ==/UserScript==
@@ -31,7 +28,7 @@
   const DEFAULT_JEV_MODEL = 'typesafe/jev-1.13';
   const DEFAULT_JEV_KEY = '';
 
-  // Keep reasoning cheap/fast: "minimal" thinking level for both APIs.
+  // Keep reasoning cheap/fast: "low" thinking level for both APIs.
   const REASONING_EFFORT = 'low';
 
   let updateFoot = () => {};
