@@ -152,7 +152,17 @@
 
       const meaningEls = doc.querySelectorAll('.subsection-meanings .description');
       const meanings = Array.from(meaningEls)
-        .map((e) => e.textContent.replace(/\s+/g, ' ').trim())
+        .map((e) => {
+          const clone = e.cloneNode(true);
+          const subDiv = clone.querySelector('div');
+          let subText = '';
+          if (subDiv) {
+            subText = subDiv.textContent.replace(/\s+/g, ' ').trim();
+            subDiv.remove();
+          }
+          const mainGloss = clone.textContent.replace(/\s+/g, ' ').trim();
+          return (mainGloss + (subText ? ' — ' + subText : '')).trim();
+        })
         .filter(Boolean)
         .slice(0, 12);
       const pos = textOf('.subsection-meanings .part-of-speech', doc);
@@ -252,7 +262,20 @@
 
     // Meanings + POS
     const meaningEls = document.querySelectorAll('.subsection-meanings .description');
-    let meanings = Array.from(meaningEls).map((e) => e.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 12);
+    let meanings = Array.from(meaningEls)
+      .map((e) => {
+        const clone = e.cloneNode(true);
+        const subDiv = clone.querySelector('div');
+        let subText = '';
+        if (subDiv) {
+          subText = subDiv.textContent.replace(/\s+/g, ' ').trim();
+          subDiv.remove();
+        }
+        const mainGloss = clone.textContent.replace(/\s+/g, ' ').trim();
+        return (mainGloss + (subText ? ' — ' + subText : '')).trim();
+      })
+      .filter(Boolean)
+      .slice(0, 12);
     let pos = textOf('.subsection-meanings .part-of-speech');
 
     // Extra examples
@@ -1830,7 +1853,11 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     const nuanceTip = tipsMap[tip] || 'Focus on how the attached particle or inflection connects this word to the main predicate.';
 
-    let cleanSense = chosenSense.replace(/^\d+[\.\)]\s*/, '').trim();
+    let cleanSense = chosenSense;
+    if (cleanSense.includes(' — ')) {
+      cleanSense = cleanSense.split(' — ')[0].trim();
+    }
+    cleanSense = cleanSense.replace(/^\d+[\.\)]\s*/, '').trim();
     const semiParts = cleanSense.split(';');
     if (semiParts.length > 1) {
       cleanSense = semiParts.slice(0, 2).join(';').trim();
