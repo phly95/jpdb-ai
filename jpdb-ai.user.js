@@ -1962,7 +1962,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         },
         target_vocab_handling: {
           type: 'choice',
-          instructions: `Evaluate specifically how the tested vocabulary word "${cleanTarget}" was translated in \`user_translation\` given its role in \`japanese_sentence\` and \`reference_translation\`. Note: Conversational sentence-ending particles/softeners (like けど/んだけど, ね, よ) soften requests or indicate polite hesitation; capturing their communicative tone naturally without a literal "but" counts as natural_accurate_sense. Idiomatic phrases (like もう in もう知らない / "I'm done with you") count as natural_accurate_sense.`,
+          instructions: `Evaluate specifically how the tested vocabulary word "${cleanTarget}" was translated in \`user_translation\` given its role in \`japanese_sentence\`. Note: Conversational sentence-ending particles/softeners (like けど/んだけど, ね, よ) soften requests or indicate polite hesitation; capturing their communicative tone naturally without a literal "but" counts as natural_accurate_sense. Idiomatic phrases (like もう in もう知らない / "I'm done with you") count as natural_accurate_sense.`,
           options: ['natural_accurate_sense', 'awkward_or_literal_misfit', 'wrong_definition_or_misinterpreted', 'omitted_or_missing'],
           criteria: {
             natural_accurate_sense: 'The target vocabulary, its idiomatic meaning, or its pragmatic conversational role is appropriately captured or naturally conveyed.',
@@ -2084,7 +2084,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         };
         questions['word_' + i + '_sense'] = {
           type: 'choice',
-          instructions: `Evaluate the meaning, idiomatic equivalence, and nuance of "${w}" in \`user_translation\` compared to \`japanese_sentence\` and \`reference_translation\`. (Note: Set phrases like もう知らない translated as "I'm done with you", and obvious English homophones like 'their' for 'there', count as natural_correct_sense. However, confusing 何か 'something' with 'what' is mistranslated_or_wrong_meaning).`,
+          instructions: `Evaluate the meaning, idiomatic equivalence, and nuance of "${w}" in \`user_translation\` compared to \`japanese_sentence\`. (Note: Set phrases like もう知らない translated as "I'm done with you", and obvious English homophones like 'their' for 'there', count as natural_correct_sense. However, confusing 何か 'something' with 'what' is mistranslated_or_wrong_meaning).`,
           options: ['natural_correct_sense', 'awkward_or_literal_misfit', 'mistranslated_or_wrong_meaning', 'not_applicable_if_omitted'],
           criteria: senseCriteria
         };
