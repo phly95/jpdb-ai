@@ -155,6 +155,8 @@ m=typoA({suspected_typo_word:{choice:'now',confidence:0.5}}); ok(!m.typoFastPath
 console.log('--- critique text/confidence/severity coherence ---');
 m=P(clean({grade_bracket:{choice:'8_minor_nuance',confidence:0.8},word_0_omitted:{noul:0.9}}),{words:['昨日','猫が'],tv:'猫',draft:'I like cats',ref:'I liked cats yesterday',jp:'昨日猫が好きだった'});
 ok(m.critiqueSource==='omitted_word'&&!/degree/.test(m.dynamicCritique),'omission text is neutral (no hard-coded "degree nuance")',m.dynamicCritique);
+m=P(clean({grade_bracket:{choice:'1_fatal_error',confidence:0.9},sentence_critique_summary:{choice:'minor_nuance_or_word_choice_difference',confidence:0.9}}));
+ok(!m.critiqueFastPathOk&&m.fastPathBlockers.includes('critique_undersells_error'),'fatal error bracket + minor nuance critique is blocked by critique_undersells_error',m.fastPathBlockers.join());
 m=P(clean({grade_bracket:{choice:'10_flawless',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9}}));
 ok(!m.critiqueFastPathOk&&m.fastPathBlockers.includes('error_critique_vs_lenient_bracket'),'"passive reversed" + flawless bracket conflict is blocked',m.fastPathBlockers.join());
 m=P(clean({grade_bracket:{choice:'5_moderate_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.45}}));
