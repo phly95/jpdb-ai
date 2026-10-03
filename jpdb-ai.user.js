@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.95
+// @version      1.0.96
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1842,7 +1842,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       const words = contentWords.length > 0 ? contentWords : allWords;
 
       const studentChunks = extractPhraseChunks(targetText);
-      const refChunks = extractPhraseChunks(info.sentenceEN || '');
       const userWords = (targetText || '').trim().split(/\s+/).map((w) => w.replace(/^[\.,!?"'\s]+|[\.,!?"'\s]+$/g, '')).filter((w) => w.length > 0);
 
       const state = {
@@ -1850,11 +1849,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         user_translation: targetText,
         target_vocabulary: cleanTarget || info.vocab || '',
         target_meanings: (info.meanings || []).slice(0, 3),
-        reference_translation: info.sentenceEN || '',
         words: words,
         user_words: userWords,
-        student_chunks: studentChunks,
-        reference_chunks: refChunks
+        student_chunks: studentChunks
       };
 
       const questions = {
@@ -1884,7 +1881,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         },
         grade_bracket: {
           type: 'choice',
-          instructions: 'Grade this translation on the 10/10 scale considering contextual accuracy and natural English phrasing compared to `reference_translation`. Ignore capitalization, punctuation, and casing differences (e.g. "mr smith" is fully acceptable for "Mr. Smith"). Note: Natural synonyms, equivalent phrasings, natural English aspect variations (e.g. translating 来ました/来た as either "came" or "has come", 行きました as "went" or "has gone"), natural nominalizations of embedded clauses (e.g. "the meaning of this word" for 何を意味するのか, direct translations like "what I thought" for 思っていた, "talked to" for 話した, "found" for 見つけた), idiomatic expressions, conversational softeners, and natural equivalents capture the communicative intent perfectly and should receive 10_flawless. Obvious English typos or homophones (like typing "now" for "not") where Japanese comprehension is accurate should be graded as 8_minor_nuance (8/10), NOT a major or fatal error.',
+          instructions: 'Grade this translation on the 10/10 scale considering contextual accuracy and natural English phrasing for `japanese_sentence`. Ignore capitalization, punctuation, and casing differences (e.g. "mr smith" is fully acceptable for "Mr. Smith"). Note: Natural synonyms, equivalent phrasings, natural English aspect variations (e.g. translating 来ました/来た as either "came" or "has come", 行きました as "went" or "has gone"), natural nominalizations of embedded clauses (e.g. "the meaning of this word" for 何を意味するのか, direct translations like "what I thought" for 思っていた, "talked to" for 話した, "found" for 見つけた), idiomatic expressions, conversational softeners, and natural equivalents capture the communicative intent perfectly and should receive 10_flawless. Obvious English typos or homophones (like typing "now" for "not") where Japanese comprehension is accurate should be graded as 8_minor_nuance (8/10), NOT a major or fatal error.',
           options: ['10_flawless', '8_minor_nuance', '5_moderate_error', '3_major_error', '1_fatal_error'],
           criteria: {
             '10_flawless': 'Flawless, natural, and contextually idiomatic translation (including conversational synonyms, aspect variations like "came" vs "has come" for 来ました, ignoring casing/punctuation, and natural nominalizations of embedded clauses). Conveys the communicative intent and tone with no deductions.',
@@ -1908,7 +1905,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         },
         sentence_critique_summary: {
           type: 'choice',
-          instructions: 'Identify the primary translation flaw or deduction reason in `user_translation` compared to `japanese_sentence` and `reference_translation`. Ignore capitalization, punctuation, and casing differences. If the translation is idiomatic and accurately conveys the intent (including aspect equivalents like "came" vs "has come" for 来ました/来た, or natural nominalization of embedded clauses like "the meaning of this word" for 何を意味するのか), select no_flaws_accurate.',
+          instructions: 'Identify the primary translation flaw or deduction reason in `user_translation` compared to `japanese_sentence`. Ignore capitalization, punctuation, and casing differences. If the translation is idiomatic and accurately conveys the intent (including aspect equivalents like "came" vs "has come" for 来ました/来た, or natural nominalization of embedded clauses like "the meaning of this word" for 何を意味するのか), select no_flaws_accurate.',
           options: [
             'no_flaws_accurate',
             'wrong_benefactive_or_recipient',
@@ -2035,8 +2032,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         };
       }
 
-      if (studentChunks.length > 0 && refChunks.length > 0) {
-
+      if (studentChunks.length > 0) {
         questions.flawed_student_excerpt = {
           type: 'choice',
           instructions: {
@@ -2045,48 +2041,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           },
           options: studentChunks,
           criteria: toCriteria(studentChunks)
-        };
-
-        questions.correct_reference_excerpt = {
-          type: 'choice',
-          instructions: {
-            question: 'Which excerpt in `reference_chunks` correctly expresses that part of `japanese_sentence` in English?',
-            focus: 'Pick the corresponding proper English phrase for that part of the sentence.'
-          },
-          options: refChunks,
-          criteria: toCriteria(refChunks)
-        };
-
-        questions.contrast_relation = {
-          type: 'choice',
-          instructions: {
-            question: 'Contrast the student excerpt with the reference excerpt.',
-            focus: 'Characterize the exact difference between the student phrasing and the reference translation.'
-          },
-          options: [
-            'passive_vs_active_reversal',
-            'causative_reversal',
-            'benefactive_direction_inverted',
-            'potential_vs_intent',
-            'obligation_vs_absence',
-            'counterfactual_regret_vs_condition',
-            'question_vs_statement',
-            'degree_or_modifier_omitted',
-            'word_choice_or_nuance_mismatch',
-            'accurate_equivalent'
-          ],
-          criteria: {
-            passive_vs_active_reversal: 'Student translated as active subject, reference is passive recipient.',
-            causative_reversal: 'Student translated as active causer, reference is subjected person.',
-            benefactive_direction_inverted: 'Favor direction reversed (doing favor for someone vs receiving favor).',
-            potential_vs_intent: 'Potential ability/can vs future certainty/will.',
-            obligation_vs_absence: 'Obligation (must do) vs absence of obligation.',
-            counterfactual_regret_vs_condition: 'Counterfactual wish/regret vs literal condition.',
-            question_vs_statement: 'Open question vs indefinite pronoun statement.',
-            degree_or_modifier_omitted: 'A degree modifier, adverb, or softening word (e.g. そう/very, あまり/not much, ちょっと) was dropped.',
-            word_choice_or_nuance_mismatch: 'Literal phrasing or nuance misfit.',
-            accurate_equivalent: 'Student phrasing and reference phrasing are equivalent in meaning.'
-          }
         };
       }
 
