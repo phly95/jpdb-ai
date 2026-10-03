@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.1.2
+// @version      1.1.3
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1500,21 +1500,21 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     // Natural human synonyms (e.g. "good" vs "fine", "looking at" vs "watching") cause Jev to split probability
     // between flawless and minor nuance (e.g. 67% vs 32%), giving ~0.56 choice confidence despite 0% on any error.
     // We permit bracketConf >= 0.50 and summaryConf >= 0.40 ONLY when top-tier non-error probability mass is >= 0.90.
-    const bracketOkFor10 = bracketChoice === '10_flawless' && (bracketConf >= 0.75 || (bracketConf >= 0.50 && topTierBracketProb >= 0.90));
-    const summaryOkFor10 = summaryCritiqueChoice === 'no_flaws_accurate' && (summaryConf >= 0.65 || (summaryConf >= 0.35 && cleanSummaryProb >= 0.90));
+    // Derived Flawless: Derive 10/10 directly when all objective structural checks
+    // come back clean, rather than filtering through redundant holistic probability thresholds.
+    const hasMajorOrFatalProb = (bracketProbs['3_major_error'] || 0) + (bracketProbs['1_fatal_error'] || 0);
+    const bracketCleanFor10 = (bracketChoice === '10_flawless' || bracketChoice === '8_minor_nuance') &&
+      hasMajorOrFatalProb < 0.15 &&
+      (bracketConf >= 0.75 || topTierBracketProb >= 0.85 || Object.keys(bracketProbs).length === 0);
 
     const isStrict10Consensus = (
-      bracketOkFor10 &&
-      isFlawlessProb >= 0.85 &&
-      summaryOkFor10 &&
-      severityScore !== null &&
-      severityScore >= 3.5 &&
+      guardsOk &&
+      bracketCleanFor10 &&
       mistakes.length === 0 &&
       advisories.length === 0 &&
       sentenceCritiques.length === 0 &&
       !hasNumeralMismatch &&
       isNumeralClean &&
-      guardsOk &&
       wordCoverageOk
     );
 
