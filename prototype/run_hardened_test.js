@@ -21,14 +21,30 @@ if (!scriptPath) { console.error('Cannot find jpdb-ai.user.js. Pass its path as 
 
 function loadShipped(file) {
   const src = fs.readFileSync(file, 'utf8');
-  const names = ['parseCompoundKanjiNum', 'extractJapaneseNumbers', 'extractEnglishNumbers', 'extractEnglishNumberInfo', 'assessNumeralStatus', 'isGroundedTypo', 'levenshtein', 'parseJevScores', 'buildVocabExplanationQuestions', 'generateVocabExplanation', 'verifyVocabRole', 'verifyConnectedWord', 'isTipRelevant'];
+  const names = ['parseCompoundKanjiNum', 'extractJapaneseNumbers', 'extractEnglishNumbers', 'extractEnglishNumberInfo', 'assessNumeralStatus', 'isGroundedTypo', 'levenshtein', 'parseJevScores', 'buildVocabExplanationQuestions', 'generateVocabExplanation', 'verifyVocabRole', 'verifyConnectedWord', 'isTipRelevant', 'callJevEvaluation'];
   const code = src.replace(/\}\)\(\);\s*$/, `
   globalThis.__X__={${names.map((n) => `${n}: typeof ${n}!=='undefined'?${n}:undefined`).join(',')}};
 })();`);
-  const sb = { location: { pathname: '/review' }, document: { readyState: 'loading', addEventListener() {} }, GM_getValue: () => '', GM_setValue() {}, GM_registerMenuCommand() {}, console, Intl, __X__: null };
+  const sb = {
+    location: { pathname: '/review' },
+    document: { readyState: 'loading', addEventListener() {} },
+    GM_getValue: (k) => {
+      if (k === 'jpdb_ai_jev_endpoint') return 'https://openrouter.ai/api/alpha/decisions';
+      if (k === 'jpdb_ai_jev_model') return 'typesafe/jev-1.13';
+      return '';
+    },
+    GM_setValue() {},
+    GM_registerMenuCommand() {},
+    GM_xmlhttpRequest: (opts) => {
+      try { sb.__lastCapturedRequest = JSON.parse(opts.data); } catch (e) {}
+      opts.onload && opts.onload({ status: 200, responseText: JSON.stringify({ answers: {} }) });
+    },
+    console, Intl, __X__: null
+  };
   sb.window = sb; sb.globalThis = sb;
   vm.createContext(sb);
   vm.runInContext(code, sb);
+  sb.__X__.__sb = sb;
   return sb.__X__;
 }
 const X = loadShipped(scriptPath);
@@ -216,9 +232,49 @@ g=G(A('direct_object',0.9),{vocab:'猫',meanings:[],sentenceJP:'猫を見た。'
 return { name: 'Vocab explainer verification', pass, fail };
 })());
 
-console.log('\n==================== SUMMARY ====================');
-let totalFail = 0;
-for (const r of results) { console.log(`${r.fail ? 'FAIL' : 'ok  '} ${r.name}: ${r.pass} passed, ${r.fail} failed`); totalFail += r.fail; }
+async function runAsyncTests() {
+  console.log('==================== Grading request state contract ====================');
+  let pass = 0, fail = 0;
+  const ok = (c, l, extra = '') => { c ? pass++ : fail++; console.log(`[${c ? 'PASS' : 'FAIL'}] ${l}${extra ? '  -> ' + extra : ''}`); };
+
+  const testCases = [
+    {
+      info: { sentenceJP: '猫が好きです。', vocab: '猫', meanings: ['cat'], sentenceEN: 'I like cats.' },
+      draft: 'I like cats.'
+    },
+    {
+      info: { sentenceJP: '昨日、図書館で本を三冊借りた。', vocab: '借りる', meanings: ['to borrow'], sentenceEN: 'Yesterday I borrowed three books at the library.' },
+      draft: 'Yesterday I borrowed three books from the library.'
+    },
+    {
+      info: { sentenceJP: 'もう知らない！', vocab: 'もう', meanings: ['already', 'anymore'], sentenceEN: "I don't care anymore!" },
+      draft: "I'm done with you!"
+    }
+  ];
+
+  for (const tc of testCases) {
+    await X.callJevEvaluation(tc.info, tc.draft);
+    const captured = X.__sb.__lastCapturedRequest;
+    if (!captured || !captured.questions || !captured.state) {
+      ok(false, `Request captured for ${tc.info.vocab}`, 'No request captured');
+      continue;
+    }
+    const missingKeys = [];
+    for (const [qKey, qVal] of Object.entries(captured.questions)) {
+      const text = typeof qVal.instructions === 'string' ? qVal.instructions : JSON.stringify(qVal.instructions);
+      const matches = text.match(/`([a-zA-Z0-9_]+)`/g) || [];
+      for (const m of matches) {
+        const key = m.replace(/`/g, '');
+        if (!(key in captured.state)) {
+          missingKeys.push({ question: qKey, backtickedKey: key });
+        }
+      }
+    }
+    ok(missingKeys.length === 0, `All backticked question keys exist in state for "${tc.info.vocab}"`, missingKeys.length ? JSON.stringify(missingKeys) : 'all keys match state');
+  }
+
+  results.push({ name: 'Grading request state contract', pass, fail });
+}
 
 async function live() {
   let callJev;
@@ -241,6 +297,10 @@ async function live() {
 }
 
 (async () => {
+  await runAsyncTests();
+  console.log('\n==================== SUMMARY ====================');
+  let totalFail = 0;
+  for (const r of results) { console.log(`${r.fail ? 'FAIL' : 'ok  '} ${r.name}: ${r.pass} passed, ${r.fail} failed`); totalFail += r.fail; }
   if (process.argv.includes('--live')) await live();
   process.exit(totalFail ? 1 : 0);
 })();
