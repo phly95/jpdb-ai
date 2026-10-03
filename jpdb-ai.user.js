@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.99
+// @version      1.1.0
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -2789,8 +2789,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         const roleLabel = item.jev?.role ? (item.jev.role.replace(/_/g, ' ')) : 'unclassified';
         const roleConfPct = typeof item.jev?.roleConfidence === 'number' ? Math.round(item.jev.roleConfidence * 100) + '%' : '';
         const roleBadgeClass = isFast ? 'high' : (item.jev?.roleConfidence >= 0.6 ? 'med' : 'low');
+        const jevMs = item.jev?.elapsedMs;
         const badgeTag = isFast 
-          ? `<span class="jpdb-ai-diag-badge-fp" style="background:rgba(22,163,74,.15);color:#16a34a;font-weight:700;font-size:10px;padding:1px 6px;border-radius:3px">⚡ 250ms Fast-Path</span>`
+          ? `<span class="jpdb-ai-diag-badge-fp" style="background:rgba(22,163,74,.15);color:#16a34a;font-weight:700;font-size:10px;padding:1px 6px;border-radius:3px">⚡ ${jevMs ? `${jevMs}ms ` : ''}Fast-Path</span>`
           : `<span class="jpdb-ai-diag-badge-div" title="${escapeHtml(item.divergence?.reason || 'Escalated to LLM')}">🤖 Escalated</span>`;
 
         return `
@@ -2831,6 +2832,11 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       const jevBadgeClass = item.jev?.overall === 10 ? 'high' : (item.jev?.overall >= 7 ? 'med' : 'low');
       const llmScoreVal = (item.llm?.isFastPathReply || item.llm?.elapsedMs === 0) && typeof item.llm?.score !== 'number' ? '⚡ skipped (no LLM yet)' : (typeof item.llm?.score === 'number' ? `${item.llm.score}/10` : '?');
       const divTag = isDiv ? `<span class="jpdb-ai-diag-badge-div" title="${escapeHtml(item.divergence?.reason || '')}">Δ ${item.divergence?.scoreDiff ?? '?'} pts</span>` : '';
+      const isRateFast = !!(item.jev?.fastPath || item.llm?.isFastPathReply || item.llm?.elapsedMs === 0);
+      const jevMs = item.jev?.elapsedMs;
+      const rateFpTag = (isRateFast && !isDiv)
+        ? `<span class="jpdb-ai-diag-badge-fp" style="background:rgba(22,163,74,.15);color:#16a34a;font-weight:700;font-size:10px;padding:1px 6px;border-radius:3px">⚡ ${jevMs ? `${jevMs}ms ` : ''}Fast-Path</span>`
+        : '';
 
       const mistakesList = (function() {
         const issues = (item.jev?.mistakes && item.jev.mistakes.length > 0)
@@ -2848,6 +2854,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           <div class="jpdb-ai-diag-item-top">
             <span style="font-weight:700;color:#2563eb">${escapeHtml(item.card?.vocab || 'Card')}</span>
             <div style="display:flex;align-items:center;gap:4px">
+              ${rateFpTag}
               ${divTag}
               <span class="jpdb-ai-diag-time">${escapeHtml(timeStr)}</span>
               <button type="button" class="jpdb-ai-diag-btn-action jpdb-ai-diag-btn-copy" data-id="${escapeHtml(itemId)}" title="Copy diagnostic JSON to clipboard">📋 Copy</button>
