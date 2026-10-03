@@ -1,0 +1,454 @@
+{
+  "run1": {
+    "directional": {
+      "standard": {
+        "optionBuckets": {
+          "2": {
+            "flips": 0,
+            "toFirst": 0,
+            "toLast": 0,
+            "toMiddle": 0
+          },
+          "3": {
+            "flips": 13,
+            "toFirst": 2,
+            "toLast": 4,
+            "toMiddle": 7
+          },
+          "4+": {
+            "flips": 58,
+            "toFirst": 12,
+            "toLast": 23,
+            "toMiddle": 23
+          },
+          "overall": {
+            "flips": 71,
+            "toFirst": 14,
+            "toLast": 27,
+            "toMiddle": 30,
+            "totalQuestions": 2124,
+            "unchanged": 2053
+          }
+        },
+        "signTest": {
+          "toFirst": 14,
+          "toLast": 27,
+          "totalFirstOrLast": 41,
+          "pValue": 0.05958388801809633,
+          "significant": false,
+          "tooSmallToConclude": false
+        },
+        "repeatNoise": {
+          "r1_vs_r2": {
+            "total": 2130,
+            "flipped": 28,
+            "rate": 0.013145539906103286
+          },
+          "r1_vs_r3": {
+            "total": 2130,
+            "flipped": 28,
+            "rate": 0.013145539906103286
+          }
+        }
+      },
+      "hard": {
+        "optionBuckets": {
+          "2": {
+            "flips": 1,
+            "toFirst": 1,
+            "toLast": 0,
+            "toMiddle": 0
+          },
+          "3": {
+            "flips": 5,
+            "toFirst": 0,
+            "toLast": 1,
+            "toMiddle": 4
+          },
+          "4+": {
+            "flips": 29,
+            "toFirst": 2,
+            "toLast": 12,
+            "toMiddle": 15
+          },
+          "overall": {
+            "flips": 35,
+            "toFirst": 3,
+            "toLast": 13,
+            "toMiddle": 19,
+            "totalQuestions": 966,
+            "unchanged": 931
+          }
+        },
+        "signTest": {
+          "toFirst": 3,
+          "toLast": 13,
+          "totalFirstOrLast": 16,
+          "pValue": 0.021270751953125,
+          "significant": true,
+          "tooSmallToConclude": false
+        },
+        "repeatNoise": {
+          "r1_vs_r2": {
+            "total": 966,
+            "flipped": 19,
+            "rate": 0.019668737060041408
+          },
+          "r1_vs_r3": {
+            "total": 966,
+            "flipped": 13,
+            "rate": 0.013457556935817806
+          }
+        }
+      }
+    },
+    "decisionFlips": {
+      "dev": {
+        "split": "dev",
+        "casesCount": 53,
+        "orderFlips": {
+          "any": {
+            "count": 11,
+            "rate": 0.20754716981132076
+          },
+          "score": {
+            "count": 7,
+            "rate": 0.1320754716981132
+          },
+          "fastPath": {
+            "count": 5,
+            "rate": 0.09433962264150944
+          },
+          "critique": {
+            "count": 3,
+            "rate": 0.05660377358490566
+          }
+        },
+        "repeatNoise": {
+          "any": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          },
+          "score": {
+            "count": 0,
+            "rate": 0
+          },
+          "fastPath": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          },
+          "critique": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      },
+      "test": {
+        "split": "test",
+        "casesCount": 53,
+        "orderFlips": {
+          "any": {
+            "count": 7,
+            "rate": 0.1320754716981132
+          },
+          "score": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          },
+          "fastPath": {
+            "count": 6,
+            "rate": 0.11320754716981132
+          },
+          "critique": {
+            "count": 2,
+            "rate": 0.03773584905660377
+          }
+        },
+        "repeatNoise": {
+          "any": {
+            "count": 3,
+            "rate": 0.05660377358490566
+          },
+          "score": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          },
+          "fastPath": {
+            "count": 2,
+            "rate": 0.03773584905660377
+          },
+          "critique": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          }
+        }
+      },
+      "hard": {
+        "split": "hard",
+        "casesCount": 44,
+        "orderFlips": {
+          "any": {
+            "count": 12,
+            "rate": 0.2727272727272727
+          },
+          "score": {
+            "count": 6,
+            "rate": 0.13636363636363635
+          },
+          "fastPath": {
+            "count": 3,
+            "rate": 0.06818181818181818
+          },
+          "critique": {
+            "count": 5,
+            "rate": 0.11363636363636363
+          }
+        },
+        "repeatNoise": {
+          "any": {
+            "count": 5,
+            "rate": 0.11363636363636363
+          },
+          "score": {
+            "count": 4,
+            "rate": 0.09090909090909091
+          },
+          "fastPath": {
+            "count": 3,
+            "rate": 0.06818181818181818
+          },
+          "critique": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      }
+    }
+  },
+  "run2": {
+    "directional": {
+      "standard": {
+        "optionBuckets": {
+          "2": {
+            "flips": 0,
+            "toFirst": 0,
+            "toLast": 0,
+            "toMiddle": 0
+          },
+          "3": {
+            "flips": 13,
+            "toFirst": 2,
+            "toLast": 2,
+            "toMiddle": 9
+          },
+          "4+": {
+            "flips": 56,
+            "toFirst": 11,
+            "toLast": 25,
+            "toMiddle": 20
+          },
+          "overall": {
+            "flips": 69,
+            "toFirst": 13,
+            "toLast": 27,
+            "toMiddle": 29,
+            "totalQuestions": 2124,
+            "unchanged": 2055
+          }
+        },
+        "signTest": {
+          "toFirst": 13,
+          "toLast": 27,
+          "totalFirstOrLast": 40,
+          "pValue": 0.03847730828420026,
+          "significant": true,
+          "tooSmallToConclude": false
+        },
+        "repeatNoise": {
+          "r1_vs_r2": {
+            "total": 2130,
+            "flipped": 25,
+            "rate": 0.011737089201877934
+          },
+          "r1_vs_r3": {
+            "total": 2130,
+            "flipped": 25,
+            "rate": 0.011737089201877934
+          }
+        }
+      },
+      "hard": {
+        "optionBuckets": {
+          "2": {
+            "flips": 1,
+            "toFirst": 1,
+            "toLast": 0,
+            "toMiddle": 0
+          },
+          "3": {
+            "flips": 8,
+            "toFirst": 2,
+            "toLast": 0,
+            "toMiddle": 6
+          },
+          "4+": {
+            "flips": 27,
+            "toFirst": 0,
+            "toLast": 12,
+            "toMiddle": 15
+          },
+          "overall": {
+            "flips": 36,
+            "toFirst": 3,
+            "toLast": 12,
+            "toMiddle": 21,
+            "totalQuestions": 966,
+            "unchanged": 930
+          }
+        },
+        "signTest": {
+          "toFirst": 3,
+          "toLast": 12,
+          "totalFirstOrLast": 15,
+          "pValue": 0.03515625,
+          "significant": true,
+          "tooSmallToConclude": false
+        },
+        "repeatNoise": {
+          "r1_vs_r2": {
+            "total": 966,
+            "flipped": 14,
+            "rate": 0.014492753623188406
+          },
+          "r1_vs_r3": {
+            "total": 966,
+            "flipped": 16,
+            "rate": 0.016563146997929608
+          }
+        }
+      }
+    },
+    "decisionFlips": {
+      "dev": {
+        "split": "dev",
+        "casesCount": 53,
+        "orderFlips": {
+          "any": {
+            "count": 11,
+            "rate": 0.20754716981132076
+          },
+          "score": {
+            "count": 7,
+            "rate": 0.1320754716981132
+          },
+          "fastPath": {
+            "count": 5,
+            "rate": 0.09433962264150944
+          },
+          "critique": {
+            "count": 3,
+            "rate": 0.05660377358490566
+          }
+        },
+        "repeatNoise": {
+          "any": {
+            "count": 2,
+            "rate": 0.03773584905660377
+          },
+          "score": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          },
+          "fastPath": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          },
+          "critique": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      },
+      "test": {
+        "split": "test",
+        "casesCount": 53,
+        "orderFlips": {
+          "any": {
+            "count": 6,
+            "rate": 0.11320754716981132
+          },
+          "score": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          },
+          "fastPath": {
+            "count": 5,
+            "rate": 0.09433962264150944
+          },
+          "critique": {
+            "count": 3,
+            "rate": 0.05660377358490566
+          }
+        },
+        "repeatNoise": {
+          "any": {
+            "count": 3,
+            "rate": 0.05660377358490566
+          },
+          "score": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          },
+          "fastPath": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          },
+          "critique": {
+            "count": 1,
+            "rate": 0.018867924528301886
+          }
+        }
+      },
+      "hard": {
+        "split": "hard",
+        "casesCount": 44,
+        "orderFlips": {
+          "any": {
+            "count": 15,
+            "rate": 0.3409090909090909
+          },
+          "score": {
+            "count": 8,
+            "rate": 0.18181818181818182
+          },
+          "fastPath": {
+            "count": 3,
+            "rate": 0.06818181818181818
+          },
+          "critique": {
+            "count": 6,
+            "rate": 0.13636363636363635
+          }
+        },
+        "repeatNoise": {
+          "any": {
+            "count": 3,
+            "rate": 0.06818181818181818
+          },
+          "score": {
+            "count": 3,
+            "rate": 0.06818181818181818
+          },
+          "fastPath": {
+            "count": 0,
+            "rate": 0
+          },
+          "critique": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      }
+    }
+  }
+}

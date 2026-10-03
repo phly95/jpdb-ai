@@ -1,0 +1,956 @@
+{
+  "dev_flawless_01": {
+    "caseId": "dev_flawless_01",
+    "split": "dev",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_02": {
+    "caseId": "dev_flawless_02",
+    "split": "dev",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_03": {
+    "caseId": "dev_flawless_03",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_04": {
+    "caseId": "dev_flawless_04",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 9,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "dev_flawless_05": {
+    "caseId": "dev_flawless_05",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 9,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "dev_flawless_06": {
+    "caseId": "dev_flawless_06",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_07": {
+    "caseId": "dev_flawless_07",
+    "split": "dev",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_08": {
+    "caseId": "dev_flawless_08",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_09": {
+    "caseId": "dev_flawless_09",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_10": {
+    "caseId": "dev_flawless_10",
+    "split": "dev",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_11": {
+    "caseId": "dev_flawless_11",
+    "split": "dev",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_12": {
+    "caseId": "dev_flawless_12",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_13": {
+    "caseId": "dev_flawless_13",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_14": {
+    "caseId": "dev_flawless_14",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_15": {
+    "caseId": "dev_flawless_15",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 7,
+    "dynamicCritique": "",
+    "critiqueSource": "numeral_mismatch",
+    "route": "fallback"
+  },
+  "dev_flawless_16": {
+    "caseId": "dev_flawless_16",
+    "split": "dev",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_17": {
+    "caseId": "dev_flawless_17",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_18": {
+    "caseId": "dev_flawless_18",
+    "split": "dev",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "dev_flawless_19": {
+    "caseId": "dev_flawless_19",
+    "split": "dev",
+    "label": "typo_only",
+    "overall": 5,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "fallback"
+  },
+  "dev_flawless_20": {
+    "caseId": "dev_flawless_20",
+    "split": "dev",
+    "label": "typo_only",
+    "overall": 5,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "dev_flawless_21": {
+    "caseId": "dev_flawless_21",
+    "split": "dev",
+    "label": "typo_only",
+    "overall": 8,
+    "dynamicCritique": "Your Japanese comprehension is sound, but \"**to**\" appears to be an English typo or autocorrect slip in your translation.",
+    "critiqueSource": "english_typo_check",
+    "route": "typo_fast_path"
+  },
+  "dev_crit_passive_01": {
+    "caseId": "dev_crit_passive_01",
+    "split": "dev",
+    "label": "critical_error:passive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"言われた\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "fallback"
+  },
+  "dev_crit_passive_02": {
+    "caseId": "dev_crit_passive_02",
+    "split": "dev",
+    "label": "critical_error:passive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"盗まれた\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "fallback"
+  },
+  "dev_crit_passive_03": {
+    "caseId": "dev_crit_passive_03",
+    "split": "dev",
+    "label": "critical_error:passive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"呼び止められた\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "fallback"
+  },
+  "dev_crit_polarity_01": {
+    "caseId": "dev_crit_polarity_01",
+    "split": "dev",
+    "label": "critical_error:polarity_inversion",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "critique_fast_path"
+  },
+  "dev_crit_polarity_02": {
+    "caseId": "dev_crit_polarity_02",
+    "split": "dev",
+    "label": "critical_error:polarity_inversion",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "critique_fast_path"
+  },
+  "dev_crit_polarity_03": {
+    "caseId": "dev_crit_polarity_03",
+    "split": "dev",
+    "label": "critical_error:polarity_inversion",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "critique_fast_path"
+  },
+  "dev_crit_benefactive_01": {
+    "caseId": "dev_crit_benefactive_01",
+    "split": "dev",
+    "label": "critical_error:benefactive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted who did what to whom: the grammatical subject and object were swapped.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "critique_fast_path"
+  },
+  "dev_crit_benefactive_02": {
+    "caseId": "dev_crit_benefactive_02",
+    "split": "dev",
+    "label": "critical_error:benefactive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You reversed the favor direction: \"やってくれ\" indicates an action performed for someone else rather than for oneself (or vice versa).",
+    "critiqueSource": "benefactive_direction",
+    "route": "critique_fast_path"
+  },
+  "dev_crit_benefactive_03": {
+    "caseId": "dev_crit_benefactive_03",
+    "split": "dev",
+    "label": "critical_error:benefactive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"編んでもらった\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "fallback"
+  },
+  "dev_crit_indef_01": {
+    "caseId": "dev_crit_indef_01",
+    "split": "dev",
+    "label": "critical_error:indefinite_vs_wh",
+    "overall": 3,
+    "dynamicCritique": "You translated this as an open question (\"what\"), but \"冷たい\" is an indefinite pronoun (\"something/anything\") in a statement.",
+    "critiqueSource": "question_type_and_scope",
+    "route": "fallback"
+  },
+  "dev_crit_indef_02": {
+    "caseId": "dev_crit_indef_02",
+    "split": "dev",
+    "label": "critical_error:indefinite_vs_wh",
+    "overall": 5,
+    "dynamicCritique": "You translated this as an open question (\"what\"), but \"誰か\" is an indefinite pronoun (\"something/anything\") in a statement.",
+    "critiqueSource": "question_type_and_scope",
+    "route": "fallback"
+  },
+  "dev_crit_indef_03": {
+    "caseId": "dev_crit_indef_03",
+    "split": "dev",
+    "label": "critical_error:indefinite_vs_wh",
+    "overall": 5,
+    "dynamicCritique": "You translated this as an open question (\"what\"), but the main verb is an indefinite pronoun (\"something/anything\") in a statement.",
+    "critiqueSource": "question_type_and_scope",
+    "route": "fallback"
+  },
+  "dev_crit_causpass_01": {
+    "caseId": "dev_crit_causpass_01",
+    "split": "dev",
+    "label": "critical_error:causative_passive_inversion",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"待たされた\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "critique_fast_path"
+  },
+  "dev_crit_causpass_02": {
+    "caseId": "dev_crit_causpass_02",
+    "split": "dev",
+    "label": "critical_error:causative_passive_inversion",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"食べさせられた\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "critique_fast_path"
+  },
+  "dev_crit_causpass_03": {
+    "caseId": "dev_crit_causpass_03",
+    "split": "dev",
+    "label": "critical_error:causative_passive_inversion",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"飲まされた\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "critique_fast_path"
+  },
+  "dev_crit_numeral_01": {
+    "caseId": "dev_crit_numeral_01",
+    "split": "dev",
+    "label": "critical_error:numeral_mismatch",
+    "overall": 3,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "dev_crit_numeral_02": {
+    "caseId": "dev_crit_numeral_02",
+    "split": "dev",
+    "label": "critical_error:numeral_mismatch",
+    "overall": 3,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "dev_crit_numeral_03": {
+    "caseId": "dev_crit_numeral_03",
+    "split": "dev",
+    "label": "critical_error:numeral_mismatch",
+    "overall": 7,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "dev_mod_01": {
+    "caseId": "dev_mod_01",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 5,
+    "dynamicCritique": "\"行ける\" is in the potential form (\"can do\"), but you translated it as simple future intent (\"will do\").",
+    "critiqueSource": "predicate_mood_and_voice",
+    "route": "fallback"
+  },
+  "dev_mod_02": {
+    "caseId": "dev_mod_02",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 7,
+    "dynamicCritique": "Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).",
+    "critiqueSource": "predicate_mood_and_voice",
+    "route": "critique_fast_path"
+  },
+  "dev_mod_03": {
+    "caseId": "dev_mod_03",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 3,
+    "dynamicCritique": "Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).",
+    "critiqueSource": "predicate_mood_and_voice",
+    "route": "fallback"
+  },
+  "dev_mod_04": {
+    "caseId": "dev_mod_04",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 7,
+    "dynamicCritique": "\"かなければよかった\" expresses counterfactual regret (\"I should have / wish I hadn't\"), rather than a factual condition (\"if...\").",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "fallback"
+  },
+  "dev_mod_05": {
+    "caseId": "dev_mod_05",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 1,
+    "dynamicCritique": "\"ないわけにはいかない\" is an obligation pattern meaning \"have no choice but to / must do\", but you translated it as an inability (\"cannot do\").",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "critique_fast_path"
+  },
+  "dev_mod_06": {
+    "caseId": "dev_mod_06",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 3,
+    "dynamicCritique": "\"なくなっちゃった\" expresses becoming unable to do something with regret (\"ended up unable to...\"), rather than a simple refusal or past negative.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "critique_fast_path"
+  },
+  "dev_mod_07": {
+    "caseId": "dev_mod_07",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 1,
+    "dynamicCritique": "The core verb or action was misunderstood or mistranslated.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "critique_fast_path"
+  },
+  "dev_mod_08": {
+    "caseId": "dev_mod_08",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 3,
+    "dynamicCritique": "Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).",
+    "critiqueSource": "predicate_mood_and_voice",
+    "route": "fallback"
+  },
+  "dev_mod_09": {
+    "caseId": "dev_mod_09",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 5,
+    "dynamicCritique": "\"かもしれない\" is in the potential form (\"can do\"), but you translated it as simple future intent (\"will do\").",
+    "critiqueSource": "predicate_mood_and_voice",
+    "route": "fallback"
+  },
+  "dev_mod_10": {
+    "caseId": "dev_mod_10",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 3,
+    "dynamicCritique": "Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).",
+    "critiqueSource": "predicate_mood_and_voice",
+    "route": "fallback"
+  },
+  "dev_mod_11": {
+    "caseId": "dev_mod_11",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 3,
+    "dynamicCritique": "You translated this as an open question (\"what\"), but \"何時\" is an indefinite pronoun (\"something/anything\") in a statement.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "dev_mod_12": {
+    "caseId": "dev_mod_12",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 7,
+    "dynamicCritique": "Your translation doesn't seem to include the meaning of **毎日**.",
+    "critiqueSource": "omitted_word",
+    "route": "fallback"
+  },
+  "dev_mod_13": {
+    "caseId": "dev_mod_13",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 3,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "dev_mod_14": {
+    "caseId": "dev_mod_14",
+    "split": "dev",
+    "label": "moderate_error",
+    "overall": 5,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "test_flawless_01": {
+    "caseId": "test_flawless_01",
+    "split": "test",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_02": {
+    "caseId": "test_flawless_02",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_03": {
+    "caseId": "test_flawless_03",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_04": {
+    "caseId": "test_flawless_04",
+    "split": "test",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_05": {
+    "caseId": "test_flawless_05",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_06": {
+    "caseId": "test_flawless_06",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_07": {
+    "caseId": "test_flawless_07",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_08": {
+    "caseId": "test_flawless_08",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_09": {
+    "caseId": "test_flawless_09",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_10": {
+    "caseId": "test_flawless_10",
+    "split": "test",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_11": {
+    "caseId": "test_flawless_11",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_12": {
+    "caseId": "test_flawless_12",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_13": {
+    "caseId": "test_flawless_13",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_14": {
+    "caseId": "test_flawless_14",
+    "split": "test",
+    "label": "flawless",
+    "overall": 7,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "fallback"
+  },
+  "test_flawless_15": {
+    "caseId": "test_flawless_15",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_16": {
+    "caseId": "test_flawless_16",
+    "split": "test",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_17": {
+    "caseId": "test_flawless_17",
+    "split": "test",
+    "label": "flawless",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_18": {
+    "caseId": "test_flawless_18",
+    "split": "test",
+    "label": "valid_paraphrase",
+    "overall": 10,
+    "dynamicCritique": "",
+    "critiqueSource": "grade_bracket",
+    "route": "flawless_fast_path"
+  },
+  "test_flawless_19": {
+    "caseId": "test_flawless_19",
+    "split": "test",
+    "label": "typo_only",
+    "overall": 8,
+    "dynamicCritique": "Your Japanese comprehension is sound, but \"**seim**\" appears to be an English typo or autocorrect slip in your translation.",
+    "critiqueSource": "english_typo_check",
+    "route": "typo_fast_path"
+  },
+  "test_flawless_20": {
+    "caseId": "test_flawless_20",
+    "split": "test",
+    "label": "typo_only",
+    "overall": 8,
+    "dynamicCritique": "Your Japanese comprehension is sound, but \"**hear**\" appears to be an English typo or autocorrect slip in your translation.",
+    "critiqueSource": "english_typo_check",
+    "route": "typo_fast_path"
+  },
+  "test_flawless_21": {
+    "caseId": "test_flawless_21",
+    "split": "test",
+    "label": "typo_only",
+    "overall": 8,
+    "dynamicCritique": "Your Japanese comprehension is sound, but \"**we'll**\" appears to be an English typo or autocorrect slip in your translation.",
+    "critiqueSource": "english_typo_check",
+    "route": "typo_fast_path"
+  },
+  "test_crit_passive_01": {
+    "caseId": "test_crit_passive_01",
+    "split": "test",
+    "label": "critical_error:passive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"任された\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "fallback"
+  },
+  "test_crit_passive_02": {
+    "caseId": "test_crit_passive_02",
+    "split": "test",
+    "label": "critical_error:passive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"見つめられて\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "fallback"
+  },
+  "test_crit_passive_03": {
+    "caseId": "test_crit_passive_03",
+    "split": "test",
+    "label": "critical_error:passive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"叱られた\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "fallback"
+  },
+  "test_crit_polarity_01": {
+    "caseId": "test_crit_polarity_01",
+    "split": "test",
+    "label": "critical_error:polarity_inversion",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "critique_fast_path"
+  },
+  "test_crit_polarity_02": {
+    "caseId": "test_crit_polarity_02",
+    "split": "test",
+    "label": "critical_error:polarity_inversion",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "fallback"
+  },
+  "test_crit_polarity_03": {
+    "caseId": "test_crit_polarity_03",
+    "split": "test",
+    "label": "critical_error:polarity_inversion",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "critique_fast_path"
+  },
+  "test_crit_benefactive_01": {
+    "caseId": "test_crit_benefactive_01",
+    "split": "test",
+    "label": "critical_error:benefactive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted who did what to whom: the grammatical subject and object were swapped.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "critique_fast_path"
+  },
+  "test_crit_benefactive_02": {
+    "caseId": "test_crit_benefactive_02",
+    "split": "test",
+    "label": "critical_error:benefactive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted who did what to whom: the grammatical subject and object were swapped.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "critique_fast_path"
+  },
+  "test_crit_benefactive_03": {
+    "caseId": "test_crit_benefactive_03",
+    "split": "test",
+    "label": "critical_error:benefactive_reversal",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"診てもらった\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "fallback"
+  },
+  "test_crit_indef_01": {
+    "caseId": "test_crit_indef_01",
+    "split": "test",
+    "label": "critical_error:indefinite_vs_wh",
+    "overall": 5,
+    "dynamicCritique": "You translated this as an open question (\"what\"), but \"何か\" is an indefinite pronoun (\"something/anything\") in a statement.",
+    "critiqueSource": "question_type_and_scope",
+    "route": "fallback"
+  },
+  "test_crit_indef_02": {
+    "caseId": "test_crit_indef_02",
+    "split": "test",
+    "label": "critical_error:indefinite_vs_wh",
+    "overall": 7,
+    "dynamicCritique": "Your translation doesn't seem to include the meaning of **いつか**.",
+    "critiqueSource": "omitted_word",
+    "route": "fallback"
+  },
+  "test_crit_indef_03": {
+    "caseId": "test_crit_indef_03",
+    "split": "test",
+    "label": "critical_error:indefinite_vs_wh",
+    "overall": 5,
+    "dynamicCritique": "You translated this as an open question (\"what\"), but the main verb is an indefinite pronoun (\"something/anything\") in a statement.",
+    "critiqueSource": "question_type_and_scope",
+    "route": "fallback"
+  },
+  "test_crit_causpass_01": {
+    "caseId": "test_crit_causpass_01",
+    "split": "test",
+    "label": "critical_error:causative_passive_inversion",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"走らされた\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "critique_fast_path"
+  },
+  "test_crit_causpass_02": {
+    "caseId": "test_crit_causpass_02",
+    "split": "test",
+    "label": "critical_error:causative_passive_inversion",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"手伝わされた\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "critique_fast_path"
+  },
+  "test_crit_causpass_03": {
+    "caseId": "test_crit_causpass_03",
+    "split": "test",
+    "label": "critical_error:causative_passive_inversion",
+    "overall": 3,
+    "dynamicCritique": "You inverted the causative-passive: \"出勤させられた\" expresses being subjected to an action (\"was made to / was kept waiting\"), not that you actively made someone else wait.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "critique_fast_path"
+  },
+  "test_crit_numeral_01": {
+    "caseId": "test_crit_numeral_01",
+    "split": "test",
+    "label": "critical_error:numeral_mismatch",
+    "overall": 3,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "test_crit_numeral_02": {
+    "caseId": "test_crit_numeral_02",
+    "split": "test",
+    "label": "critical_error:numeral_mismatch",
+    "overall": 3,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "test_crit_numeral_03": {
+    "caseId": "test_crit_numeral_03",
+    "split": "test",
+    "label": "critical_error:numeral_mismatch",
+    "overall": 3,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  },
+  "test_mod_01": {
+    "caseId": "test_mod_01",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 1,
+    "dynamicCritique": "\"までに\" is an obligation pattern meaning \"have no choice but to / must do\", but you translated it as an inability (\"cannot do\").",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "critique_fast_path"
+  },
+  "test_mod_02": {
+    "caseId": "test_mod_02",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "critique_fast_path"
+  },
+  "test_mod_03": {
+    "caseId": "test_mod_03",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 3,
+    "dynamicCritique": "You misunderstood the causative-benefactive: \"遊ばせてあげた\" expresses being granted permission or receiving a favor (\"let me do it\"), not actively forcing someone else.",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "critique_fast_path"
+  },
+  "test_mod_04": {
+    "caseId": "test_mod_04",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 3,
+    "dynamicCritique": "\"出ればよかった\" expresses counterfactual regret (\"I should have / wish I hadn't\"), rather than a factual condition (\"if...\").",
+    "critiqueSource": "predicate_complex_conjugation",
+    "route": "fallback"
+  },
+  "test_mod_05": {
+    "caseId": "test_mod_05",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "fallback"
+  },
+  "test_mod_06": {
+    "caseId": "test_mod_06",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 7,
+    "dynamicCritique": "Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).",
+    "critiqueSource": "predicate_mood_and_voice",
+    "route": "fallback"
+  },
+  "test_mod_07": {
+    "caseId": "test_mod_07",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "critique_fast_path"
+  },
+  "test_mod_08": {
+    "caseId": "test_mod_08",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 5,
+    "dynamicCritique": "\"弾くことができる\" is in the potential form (\"can do\"), but you translated it as simple future intent (\"will do\").",
+    "critiqueSource": "predicate_mood_and_voice",
+    "route": "critique_fast_path"
+  },
+  "test_mod_09": {
+    "caseId": "test_mod_09",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "fallback"
+  },
+  "test_mod_10": {
+    "caseId": "test_mod_10",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "critique_fast_path"
+  },
+  "test_mod_11": {
+    "caseId": "test_mod_11",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 1,
+    "dynamicCritique": "The core verb or action was misunderstood or mistranslated.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "critique_fast_path"
+  },
+  "test_mod_12": {
+    "caseId": "test_mod_12",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 3,
+    "dynamicCritique": "The core verb or action was misunderstood or mistranslated.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "critique_fast_path"
+  },
+  "test_mod_13": {
+    "caseId": "test_mod_13",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 1,
+    "dynamicCritique": "Polarity reversed: The Japanese sentence expresses a negative statement, but you translated it as affirmative (or vice versa).",
+    "critiqueSource": "polarity_check",
+    "route": "critique_fast_path"
+  },
+  "test_mod_14": {
+    "caseId": "test_mod_14",
+    "split": "test",
+    "label": "moderate_error",
+    "overall": 3,
+    "dynamicCritique": "The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.",
+    "critiqueSource": "sentence_critique_summary",
+    "route": "fallback"
+  }
+}

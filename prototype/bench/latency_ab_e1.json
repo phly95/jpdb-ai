@@ -1,0 +1,1416 @@
+{
+  "timestamp": "2026-10-03T18:22:06.071Z",
+  "baselineUserscript": "prototype/baseline_phase2_5e3ef48.tmp.js",
+  "variantUserscript": "jpdb-ai.user.js",
+  "pairsCount": 100,
+  "totalCalls": 200,
+  "baseP50": 216.5,
+  "baseP95": 293.4,
+  "varP50": 226,
+  "varP95": 291,
+  "p95Ceiling": 337.40999999999997,
+  "p95DeltaPct": -0.8179959100204421,
+  "pass": true,
+  "callLog": [
+    {
+      "pairIndex": 0,
+      "arm": "baseline",
+      "caseId": "dev_flawless_01",
+      "timestamp": "2026-10-03T18:21:19.450Z",
+      "latencyMs": 506
+    },
+    {
+      "pairIndex": 0,
+      "arm": "variant",
+      "caseId": "dev_flawless_01",
+      "timestamp": "2026-10-03T18:21:19.736Z",
+      "latencyMs": 278
+    },
+    {
+      "pairIndex": 1,
+      "arm": "baseline",
+      "caseId": "dev_flawless_02",
+      "timestamp": "2026-10-03T18:21:19.969Z",
+      "latencyMs": 231
+    },
+    {
+      "pairIndex": 1,
+      "arm": "variant",
+      "caseId": "dev_flawless_02",
+      "timestamp": "2026-10-03T18:21:20.167Z",
+      "latencyMs": 195
+    },
+    {
+      "pairIndex": 2,
+      "arm": "baseline",
+      "caseId": "dev_flawless_03",
+      "timestamp": "2026-10-03T18:21:21.182Z",
+      "latencyMs": 1013
+    },
+    {
+      "pairIndex": 2,
+      "arm": "variant",
+      "caseId": "dev_flawless_03",
+      "timestamp": "2026-10-03T18:21:21.428Z",
+      "latencyMs": 243
+    },
+    {
+      "pairIndex": 3,
+      "arm": "baseline",
+      "caseId": "dev_flawless_04",
+      "timestamp": "2026-10-03T18:21:21.640Z",
+      "latencyMs": 209
+    },
+    {
+      "pairIndex": 3,
+      "arm": "variant",
+      "caseId": "dev_flawless_04",
+      "timestamp": "2026-10-03T18:21:21.836Z",
+      "latencyMs": 194
+    },
+    {
+      "pairIndex": 4,
+      "arm": "baseline",
+      "caseId": "dev_flawless_05",
+      "timestamp": "2026-10-03T18:21:22.099Z",
+      "latencyMs": 261
+    },
+    {
+      "pairIndex": 4,
+      "arm": "variant",
+      "caseId": "dev_flawless_05",
+      "timestamp": "2026-10-03T18:21:22.321Z",
+      "latencyMs": 219
+    },
+    {
+      "pairIndex": 5,
+      "arm": "baseline",
+      "caseId": "dev_flawless_06",
+      "timestamp": "2026-10-03T18:21:22.533Z",
+      "latencyMs": 211
+    },
+    {
+      "pairIndex": 5,
+      "arm": "variant",
+      "caseId": "dev_flawless_06",
+      "timestamp": "2026-10-03T18:21:22.756Z",
+      "latencyMs": 221
+    },
+    {
+      "pairIndex": 6,
+      "arm": "baseline",
+      "caseId": "dev_flawless_07",
+      "timestamp": "2026-10-03T18:21:22.985Z",
+      "latencyMs": 226
+    },
+    {
+      "pairIndex": 6,
+      "arm": "variant",
+      "caseId": "dev_flawless_07",
+      "timestamp": "2026-10-03T18:21:23.218Z",
+      "latencyMs": 230
+    },
+    {
+      "pairIndex": 7,
+      "arm": "baseline",
+      "caseId": "dev_flawless_08",
+      "timestamp": "2026-10-03T18:21:23.413Z",
+      "latencyMs": 193
+    },
+    {
+      "pairIndex": 7,
+      "arm": "variant",
+      "caseId": "dev_flawless_08",
+      "timestamp": "2026-10-03T18:21:23.626Z",
+      "latencyMs": 210
+    },
+    {
+      "pairIndex": 8,
+      "arm": "baseline",
+      "caseId": "dev_flawless_09",
+      "timestamp": "2026-10-03T18:21:23.928Z",
+      "latencyMs": 301
+    },
+    {
+      "pairIndex": 8,
+      "arm": "variant",
+      "caseId": "dev_flawless_09",
+      "timestamp": "2026-10-03T18:21:24.145Z",
+      "latencyMs": 214
+    },
+    {
+      "pairIndex": 9,
+      "arm": "baseline",
+      "caseId": "dev_flawless_10",
+      "timestamp": "2026-10-03T18:21:24.341Z",
+      "latencyMs": 194
+    },
+    {
+      "pairIndex": 9,
+      "arm": "variant",
+      "caseId": "dev_flawless_10",
+      "timestamp": "2026-10-03T18:21:24.570Z",
+      "latencyMs": 226
+    },
+    {
+      "pairIndex": 10,
+      "arm": "baseline",
+      "caseId": "dev_flawless_11",
+      "timestamp": "2026-10-03T18:21:24.775Z",
+      "latencyMs": 203
+    },
+    {
+      "pairIndex": 10,
+      "arm": "variant",
+      "caseId": "dev_flawless_11",
+      "timestamp": "2026-10-03T18:21:24.983Z",
+      "latencyMs": 205
+    },
+    {
+      "pairIndex": 11,
+      "arm": "baseline",
+      "caseId": "dev_flawless_12",
+      "timestamp": "2026-10-03T18:21:25.178Z",
+      "latencyMs": 193
+    },
+    {
+      "pairIndex": 11,
+      "arm": "variant",
+      "caseId": "dev_flawless_12",
+      "timestamp": "2026-10-03T18:21:25.373Z",
+      "latencyMs": 193
+    },
+    {
+      "pairIndex": 12,
+      "arm": "baseline",
+      "caseId": "dev_flawless_13",
+      "timestamp": "2026-10-03T18:21:25.600Z",
+      "latencyMs": 225
+    },
+    {
+      "pairIndex": 12,
+      "arm": "variant",
+      "caseId": "dev_flawless_13",
+      "timestamp": "2026-10-03T18:21:25.795Z",
+      "latencyMs": 192
+    },
+    {
+      "pairIndex": 13,
+      "arm": "baseline",
+      "caseId": "dev_flawless_14",
+      "timestamp": "2026-10-03T18:21:25.997Z",
+      "latencyMs": 200
+    },
+    {
+      "pairIndex": 13,
+      "arm": "variant",
+      "caseId": "dev_flawless_14",
+      "timestamp": "2026-10-03T18:21:26.233Z",
+      "latencyMs": 234
+    },
+    {
+      "pairIndex": 14,
+      "arm": "baseline",
+      "caseId": "dev_flawless_15",
+      "timestamp": "2026-10-03T18:21:26.463Z",
+      "latencyMs": 228
+    },
+    {
+      "pairIndex": 14,
+      "arm": "variant",
+      "caseId": "dev_flawless_15",
+      "timestamp": "2026-10-03T18:21:26.787Z",
+      "latencyMs": 322
+    },
+    {
+      "pairIndex": 15,
+      "arm": "baseline",
+      "caseId": "dev_flawless_16",
+      "timestamp": "2026-10-03T18:21:27.153Z",
+      "latencyMs": 363
+    },
+    {
+      "pairIndex": 15,
+      "arm": "variant",
+      "caseId": "dev_flawless_16",
+      "timestamp": "2026-10-03T18:21:27.399Z",
+      "latencyMs": 245
+    },
+    {
+      "pairIndex": 16,
+      "arm": "baseline",
+      "caseId": "dev_flawless_17",
+      "timestamp": "2026-10-03T18:21:27.610Z",
+      "latencyMs": 208
+    },
+    {
+      "pairIndex": 16,
+      "arm": "variant",
+      "caseId": "dev_flawless_17",
+      "timestamp": "2026-10-03T18:21:27.850Z",
+      "latencyMs": 238
+    },
+    {
+      "pairIndex": 17,
+      "arm": "baseline",
+      "caseId": "dev_flawless_18",
+      "timestamp": "2026-10-03T18:21:28.140Z",
+      "latencyMs": 288
+    },
+    {
+      "pairIndex": 17,
+      "arm": "variant",
+      "caseId": "dev_flawless_18",
+      "timestamp": "2026-10-03T18:21:28.373Z",
+      "latencyMs": 231
+    },
+    {
+      "pairIndex": 18,
+      "arm": "baseline",
+      "caseId": "dev_flawless_19",
+      "timestamp": "2026-10-03T18:21:28.600Z",
+      "latencyMs": 225
+    },
+    {
+      "pairIndex": 18,
+      "arm": "variant",
+      "caseId": "dev_flawless_19",
+      "timestamp": "2026-10-03T18:21:28.840Z",
+      "latencyMs": 238
+    },
+    {
+      "pairIndex": 19,
+      "arm": "baseline",
+      "caseId": "dev_flawless_20",
+      "timestamp": "2026-10-03T18:21:29.036Z",
+      "latencyMs": 193
+    },
+    {
+      "pairIndex": 19,
+      "arm": "variant",
+      "caseId": "dev_flawless_20",
+      "timestamp": "2026-10-03T18:21:29.245Z",
+      "latencyMs": 207
+    },
+    {
+      "pairIndex": 20,
+      "arm": "baseline",
+      "caseId": "dev_flawless_21",
+      "timestamp": "2026-10-03T18:21:29.478Z",
+      "latencyMs": 231
+    },
+    {
+      "pairIndex": 20,
+      "arm": "variant",
+      "caseId": "dev_flawless_21",
+      "timestamp": "2026-10-03T18:21:29.701Z",
+      "latencyMs": 222
+    },
+    {
+      "pairIndex": 21,
+      "arm": "baseline",
+      "caseId": "dev_crit_passive_01",
+      "timestamp": "2026-10-03T18:21:29.898Z",
+      "latencyMs": 194
+    },
+    {
+      "pairIndex": 21,
+      "arm": "variant",
+      "caseId": "dev_crit_passive_01",
+      "timestamp": "2026-10-03T18:21:30.099Z",
+      "latencyMs": 200
+    },
+    {
+      "pairIndex": 22,
+      "arm": "baseline",
+      "caseId": "dev_crit_passive_02",
+      "timestamp": "2026-10-03T18:21:30.331Z",
+      "latencyMs": 230
+    },
+    {
+      "pairIndex": 22,
+      "arm": "variant",
+      "caseId": "dev_crit_passive_02",
+      "timestamp": "2026-10-03T18:21:30.551Z",
+      "latencyMs": 217
+    },
+    {
+      "pairIndex": 23,
+      "arm": "baseline",
+      "caseId": "dev_crit_passive_03",
+      "timestamp": "2026-10-03T18:21:30.757Z",
+      "latencyMs": 205
+    },
+    {
+      "pairIndex": 23,
+      "arm": "variant",
+      "caseId": "dev_crit_passive_03",
+      "timestamp": "2026-10-03T18:21:30.970Z",
+      "latencyMs": 210
+    },
+    {
+      "pairIndex": 24,
+      "arm": "baseline",
+      "caseId": "dev_crit_polarity_01",
+      "timestamp": "2026-10-03T18:21:31.156Z",
+      "latencyMs": 185
+    },
+    {
+      "pairIndex": 24,
+      "arm": "variant",
+      "caseId": "dev_crit_polarity_01",
+      "timestamp": "2026-10-03T18:21:31.352Z",
+      "latencyMs": 195
+    },
+    {
+      "pairIndex": 25,
+      "arm": "baseline",
+      "caseId": "dev_crit_polarity_02",
+      "timestamp": "2026-10-03T18:21:31.568Z",
+      "latencyMs": 214
+    },
+    {
+      "pairIndex": 25,
+      "arm": "variant",
+      "caseId": "dev_crit_polarity_02",
+      "timestamp": "2026-10-03T18:21:31.858Z",
+      "latencyMs": 287
+    },
+    {
+      "pairIndex": 26,
+      "arm": "baseline",
+      "caseId": "dev_crit_polarity_03",
+      "timestamp": "2026-10-03T18:21:32.102Z",
+      "latencyMs": 241
+    },
+    {
+      "pairIndex": 26,
+      "arm": "variant",
+      "caseId": "dev_crit_polarity_03",
+      "timestamp": "2026-10-03T18:21:32.310Z",
+      "latencyMs": 207
+    },
+    {
+      "pairIndex": 27,
+      "arm": "baseline",
+      "caseId": "dev_crit_benefactive_01",
+      "timestamp": "2026-10-03T18:21:32.560Z",
+      "latencyMs": 248
+    },
+    {
+      "pairIndex": 27,
+      "arm": "variant",
+      "caseId": "dev_crit_benefactive_01",
+      "timestamp": "2026-10-03T18:21:32.804Z",
+      "latencyMs": 241
+    },
+    {
+      "pairIndex": 28,
+      "arm": "baseline",
+      "caseId": "dev_crit_benefactive_02",
+      "timestamp": "2026-10-03T18:21:33.012Z",
+      "latencyMs": 207
+    },
+    {
+      "pairIndex": 28,
+      "arm": "variant",
+      "caseId": "dev_crit_benefactive_02",
+      "timestamp": "2026-10-03T18:21:33.342Z",
+      "latencyMs": 327
+    },
+    {
+      "pairIndex": 29,
+      "arm": "baseline",
+      "caseId": "dev_crit_benefactive_03",
+      "timestamp": "2026-10-03T18:21:33.587Z",
+      "latencyMs": 243
+    },
+    {
+      "pairIndex": 29,
+      "arm": "variant",
+      "caseId": "dev_crit_benefactive_03",
+      "timestamp": "2026-10-03T18:21:33.841Z",
+      "latencyMs": 252
+    },
+    {
+      "pairIndex": 30,
+      "arm": "baseline",
+      "caseId": "dev_crit_indef_01",
+      "timestamp": "2026-10-03T18:21:34.047Z",
+      "latencyMs": 204
+    },
+    {
+      "pairIndex": 30,
+      "arm": "variant",
+      "caseId": "dev_crit_indef_01",
+      "timestamp": "2026-10-03T18:21:34.296Z",
+      "latencyMs": 246
+    },
+    {
+      "pairIndex": 31,
+      "arm": "baseline",
+      "caseId": "dev_crit_indef_02",
+      "timestamp": "2026-10-03T18:21:34.503Z",
+      "latencyMs": 205
+    },
+    {
+      "pairIndex": 31,
+      "arm": "variant",
+      "caseId": "dev_crit_indef_02",
+      "timestamp": "2026-10-03T18:21:34.705Z",
+      "latencyMs": 201
+    },
+    {
+      "pairIndex": 32,
+      "arm": "baseline",
+      "caseId": "dev_crit_indef_03",
+      "timestamp": "2026-10-03T18:21:34.941Z",
+      "latencyMs": 233
+    },
+    {
+      "pairIndex": 32,
+      "arm": "variant",
+      "caseId": "dev_crit_indef_03",
+      "timestamp": "2026-10-03T18:21:35.169Z",
+      "latencyMs": 226
+    },
+    {
+      "pairIndex": 33,
+      "arm": "baseline",
+      "caseId": "dev_crit_causpass_01",
+      "timestamp": "2026-10-03T18:21:35.354Z",
+      "latencyMs": 184
+    },
+    {
+      "pairIndex": 33,
+      "arm": "variant",
+      "caseId": "dev_crit_causpass_01",
+      "timestamp": "2026-10-03T18:21:35.639Z",
+      "latencyMs": 282
+    },
+    {
+      "pairIndex": 34,
+      "arm": "baseline",
+      "caseId": "dev_crit_causpass_02",
+      "timestamp": "2026-10-03T18:21:35.852Z",
+      "latencyMs": 211
+    },
+    {
+      "pairIndex": 34,
+      "arm": "variant",
+      "caseId": "dev_crit_causpass_02",
+      "timestamp": "2026-10-03T18:21:36.104Z",
+      "latencyMs": 249
+    },
+    {
+      "pairIndex": 35,
+      "arm": "baseline",
+      "caseId": "dev_crit_causpass_03",
+      "timestamp": "2026-10-03T18:21:36.312Z",
+      "latencyMs": 207
+    },
+    {
+      "pairIndex": 35,
+      "arm": "variant",
+      "caseId": "dev_crit_causpass_03",
+      "timestamp": "2026-10-03T18:21:36.531Z",
+      "latencyMs": 217
+    },
+    {
+      "pairIndex": 36,
+      "arm": "baseline",
+      "caseId": "dev_crit_numeral_01",
+      "timestamp": "2026-10-03T18:21:36.755Z",
+      "latencyMs": 222
+    },
+    {
+      "pairIndex": 36,
+      "arm": "variant",
+      "caseId": "dev_crit_numeral_01",
+      "timestamp": "2026-10-03T18:21:37.027Z",
+      "latencyMs": 269
+    },
+    {
+      "pairIndex": 37,
+      "arm": "baseline",
+      "caseId": "dev_crit_numeral_02",
+      "timestamp": "2026-10-03T18:21:37.233Z",
+      "latencyMs": 205
+    },
+    {
+      "pairIndex": 37,
+      "arm": "variant",
+      "caseId": "dev_crit_numeral_02",
+      "timestamp": "2026-10-03T18:21:37.488Z",
+      "latencyMs": 253
+    },
+    {
+      "pairIndex": 38,
+      "arm": "baseline",
+      "caseId": "dev_crit_numeral_03",
+      "timestamp": "2026-10-03T18:21:37.684Z",
+      "latencyMs": 193
+    },
+    {
+      "pairIndex": 38,
+      "arm": "variant",
+      "caseId": "dev_crit_numeral_03",
+      "timestamp": "2026-10-03T18:21:37.977Z",
+      "latencyMs": 291
+    },
+    {
+      "pairIndex": 39,
+      "arm": "baseline",
+      "caseId": "dev_mod_01",
+      "timestamp": "2026-10-03T18:21:38.174Z",
+      "latencyMs": 196
+    },
+    {
+      "pairIndex": 39,
+      "arm": "variant",
+      "caseId": "dev_mod_01",
+      "timestamp": "2026-10-03T18:21:38.401Z",
+      "latencyMs": 225
+    },
+    {
+      "pairIndex": 40,
+      "arm": "baseline",
+      "caseId": "dev_mod_02",
+      "timestamp": "2026-10-03T18:21:38.613Z",
+      "latencyMs": 209
+    },
+    {
+      "pairIndex": 40,
+      "arm": "variant",
+      "caseId": "dev_mod_02",
+      "timestamp": "2026-10-03T18:21:38.833Z",
+      "latencyMs": 218
+    },
+    {
+      "pairIndex": 41,
+      "arm": "baseline",
+      "caseId": "dev_mod_03",
+      "timestamp": "2026-10-03T18:21:39.057Z",
+      "latencyMs": 222
+    },
+    {
+      "pairIndex": 41,
+      "arm": "variant",
+      "caseId": "dev_mod_03",
+      "timestamp": "2026-10-03T18:21:39.288Z",
+      "latencyMs": 230
+    },
+    {
+      "pairIndex": 42,
+      "arm": "baseline",
+      "caseId": "dev_mod_04",
+      "timestamp": "2026-10-03T18:21:39.476Z",
+      "latencyMs": 185
+    },
+    {
+      "pairIndex": 42,
+      "arm": "variant",
+      "caseId": "dev_mod_04",
+      "timestamp": "2026-10-03T18:21:39.671Z",
+      "latencyMs": 193
+    },
+    {
+      "pairIndex": 43,
+      "arm": "baseline",
+      "caseId": "dev_mod_05",
+      "timestamp": "2026-10-03T18:21:39.850Z",
+      "latencyMs": 178
+    },
+    {
+      "pairIndex": 43,
+      "arm": "variant",
+      "caseId": "dev_mod_05",
+      "timestamp": "2026-10-03T18:21:40.048Z",
+      "latencyMs": 197
+    },
+    {
+      "pairIndex": 44,
+      "arm": "baseline",
+      "caseId": "dev_mod_06",
+      "timestamp": "2026-10-03T18:21:40.255Z",
+      "latencyMs": 206
+    },
+    {
+      "pairIndex": 44,
+      "arm": "variant",
+      "caseId": "dev_mod_06",
+      "timestamp": "2026-10-03T18:21:40.469Z",
+      "latencyMs": 213
+    },
+    {
+      "pairIndex": 45,
+      "arm": "baseline",
+      "caseId": "dev_mod_07",
+      "timestamp": "2026-10-03T18:21:40.658Z",
+      "latencyMs": 187
+    },
+    {
+      "pairIndex": 45,
+      "arm": "variant",
+      "caseId": "dev_mod_07",
+      "timestamp": "2026-10-03T18:21:40.840Z",
+      "latencyMs": 179
+    },
+    {
+      "pairIndex": 46,
+      "arm": "baseline",
+      "caseId": "dev_mod_08",
+      "timestamp": "2026-10-03T18:21:41.089Z",
+      "latencyMs": 247
+    },
+    {
+      "pairIndex": 46,
+      "arm": "variant",
+      "caseId": "dev_mod_08",
+      "timestamp": "2026-10-03T18:21:41.315Z",
+      "latencyMs": 224
+    },
+    {
+      "pairIndex": 47,
+      "arm": "baseline",
+      "caseId": "dev_mod_09",
+      "timestamp": "2026-10-03T18:21:41.556Z",
+      "latencyMs": 239
+    },
+    {
+      "pairIndex": 47,
+      "arm": "variant",
+      "caseId": "dev_mod_09",
+      "timestamp": "2026-10-03T18:21:41.763Z",
+      "latencyMs": 205
+    },
+    {
+      "pairIndex": 48,
+      "arm": "baseline",
+      "caseId": "dev_mod_10",
+      "timestamp": "2026-10-03T18:21:41.998Z",
+      "latencyMs": 234
+    },
+    {
+      "pairIndex": 48,
+      "arm": "variant",
+      "caseId": "dev_mod_10",
+      "timestamp": "2026-10-03T18:21:42.242Z",
+      "latencyMs": 241
+    },
+    {
+      "pairIndex": 49,
+      "arm": "baseline",
+      "caseId": "dev_mod_11",
+      "timestamp": "2026-10-03T18:21:42.455Z",
+      "latencyMs": 212
+    },
+    {
+      "pairIndex": 49,
+      "arm": "variant",
+      "caseId": "dev_mod_11",
+      "timestamp": "2026-10-03T18:21:42.659Z",
+      "latencyMs": 201
+    },
+    {
+      "pairIndex": 50,
+      "arm": "baseline",
+      "caseId": "dev_mod_12",
+      "timestamp": "2026-10-03T18:21:42.919Z",
+      "latencyMs": 259
+    },
+    {
+      "pairIndex": 50,
+      "arm": "variant",
+      "caseId": "dev_mod_12",
+      "timestamp": "2026-10-03T18:21:43.278Z",
+      "latencyMs": 357
+    },
+    {
+      "pairIndex": 51,
+      "arm": "baseline",
+      "caseId": "dev_mod_13",
+      "timestamp": "2026-10-03T18:21:43.508Z",
+      "latencyMs": 228
+    },
+    {
+      "pairIndex": 51,
+      "arm": "variant",
+      "caseId": "dev_mod_13",
+      "timestamp": "2026-10-03T18:21:43.731Z",
+      "latencyMs": 220
+    },
+    {
+      "pairIndex": 52,
+      "arm": "baseline",
+      "caseId": "dev_mod_14",
+      "timestamp": "2026-10-03T18:21:43.930Z",
+      "latencyMs": 198
+    },
+    {
+      "pairIndex": 52,
+      "arm": "variant",
+      "caseId": "dev_mod_14",
+      "timestamp": "2026-10-03T18:21:44.126Z",
+      "latencyMs": 194
+    },
+    {
+      "pairIndex": 53,
+      "arm": "baseline",
+      "caseId": "test_flawless_01",
+      "timestamp": "2026-10-03T18:21:44.453Z",
+      "latencyMs": 325
+    },
+    {
+      "pairIndex": 53,
+      "arm": "variant",
+      "caseId": "test_flawless_01",
+      "timestamp": "2026-10-03T18:21:44.727Z",
+      "latencyMs": 272
+    },
+    {
+      "pairIndex": 54,
+      "arm": "baseline",
+      "caseId": "test_flawless_02",
+      "timestamp": "2026-10-03T18:21:44.943Z",
+      "latencyMs": 214
+    },
+    {
+      "pairIndex": 54,
+      "arm": "variant",
+      "caseId": "test_flawless_02",
+      "timestamp": "2026-10-03T18:21:45.237Z",
+      "latencyMs": 291
+    },
+    {
+      "pairIndex": 55,
+      "arm": "baseline",
+      "caseId": "test_flawless_03",
+      "timestamp": "2026-10-03T18:21:45.454Z",
+      "latencyMs": 214
+    },
+    {
+      "pairIndex": 55,
+      "arm": "variant",
+      "caseId": "test_flawless_03",
+      "timestamp": "2026-10-03T18:21:45.679Z",
+      "latencyMs": 222
+    },
+    {
+      "pairIndex": 56,
+      "arm": "baseline",
+      "caseId": "test_flawless_04",
+      "timestamp": "2026-10-03T18:21:45.892Z",
+      "latencyMs": 212
+    },
+    {
+      "pairIndex": 56,
+      "arm": "variant",
+      "caseId": "test_flawless_04",
+      "timestamp": "2026-10-03T18:21:46.086Z",
+      "latencyMs": 192
+    },
+    {
+      "pairIndex": 57,
+      "arm": "baseline",
+      "caseId": "test_flawless_05",
+      "timestamp": "2026-10-03T18:21:46.298Z",
+      "latencyMs": 210
+    },
+    {
+      "pairIndex": 57,
+      "arm": "variant",
+      "caseId": "test_flawless_05",
+      "timestamp": "2026-10-03T18:21:46.481Z",
+      "latencyMs": 181
+    },
+    {
+      "pairIndex": 58,
+      "arm": "baseline",
+      "caseId": "test_flawless_06",
+      "timestamp": "2026-10-03T18:21:46.682Z",
+      "latencyMs": 199
+    },
+    {
+      "pairIndex": 58,
+      "arm": "variant",
+      "caseId": "test_flawless_06",
+      "timestamp": "2026-10-03T18:21:46.946Z",
+      "latencyMs": 261
+    },
+    {
+      "pairIndex": 59,
+      "arm": "baseline",
+      "caseId": "test_flawless_07",
+      "timestamp": "2026-10-03T18:21:47.209Z",
+      "latencyMs": 261
+    },
+    {
+      "pairIndex": 59,
+      "arm": "variant",
+      "caseId": "test_flawless_07",
+      "timestamp": "2026-10-03T18:21:47.443Z",
+      "latencyMs": 233
+    },
+    {
+      "pairIndex": 60,
+      "arm": "baseline",
+      "caseId": "test_flawless_08",
+      "timestamp": "2026-10-03T18:21:47.649Z",
+      "latencyMs": 204
+    },
+    {
+      "pairIndex": 60,
+      "arm": "variant",
+      "caseId": "test_flawless_08",
+      "timestamp": "2026-10-03T18:21:47.864Z",
+      "latencyMs": 213
+    },
+    {
+      "pairIndex": 61,
+      "arm": "baseline",
+      "caseId": "test_flawless_09",
+      "timestamp": "2026-10-03T18:21:48.072Z",
+      "latencyMs": 206
+    },
+    {
+      "pairIndex": 61,
+      "arm": "variant",
+      "caseId": "test_flawless_09",
+      "timestamp": "2026-10-03T18:21:48.282Z",
+      "latencyMs": 207
+    },
+    {
+      "pairIndex": 62,
+      "arm": "baseline",
+      "caseId": "test_flawless_10",
+      "timestamp": "2026-10-03T18:21:48.492Z",
+      "latencyMs": 208
+    },
+    {
+      "pairIndex": 62,
+      "arm": "variant",
+      "caseId": "test_flawless_10",
+      "timestamp": "2026-10-03T18:21:48.795Z",
+      "latencyMs": 301
+    },
+    {
+      "pairIndex": 63,
+      "arm": "baseline",
+      "caseId": "test_flawless_11",
+      "timestamp": "2026-10-03T18:21:49.021Z",
+      "latencyMs": 224
+    },
+    {
+      "pairIndex": 63,
+      "arm": "variant",
+      "caseId": "test_flawless_11",
+      "timestamp": "2026-10-03T18:21:49.235Z",
+      "latencyMs": 211
+    },
+    {
+      "pairIndex": 64,
+      "arm": "baseline",
+      "caseId": "test_flawless_12",
+      "timestamp": "2026-10-03T18:21:49.460Z",
+      "latencyMs": 223
+    },
+    {
+      "pairIndex": 64,
+      "arm": "variant",
+      "caseId": "test_flawless_12",
+      "timestamp": "2026-10-03T18:21:49.661Z",
+      "latencyMs": 200
+    },
+    {
+      "pairIndex": 65,
+      "arm": "baseline",
+      "caseId": "test_flawless_13",
+      "timestamp": "2026-10-03T18:21:49.901Z",
+      "latencyMs": 238
+    },
+    {
+      "pairIndex": 65,
+      "arm": "variant",
+      "caseId": "test_flawless_13",
+      "timestamp": "2026-10-03T18:21:50.158Z",
+      "latencyMs": 256
+    },
+    {
+      "pairIndex": 66,
+      "arm": "baseline",
+      "caseId": "test_flawless_14",
+      "timestamp": "2026-10-03T18:21:50.377Z",
+      "latencyMs": 217
+    },
+    {
+      "pairIndex": 66,
+      "arm": "variant",
+      "caseId": "test_flawless_14",
+      "timestamp": "2026-10-03T18:21:50.629Z",
+      "latencyMs": 249
+    },
+    {
+      "pairIndex": 67,
+      "arm": "baseline",
+      "caseId": "test_flawless_15",
+      "timestamp": "2026-10-03T18:21:50.862Z",
+      "latencyMs": 231
+    },
+    {
+      "pairIndex": 67,
+      "arm": "variant",
+      "caseId": "test_flawless_15",
+      "timestamp": "2026-10-03T18:21:51.096Z",
+      "latencyMs": 232
+    },
+    {
+      "pairIndex": 68,
+      "arm": "baseline",
+      "caseId": "test_flawless_16",
+      "timestamp": "2026-10-03T18:21:51.315Z",
+      "latencyMs": 216
+    },
+    {
+      "pairIndex": 68,
+      "arm": "variant",
+      "caseId": "test_flawless_16",
+      "timestamp": "2026-10-03T18:21:51.528Z",
+      "latencyMs": 211
+    },
+    {
+      "pairIndex": 69,
+      "arm": "baseline",
+      "caseId": "test_flawless_17",
+      "timestamp": "2026-10-03T18:21:51.727Z",
+      "latencyMs": 197
+    },
+    {
+      "pairIndex": 69,
+      "arm": "variant",
+      "caseId": "test_flawless_17",
+      "timestamp": "2026-10-03T18:21:52.004Z",
+      "latencyMs": 275
+    },
+    {
+      "pairIndex": 70,
+      "arm": "baseline",
+      "caseId": "test_flawless_18",
+      "timestamp": "2026-10-03T18:21:52.273Z",
+      "latencyMs": 268
+    },
+    {
+      "pairIndex": 70,
+      "arm": "variant",
+      "caseId": "test_flawless_18",
+      "timestamp": "2026-10-03T18:21:52.512Z",
+      "latencyMs": 237
+    },
+    {
+      "pairIndex": 71,
+      "arm": "baseline",
+      "caseId": "test_flawless_19",
+      "timestamp": "2026-10-03T18:21:52.756Z",
+      "latencyMs": 241
+    },
+    {
+      "pairIndex": 71,
+      "arm": "variant",
+      "caseId": "test_flawless_19",
+      "timestamp": "2026-10-03T18:21:52.997Z",
+      "latencyMs": 239
+    },
+    {
+      "pairIndex": 72,
+      "arm": "baseline",
+      "caseId": "test_flawless_20",
+      "timestamp": "2026-10-03T18:21:53.242Z",
+      "latencyMs": 244
+    },
+    {
+      "pairIndex": 72,
+      "arm": "variant",
+      "caseId": "test_flawless_20",
+      "timestamp": "2026-10-03T18:21:53.526Z",
+      "latencyMs": 282
+    },
+    {
+      "pairIndex": 73,
+      "arm": "baseline",
+      "caseId": "test_flawless_21",
+      "timestamp": "2026-10-03T18:21:53.774Z",
+      "latencyMs": 246
+    },
+    {
+      "pairIndex": 73,
+      "arm": "variant",
+      "caseId": "test_flawless_21",
+      "timestamp": "2026-10-03T18:21:53.992Z",
+      "latencyMs": 216
+    },
+    {
+      "pairIndex": 74,
+      "arm": "baseline",
+      "caseId": "test_crit_passive_01",
+      "timestamp": "2026-10-03T18:21:54.196Z",
+      "latencyMs": 201
+    },
+    {
+      "pairIndex": 74,
+      "arm": "variant",
+      "caseId": "test_crit_passive_01",
+      "timestamp": "2026-10-03T18:21:54.414Z",
+      "latencyMs": 216
+    },
+    {
+      "pairIndex": 75,
+      "arm": "baseline",
+      "caseId": "test_crit_passive_02",
+      "timestamp": "2026-10-03T18:21:54.628Z",
+      "latencyMs": 213
+    },
+    {
+      "pairIndex": 75,
+      "arm": "variant",
+      "caseId": "test_crit_passive_02",
+      "timestamp": "2026-10-03T18:21:54.828Z",
+      "latencyMs": 198
+    },
+    {
+      "pairIndex": 76,
+      "arm": "baseline",
+      "caseId": "test_crit_passive_03",
+      "timestamp": "2026-10-03T18:21:55.032Z",
+      "latencyMs": 202
+    },
+    {
+      "pairIndex": 76,
+      "arm": "variant",
+      "caseId": "test_crit_passive_03",
+      "timestamp": "2026-10-03T18:21:55.267Z",
+      "latencyMs": 232
+    },
+    {
+      "pairIndex": 77,
+      "arm": "baseline",
+      "caseId": "test_crit_polarity_01",
+      "timestamp": "2026-10-03T18:21:55.515Z",
+      "latencyMs": 246
+    },
+    {
+      "pairIndex": 77,
+      "arm": "variant",
+      "caseId": "test_crit_polarity_01",
+      "timestamp": "2026-10-03T18:21:55.783Z",
+      "latencyMs": 266
+    },
+    {
+      "pairIndex": 78,
+      "arm": "baseline",
+      "caseId": "test_crit_polarity_02",
+      "timestamp": "2026-10-03T18:21:56.026Z",
+      "latencyMs": 241
+    },
+    {
+      "pairIndex": 78,
+      "arm": "variant",
+      "caseId": "test_crit_polarity_02",
+      "timestamp": "2026-10-03T18:21:56.279Z",
+      "latencyMs": 250
+    },
+    {
+      "pairIndex": 79,
+      "arm": "baseline",
+      "caseId": "test_crit_polarity_03",
+      "timestamp": "2026-10-03T18:21:56.552Z",
+      "latencyMs": 271
+    },
+    {
+      "pairIndex": 79,
+      "arm": "variant",
+      "caseId": "test_crit_polarity_03",
+      "timestamp": "2026-10-03T18:21:56.779Z",
+      "latencyMs": 224
+    },
+    {
+      "pairIndex": 80,
+      "arm": "baseline",
+      "caseId": "test_crit_benefactive_01",
+      "timestamp": "2026-10-03T18:21:56.985Z",
+      "latencyMs": 203
+    },
+    {
+      "pairIndex": 80,
+      "arm": "variant",
+      "caseId": "test_crit_benefactive_01",
+      "timestamp": "2026-10-03T18:21:57.231Z",
+      "latencyMs": 245
+    },
+    {
+      "pairIndex": 81,
+      "arm": "baseline",
+      "caseId": "test_crit_benefactive_02",
+      "timestamp": "2026-10-03T18:21:57.429Z",
+      "latencyMs": 197
+    },
+    {
+      "pairIndex": 81,
+      "arm": "variant",
+      "caseId": "test_crit_benefactive_02",
+      "timestamp": "2026-10-03T18:21:57.626Z",
+      "latencyMs": 195
+    },
+    {
+      "pairIndex": 82,
+      "arm": "baseline",
+      "caseId": "test_crit_benefactive_03",
+      "timestamp": "2026-10-03T18:21:57.844Z",
+      "latencyMs": 215
+    },
+    {
+      "pairIndex": 82,
+      "arm": "variant",
+      "caseId": "test_crit_benefactive_03",
+      "timestamp": "2026-10-03T18:21:58.127Z",
+      "latencyMs": 282
+    },
+    {
+      "pairIndex": 83,
+      "arm": "baseline",
+      "caseId": "test_crit_indef_01",
+      "timestamp": "2026-10-03T18:21:58.357Z",
+      "latencyMs": 228
+    },
+    {
+      "pairIndex": 83,
+      "arm": "variant",
+      "caseId": "test_crit_indef_01",
+      "timestamp": "2026-10-03T18:21:58.602Z",
+      "latencyMs": 242
+    },
+    {
+      "pairIndex": 84,
+      "arm": "baseline",
+      "caseId": "test_crit_indef_02",
+      "timestamp": "2026-10-03T18:21:58.827Z",
+      "latencyMs": 223
+    },
+    {
+      "pairIndex": 84,
+      "arm": "variant",
+      "caseId": "test_crit_indef_02",
+      "timestamp": "2026-10-03T18:21:59.052Z",
+      "latencyMs": 223
+    },
+    {
+      "pairIndex": 85,
+      "arm": "baseline",
+      "caseId": "test_crit_indef_03",
+      "timestamp": "2026-10-03T18:21:59.296Z",
+      "latencyMs": 241
+    },
+    {
+      "pairIndex": 85,
+      "arm": "variant",
+      "caseId": "test_crit_indef_03",
+      "timestamp": "2026-10-03T18:21:59.511Z",
+      "latencyMs": 213
+    },
+    {
+      "pairIndex": 86,
+      "arm": "baseline",
+      "caseId": "test_crit_causpass_01",
+      "timestamp": "2026-10-03T18:21:59.741Z",
+      "latencyMs": 229
+    },
+    {
+      "pairIndex": 86,
+      "arm": "variant",
+      "caseId": "test_crit_causpass_01",
+      "timestamp": "2026-10-03T18:21:59.982Z",
+      "latencyMs": 238
+    },
+    {
+      "pairIndex": 87,
+      "arm": "baseline",
+      "caseId": "test_crit_causpass_02",
+      "timestamp": "2026-10-03T18:22:00.218Z",
+      "latencyMs": 233
+    },
+    {
+      "pairIndex": 87,
+      "arm": "variant",
+      "caseId": "test_crit_causpass_02",
+      "timestamp": "2026-10-03T18:22:00.450Z",
+      "latencyMs": 230
+    },
+    {
+      "pairIndex": 88,
+      "arm": "baseline",
+      "caseId": "test_crit_causpass_03",
+      "timestamp": "2026-10-03T18:22:00.678Z",
+      "latencyMs": 226
+    },
+    {
+      "pairIndex": 88,
+      "arm": "variant",
+      "caseId": "test_crit_causpass_03",
+      "timestamp": "2026-10-03T18:22:00.898Z",
+      "latencyMs": 218
+    },
+    {
+      "pairIndex": 89,
+      "arm": "baseline",
+      "caseId": "test_crit_numeral_01",
+      "timestamp": "2026-10-03T18:22:01.088Z",
+      "latencyMs": 188
+    },
+    {
+      "pairIndex": 89,
+      "arm": "variant",
+      "caseId": "test_crit_numeral_01",
+      "timestamp": "2026-10-03T18:22:01.340Z",
+      "latencyMs": 250
+    },
+    {
+      "pairIndex": 90,
+      "arm": "baseline",
+      "caseId": "test_crit_numeral_02",
+      "timestamp": "2026-10-03T18:22:01.607Z",
+      "latencyMs": 264
+    },
+    {
+      "pairIndex": 90,
+      "arm": "variant",
+      "caseId": "test_crit_numeral_02",
+      "timestamp": "2026-10-03T18:22:01.853Z",
+      "latencyMs": 244
+    },
+    {
+      "pairIndex": 91,
+      "arm": "baseline",
+      "caseId": "test_crit_numeral_03",
+      "timestamp": "2026-10-03T18:22:02.088Z",
+      "latencyMs": 233
+    },
+    {
+      "pairIndex": 91,
+      "arm": "variant",
+      "caseId": "test_crit_numeral_03",
+      "timestamp": "2026-10-03T18:22:02.298Z",
+      "latencyMs": 208
+    },
+    {
+      "pairIndex": 92,
+      "arm": "baseline",
+      "caseId": "test_mod_01",
+      "timestamp": "2026-10-03T18:22:02.502Z",
+      "latencyMs": 203
+    },
+    {
+      "pairIndex": 92,
+      "arm": "variant",
+      "caseId": "test_mod_01",
+      "timestamp": "2026-10-03T18:22:02.743Z",
+      "latencyMs": 239
+    },
+    {
+      "pairIndex": 93,
+      "arm": "baseline",
+      "caseId": "test_mod_02",
+      "timestamp": "2026-10-03T18:22:03.038Z",
+      "latencyMs": 293
+    },
+    {
+      "pairIndex": 93,
+      "arm": "variant",
+      "caseId": "test_mod_02",
+      "timestamp": "2026-10-03T18:22:03.320Z",
+      "latencyMs": 279
+    },
+    {
+      "pairIndex": 94,
+      "arm": "baseline",
+      "caseId": "test_mod_03",
+      "timestamp": "2026-10-03T18:22:03.582Z",
+      "latencyMs": 260
+    },
+    {
+      "pairIndex": 94,
+      "arm": "variant",
+      "caseId": "test_mod_03",
+      "timestamp": "2026-10-03T18:22:03.811Z",
+      "latencyMs": 227
+    },
+    {
+      "pairIndex": 95,
+      "arm": "baseline",
+      "caseId": "test_mod_04",
+      "timestamp": "2026-10-03T18:22:04.042Z",
+      "latencyMs": 229
+    },
+    {
+      "pairIndex": 95,
+      "arm": "variant",
+      "caseId": "test_mod_04",
+      "timestamp": "2026-10-03T18:22:04.300Z",
+      "latencyMs": 257
+    },
+    {
+      "pairIndex": 96,
+      "arm": "baseline",
+      "caseId": "test_mod_05",
+      "timestamp": "2026-10-03T18:22:04.516Z",
+      "latencyMs": 213
+    },
+    {
+      "pairIndex": 96,
+      "arm": "variant",
+      "caseId": "test_mod_05",
+      "timestamp": "2026-10-03T18:22:04.756Z",
+      "latencyMs": 239
+    },
+    {
+      "pairIndex": 97,
+      "arm": "baseline",
+      "caseId": "test_mod_06",
+      "timestamp": "2026-10-03T18:22:04.997Z",
+      "latencyMs": 238
+    },
+    {
+      "pairIndex": 97,
+      "arm": "variant",
+      "caseId": "test_mod_06",
+      "timestamp": "2026-10-03T18:22:05.216Z",
+      "latencyMs": 217
+    },
+    {
+      "pairIndex": 98,
+      "arm": "baseline",
+      "caseId": "test_mod_07",
+      "timestamp": "2026-10-03T18:22:05.431Z",
+      "latencyMs": 212
+    },
+    {
+      "pairIndex": 98,
+      "arm": "variant",
+      "caseId": "test_mod_07",
+      "timestamp": "2026-10-03T18:22:05.639Z",
+      "latencyMs": 207
+    },
+    {
+      "pairIndex": 99,
+      "arm": "baseline",
+      "caseId": "test_mod_08",
+      "timestamp": "2026-10-03T18:22:05.853Z",
+      "latencyMs": 211
+    },
+    {
+      "pairIndex": 99,
+      "arm": "variant",
+      "caseId": "test_mod_08",
+      "timestamp": "2026-10-03T18:22:06.070Z",
+      "latencyMs": 216
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.1.1
+// @version      1.1.2
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1885,10 +1885,10 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         },
         target_vocab_handling: {
           type: 'choice',
-          instructions: `Evaluate specifically how the tested vocabulary word "${cleanTarget}" was translated in \`user_translation\` given its role in \`japanese_sentence\`. Note: Conversational sentence-ending particles/softeners (like けど/んだけど, ね, よ) soften requests or indicate polite hesitation; capturing their communicative tone naturally without a literal "but" counts as natural_accurate_sense. Idiomatic phrases (like もう in もう知らない / "I'm done with you") count as natural_accurate_sense.`,
+          instructions: `Evaluate specifically how the tested vocabulary word "${cleanTarget}" was translated in \`user_translation\` given its role in \`japanese_sentence\`. Note: Conversational sentence-ending particles/softeners (like けど/んだけど, ね, よ) or rhetorical markers/exclamations (like じゃないか / じゃん, e.g. expressing realization, confrontation, or emphatic confirmation) soften requests, indicate hesitation, or convey expressive tone. Capturing their communicative intent naturally through assertive declarative phrasing, exclamations, or tone without an explicit tag question (like "isn't it?" or "right?") fully counts as natural_accurate_sense and must NOT be marked omitted_or_missing. Idiomatic phrases (like もう in もう知らない / "I'm done with you") count as natural_accurate_sense.`,
           options: ['natural_accurate_sense', 'awkward_or_literal_misfit', 'wrong_definition_or_misinterpreted', 'omitted_or_missing'],
           criteria: {
-            natural_accurate_sense: 'The target vocabulary, its idiomatic meaning, or its pragmatic conversational role is appropriately captured or naturally conveyed.',
+            natural_accurate_sense: 'The target vocabulary, its idiomatic meaning, or its pragmatic conversational role is appropriately captured or naturally conveyed (including rhetorical markers expressed via tone/declaratives).',
             awkward_or_literal_misfit: 'The target vocabulary was translated with an awkward literal definition that clashes with context (e.g. "this time" for 今度 when referring to a future action).',
             wrong_definition_or_misinterpreted: 'The target vocabulary was completely mistranslated or misunderstood.',
             omitted_or_missing: 'An essential lexical word was completely omitted from the translation without pragmatic reflection.'
@@ -2027,7 +2027,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         const w = words[i];
         questions['word_' + i + '_omitted'] = {
           type: 'noul',
-          instructions: `Evaluate whether the core semantic concept or grammatical role of "${w}" in \`japanese_sentence\` is completely missing or unrepresented in \`user_translation\`. (If "${w}" contains a particle like は, is a sentence-ending particle like けど, or is part of an embedded clause that was naturally nominalized or paraphrased such as 何を意味するのか translated as "the meaning of...", do NOT mark as omitted if its associated concept is represented in English).`
+          instructions: `Evaluate whether the core semantic concept or grammatical role of "${w}" in \`japanese_sentence\` is completely missing or unrepresented in \`user_translation\`. (If "${w}" contains a particle like は, is a sentence-ending particle/marker like けど, ね, よ or じゃないか/じゃん, or is part of an embedded clause that was naturally nominalized or paraphrased such as 何を意味するのか translated as "the meaning of...", do NOT mark as omitted if its associated concept is represented in English).`
         };
         questions['word_' + i + '_sense'] = {
           type: 'choice',
@@ -2037,7 +2037,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         };
         questions['word_' + i + '_grammar'] = {
           type: 'choice',
-          instructions: `Evaluate the grammatical tense, aspect, voice, mood, or benefactive direction of "${w}" in \`user_translation\`. (Note: English past-tense softening like "wanted to ask" or "I'd like to ask" for 〜てみたい / 〜たい, and imperative commands like "do it" for やりなさい, accurately convey intent).`,
+          instructions: `Evaluate the grammatical tense, aspect, voice, mood, or benefactive direction of "${w}" in \`user_translation\`. (Note: Sentence-ending particles or rhetorical markers like じゃないか / じゃん are correct_grammar_or_not_applicable when the sentence intent is preserved without an explicit tag question; English past-tense softening like "wanted to ask" or "I'd like to ask" for 〜てみたい / 〜たい, and imperative commands like "do it" for やりなさい, accurately convey intent).`,
           options: ['correct_grammar_or_not_applicable', 'recipient_or_beneficiary_error', 'tense_or_aspect_error', 'voice_passive_active_error', 'modality_or_mood_error'],
           criteria: grammarCriteria
         };
