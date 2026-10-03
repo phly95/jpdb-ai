@@ -1,280 +1,231 @@
-// Test Suite for Hardened Jev System One Architecture & Fast-Paths
-// Tests the exact functions shipped in jpdb-ai.user.js directly via VM sandbox
-
+// Hardened test suite for the Jev System One fast paths in jpdb-ai.user.js  (v1.0.92)
+//
+// Loads the REAL shipped userscript in a VM sandbox and calls its real functions (no re-implementations).
+//   node run_hardened_test.js                 # offline: numeral engine, scoring/routing, vocab verification
+//   node run_hardened_test.js --live          # additionally runs live Jev calls (needs ./jev_client.js exporting callJev)
+//   node run_hardened_test.js path/to/jpdb-ai.user.js
+//
+// Notes vs. the previous harness:
+//  * buildVocabExplanationQuestions(info, cleanTarget, words) is now called with its REAL signature. The old harness
+//    called it with only `info`, so every "live" vocab question asked about the role of the literal string "undefined".
+//  * Fixtures use the schema-accurate option names from callJevEvaluation (e.g. correct_benefactive_or_not_applicable).
+//  * Exit code is non-zero if any offline assertion fails.
 const fs = require('fs');
 const vm = require('vm');
-const { callJev } = require('./jev_client');
+const path = require('path');
 
-// Extract the exact shipped functions from jpdb-ai.user.js
-const src = fs.readFileSync(__dirname + '/../jpdb-ai.user.js', 'utf8');
-const exportedCode = src.replace(/\}\)\(\);\s*$/, `
-  if (typeof globalThis.__USERSCRIPT_EXPORTS__ !== 'undefined') {
-    globalThis.__USERSCRIPT_EXPORTS__.parseCompoundKanjiNum = parseCompoundKanjiNum;
-    globalThis.__USERSCRIPT_EXPORTS__.extractJapaneseNumbers = extractJapaneseNumbers;
-    globalThis.__USERSCRIPT_EXPORTS__.extractEnglishNumbers = extractEnglishNumbers;
-    globalThis.__USERSCRIPT_EXPORTS__.assessNumeralStatus = assessNumeralStatus;
-    globalThis.__USERSCRIPT_EXPORTS__.buildVocabExplanationQuestions = buildVocabExplanationQuestions;
-    globalThis.__USERSCRIPT_EXPORTS__.generateVocabExplanation = generateVocabExplanation;
-    globalThis.__USERSCRIPT_EXPORTS__.parseJevScores = parseJevScores;
+const argPath = process.argv.slice(2).find((a) => a.endsWith('.js'));
+const candidates = [argPath, process.env.USERSCRIPT_PATH, path.join(__dirname, 'jpdb-ai.user.js'), path.join(__dirname, '..', 'jpdb-ai.user.js')].filter(Boolean);
+const scriptPath = candidates.find((p) => fs.existsSync(p));
+if (!scriptPath) { console.error('Cannot find jpdb-ai.user.js. Pass its path as an argument.'); process.exit(2); }
+
+function loadShipped(file) {
+  const src = fs.readFileSync(file, 'utf8');
+  const names = ['parseCompoundKanjiNum', 'extractJapaneseNumbers', 'extractEnglishNumbers', 'extractEnglishNumberInfo', 'assessNumeralStatus', 'isGroundedTypo', 'levenshtein', 'parseJevScores', 'buildVocabExplanationQuestions', 'generateVocabExplanation', 'verifyVocabRole', 'verifyConnectedWord', 'isTipRelevant'];
+  const code = src.replace(/\}\)\(\);\s*$/, `
+  globalThis.__X__={${names.map((n) => `${n}: typeof ${n}!=='undefined'?${n}:undefined`).join(',')}};
+})();`);
+  const sb = { location: { pathname: '/review' }, document: { readyState: 'loading', addEventListener() {} }, GM_getValue: () => '', GM_setValue() {}, GM_registerMenuCommand() {}, console, Intl, __X__: null };
+  sb.window = sb; sb.globalThis = sb;
+  vm.createContext(sb);
+  vm.runInContext(code, sb);
+  return sb.__X__;
+}
+const X = loadShipped(scriptPath);
+console.log('Testing:', scriptPath, '\n');
+const results = [];
+
+results.push((function () {
+console.log('==================== Numeral engine ====================');
+let pass=0,fail=0;
+const T=(jp,st,ref,exp,label)=>{const r=X.assessNumeralStatus(jp,st,ref);const ok=r.status===exp;ok?pass++:fail++;console.log(`[${ok?'PASS':'FAIL'}] ${(label||jp).padEnd(44)} got ${r.status.padEnd(10)} want ${exp}`)};
+// --- Gemini's 10
+T('これは私にはちょっと高い','This one is a bit expensive','This is a bit expensive.','clean','にはちょっと + "this one"');
+T('三千円',"It's 3,000 yen",'3000 yen','clean','三千 vs 3,000');
+T('二千円','two thousand yen','2000 yen','clean','二千 vs two thousand');
+T('一万二千円','12,000 yen','12000 yen','clean','一万二千 vs 12,000');
+T('二人で…','The two of us used this one','The two of us...','clean','二人 vs two + "this one"');
+T('田中さんが来た','Three people including Tanaka came','Tanaka came','mismatch','さん != 3, hallucinated Three');
+T('ありがとうございます','five times over','Thank you very much','mismatch','ございます != 5');
+T('三月五日','March 7th','March 5th','mismatch','ordinal digits contradiction');
+T('りんごを三つ買った。','I bought a few apples.','I bought three apples.','unverified','三つ vs "a few"');
+T('30分待った。','I waited half an hour.','I waited for 30 minutes.','clean','30分 vs half an hour');
+// --- new false-mismatch repros from v1.0.91
+T('ちょっと待って','Wait a second','Wait a moment','clean','"a second" is not an ordinal');
+T('最初は驚いた','At first I was surprised','I was surprised at the beginning','clean','"at first"');
+T('百二十円','It costs one hundred and twenty yen','It costs 120 yen','clean','hundred AND twenty');
+T('自分のベストを尽くす',"Do one's best",'Do your best','clean','"one\'s"');
+T('三万円です','It is 30,000 yen','It is 30,000 yen','clean','三万');
+T('3万5000円です','It is 35,000 yen','It is 35,000 yen','clean','3万5000 composite');
+T('3万5000円です','It is 36,000 yen','It is 35,000 yen','mismatch','3万5000 vs 36,000 (real error)');
+T('二〇二四年だ','It is 2024','It is 2024','clean','positional kanji year');
+T('三時半に会う','Meet at 3:30','Meet at 3:30','clean','三時半');
+T('午後三時に会う','Meet at 15:00','Meet at 3 PM','clean','午後三時 vs 15:00');
+T('1.5時間かかる','It takes 1.5 hours','It takes 1.5 hours','clean','decimal');
+T('思ったとおりだ','It is as I thought','It is just as I thought','clean','とおり not ten');
+T('十分待った','I waited long enough','I waited long enough','clean','十分 = enough');
+T('千葉に住んでいる','I live in Chiba','I live in Chiba','clean','千葉');
+T('半分食べた','I ate half','I ate half of it','clean','半分 not 30');
+// --- must still catch real errors
+T('三時に会う',"Meet at 5 o'clock",'Meet at 3 o\'clock','mismatch','real: 5 vs 3');
+T('りんごが三つある','There are five apples','There are three apples','mismatch','real: five vs three');
+T('二千円','It costs 200 yen','It costs 2000 yen','mismatch','real: 200 vs 2000');
+T('りんごが三つある','There are apples','There are three apples','unverified','quantity dropped');
+T('猫がいる','There is a cat','There is a cat','clean','no numerals anywhere');
+T('猫が二匹いる','There are 2 cats','There are two cats','clean','二匹 vs 2');
+
+return { name: 'Numeral engine', pass, fail };
+})());
+
+results.push((function () {
+console.log('==================== Scoring & fast-path routing ====================');
+let pass=0,fail=0;
+const ok=(c,l,extra='')=>{c?pass++:fail++;console.log(`[${c?'PASS':'FAIL'}] ${l}${extra?'  -> '+extra:''}`)};
+
+const WORDS=['猫が','好きだ'];
+// Schema-accurate "everything is fine" answer set (option names copied from callJevEvaluation)
+const clean=(over={})=>({
+  grade_bracket:{choice:'10_flawless',confidence:0.92},
+  is_flawless:{noul:0.95,confidence:0.92},
+  severity:{score:3.8,confidence:0.95},
+  sentence_critique_summary:{choice:'no_flaws_accurate',confidence:0.9},
+  english_typo_check:{choice:'no_typos_clean_english',confidence:0.95},
+  suspected_typo_word:{choice:'none',confidence:0.95},
+  predicate_mood_and_voice:{choice:'correct_or_not_applicable',confidence:0.98},
+  benefactive_direction:{choice:'correct_benefactive_or_not_applicable',confidence:0.99},
+  predicate_complex_conjugation:{choice:'accurate_or_not_stacked',confidence:0.99},
+  interrogative_check:{choice:'correct_or_no_interrogative',confidence:0.99},
+  question_type_and_scope:{choice:'not_applicable',confidence:0.99},
+  polarity_check:{choice:'polarity_preserved',confidence:0.98},
+  target_vocab_handling:{choice:'natural_accurate_sense',confidence:0.95},
+  word_0_omitted:{noul:0.02},word_0_sense:{choice:'natural_correct_sense',confidence:0.99},word_0_grammar:{choice:'correct_grammar_or_not_applicable',confidence:0.99},
+  word_1_omitted:{noul:0.02},word_1_sense:{choice:'natural_correct_sense',confidence:0.99},word_1_grammar:{choice:'correct_grammar_or_not_applicable',confidence:0.99},
+  ...over});
+const P=(a,o={})=>X.parseJevScores(a,o.words||WORDS,o.tv||'好き',o.draft||'I like cats',o.ref||'I like cats',o.jp||'猫が好きだ');
+
+console.log('--- strict 10/10 is fail-closed ---');
+let m=P(clean()); ok(m.overall===10&&m.isStrict10Consensus,'complete, realistic answers -> 10/10');
+for(const k of ['polarity_check','benefactive_direction','predicate_mood_and_voice','predicate_complex_conjugation','interrogative_check','question_type_and_scope','target_vocab_handling']){
+  const a=clean(); delete a[k]; m=P(a); ok(!m.isStrict10Consensus&&m.overall!==10,`missing ${k} blocks 10/10`,`failed=${m.failedGuards}`);
+}
+m=P(clean({polarity_check:{choice:'polarity_preserved',confidence:0.5}})); ok(!m.isStrict10Consensus,'coin-flip polarity_preserved (0.50) blocks 10/10');
+{const a=clean(); delete a.word_0_sense; delete a.word_1_grammar; m=P(a); ok(!m.isStrict10Consensus,'missing per-word answers (50% coverage) blocks 10/10');}
+
+console.log('--- typo shortcut is grounded ---');
+m=P(clean({grade_bracket:{choice:'1_fatal_error',confidence:0.9},english_typo_check:{choice:'likely_english_typo_with_sound_comprehension',confidence:0.82},suspected_typo_word:{choice:'none',confidence:0.9},polarity_check:{choice:'polarity_inverted',confidence:0.95},sentence_critique_summary:{choice:'wrong_verb_or_action',confidence:0.9}}),{draft:'I do not like cats'});
+ok(!m.isTypo&&!m.typoFastPathOk&&m.overall<=3,'typo claim + fatal bracket + typo word "none" does NOT mask a fatal error',`overall=${m.overall} typo=${m.isTypo}`);
+const typoA=(over={},o={})=>P(clean({grade_bracket:{choice:'8_minor_nuance',confidence:0.9},is_flawless:{noul:0.8,confidence:0.9},english_typo_check:{choice:'likely_english_typo_with_sound_comprehension',confidence:0.9},suspected_typo_word:{choice:'now',confidence:0.9},...over}),{draft:'It is okay to now know that',ref:'It is okay to not know that',...o});
+m=typoA(); ok(m.isTypo&&m.typoFastPathOk&&m.overall===8,'genuine now/not slip -> typo fast path, 8/10');
+m=typoA({suspected_typo_word:{choice:'okay',confidence:0.9}}); ok(!m.isTypo,'named word is in the reference (not a slip) -> not typo');
+m=typoA({},{draft:'It is okay to banana know that'}); m=typoA({suspected_typo_word:{choice:'banana',confidence:0.9}},{draft:'It is okay to banana know that'}); ok(!m.isTypo,'named word is not a near-miss of any reference word -> not typo');
+m=typoA({grade_bracket:{choice:'5_moderate_error',confidence:0.9}}); ok(!m.isTypo,'bracket says moderate error -> typo shortcut refused');
+m=typoA({suspected_typo_word:{choice:'now',confidence:0.5}}); ok(!m.typoFastPathOk,'typo-word confidence 0.50 -> no typo fast path (min of both questions)');
+
+console.log('--- critique text/confidence/severity coherence ---');
+m=P(clean({grade_bracket:{choice:'8_minor_nuance',confidence:0.8},word_0_omitted:{noul:0.9}}),{words:['昨日','猫が'],tv:'猫',draft:'I like cats',ref:'I liked cats yesterday',jp:'昨日猫が好きだった'});
+ok(m.critiqueSource==='omitted_word'&&!/degree/.test(m.dynamicCritique),'omission text is neutral (no hard-coded "degree nuance")',m.dynamicCritique);
+const ex=(st,rf,rel,c=0.9)=>({flawed_student_excerpt:{choice:st,confidence:c},correct_reference_excerpt:{choice:rf,confidence:c},contrast_relation:{choice:rel,confidence:c}});
+m=P(clean({grade_bracket:{choice:'1_fatal_error',confidence:0.9},...ex('I like cats','I like cats','word_choice_or_nuance_mismatch')}));
+ok(m.excerptComparison===null&&!/rather than "I like cats"\./.test(m.dynamicCritique),'identical excerpts never produce "X rather than X"',m.dynamicCritique);
+m=P(clean({grade_bracket:{choice:'1_fatal_error',confidence:0.9},...ex('I like','I really like','word_choice_or_nuance_mismatch')}));
+ok(!m.critiqueFastPathOk&&m.fastPathBlockers.includes('critique_undersells_error'),'1/10 score + minor-nuance message is blocked',m.fastPathBlockers.join());
+m=P(clean({grade_bracket:{choice:'10_flawless',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9}}));
+ok(!m.critiqueFastPathOk&&m.fastPathBlockers.includes('error_critique_vs_lenient_bracket'),'"passive reversed" + flawless bracket conflict is blocked',m.fastPathBlockers.join());
+m=P(clean({grade_bracket:{choice:'5_moderate_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.45}}));
+ok(m.triggeringConfidence===0.45&&!m.critiqueFastPathOk,'summary 0.45 vs "correct" voice 0.98 stays 0.45 and is blocked',`trig=${m.triggeringConfidence}`);
+m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.30},...ex('I told','was told','word_choice_or_nuance_mismatch',0.9)}));
+ok(m.critiqueSource==='contrast_relation'&&m.triggeringConfidence<=0.30&&!m.critiqueFastPathOk,'contrast text chosen by a 0.30 summary cannot ride on 0.90 excerpt confidence',`trig=${m.triggeringConfidence}`);
+m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9},predicate_mood_and_voice:{choice:'passive_vs_active_error',confidence:0.9},...ex('I told him','He was told','passive_vs_active_reversal',0.9)}));
+ok(m.critiqueFastPathOk&&m.critiqueKind==='error'&&m.overall===3,'legit, corroborated passive reversal passes the gate',`${m.fastPathBlockers.join()||'no blockers'} | ${m.dynamicCritique.slice(0,70)}`);
+m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},...ex('I told','was told','passive_vs_active_reversal',0.45)}));
+ok(m.excerptComparison===null&&!m.critiqueFastPathOk,'weak excerpt relation (0.45): no contrast card, no fast path');
+m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9}}),{draft:'There are five cats',ref:'There are three cats',jp:'猫が三匹いる'});
+ok(m.hasNumeralMismatch&&!m.critiqueFastPathOk&&m.fastPathBlockers.includes('numeral_mismatch_unreported'),'numeral mismatch is never hidden behind another critique',m.fastPathBlockers.join());
+
+
+return { name: 'Scoring & fast-path routing', pass, fail };
+})());
+
+results.push((function () {
+console.log('==================== Vocab explainer verification ====================');
+let pass=0,fail=0;const ok=(c,l,e='')=>{c?pass++:fail++;console.log(`[${c?'PASS':'FAIL'}] ${l}${e?'  -> '+e:''}`)};
+const card=(vocab,jp,meanings=['to put on','to hang'])=>({vocab,meanings,sentenceJP:jp,sentenceEN:''});
+const A=(role,rc,extra={})=>({grammatical_role:{choice:role,confidence:rc},inflection_form:{choice:'uninflected_noun_or_particle',confidence:0.9},pedagogical_tip_type:{choice:'standard_usage',confidence:0.9},...extra});
+const G=(a,c,t)=>X.generateVocabExplanation(a,c,t);
+
+console.log('--- question builder (called with the REAL signature) ---');
+let q=X.buildVocabExplanationQuestions(card('かける','眼鏡をかけた。'),'かける',['眼鏡を','かけた']);
+ok(/"かける"/.test(q.grammatical_role.instructions)&&!/undefined/.test(JSON.stringify(q)),'target word is injected into the question text, no "undefined"');
+ok(!q.attachment_and_particles,'unused attachment_and_particles question no longer sent');
+ok(q.applied_meaning&&q.applied_meaning.options.length===2,'polysemous word -> applied_meaning asked');
+q=X.buildVocabExplanationQuestions(card('猫','猫がいる。',['cat']),'猫',['猫が','いる']);
+ok(!q.applied_meaning,'single meaning -> no degenerate 1-option Choice');
+
+console.log('--- claims must be grounded in the sentence ---');
+let g=G(A('direct_object',0.9),card('猫','可愛い猫がいる。',['cat']),'猫');
+ok(!g.role&&g.rejectedBy==='claimed_particle_not_present','role=direct_object but が follows 猫 -> rejected to LLM',g.rejectedBy);
+g=G(A('grammatical_subject',0.9),card('猫','可愛い猫がいる。',['cat']),'猫');
+ok(g.role==='grammatical_subject'&&/marked by the identifier particle \*\*が\*\*/.test(g.markdown),'role=subject and が follows -> accepted');
+g=G(A('direct_object',0.9),card('猫','かわいいネコがいる。',['cat']),'猫');
+ok(!g.role&&g.rejectedBy==='target_not_found_in_sentence','particle role but target not literally in sentence -> rejected');
+g=G(A('main_predicate_verb',0.9,{inflection_form:{choice:'te_form',confidence:0.9}}),card('かける','眼鏡をかけて行く。'),'かける');
+ok(!g.role&&g.rejectedBy==='main_predicate_but_non_final_inflection','main_predicate + te_form contradiction -> rejected');
+g=G(A('direct_object',0.9,{inflection_form:{choice:'past_ta_form',confidence:0.9}}),card('眼鏡','眼鏡をかけた。',['glasses']),'眼鏡');
+ok(!g.role&&g.rejectedBy==='noun_role_but_verb_inflection','noun role + past-tense inflection contradiction -> rejected');
+g=G(A('main_predicate_verb',0.9,{inflection_form:{choice:'past_ta_form',confidence:0.9}}),card('かける','眼鏡をかけた。'),'かける');
+ok(g.role==='main_predicate_verb'&&/past tense/.test(g.markdown),'plain main verb in past tense -> accepted with inflection');
+
+console.log('--- connected word must be positioned plausibly ---');
+const kono=card('この','私はこの言葉の意味を知りません。',['this']);
+g=G(A('demonstrative_determiner',0.9,{connected_target_word:{choice:'言葉',confidence:0.9}}),kono,'この');
+ok(/modifying the noun \*\*言葉\*\*/.test(g.markdown),'determiner + adjacent noun -> noun named');
+g=G(A('demonstrative_determiner',0.9,{connected_target_word:{choice:'意味',confidence:0.9}}),kono,'この');
+ok(g.role&&!/意味/.test(g.markdown),'determiner + NON-adjacent noun -> dropped, generic wording');
+
+console.log('--- tips must be relevant ---');
+g=G(A('main_predicate_verb',0.9,{pedagogical_tip_type:{choice:'ko_so_a_do_proximity',confidence:0.95},inflection_form:{choice:'past_ta_form',confidence:0.9}}),card('かける','眼鏡をかけた。'),'かける');
+ok(!/ko-so-a-do/.test(g.markdown),'ko-so-a-do tip on 眼鏡をかける -> replaced by generic');
+g=G(A('demonstrative_determiner',0.9,{pedagogical_tip_type:{choice:'ko_so_a_do_proximity',confidence:0.95}}),kono,'この');
+ok(/ko-so-a-do/.test(g.markdown),'ko-so-a-do tip on この -> kept');
+g=G(A('main_predicate_verb',0.9,{pedagogical_tip_type:{choice:'give_receive_direction',confidence:0.95},inflection_form:{choice:'past_ta_form',confidence:0.9}}),card('買う','本を買った。'),'買う');
+ok(!/favor direction/.test(g.markdown),'give/receive tip with no giving verb in sentence -> replaced');
+g=G(A('main_predicate_verb',0.9,{pedagogical_tip_type:{choice:'idiomatic_set_phrase',confidence:0.75},inflection_form:{choice:'past_ta_form',confidence:0.9}}),card('買う','本を買った。'),'買う');
+ok(!/idiomatic set phrase/.test(g.markdown),'unverifiable tip needs >=0.85 (0.75 rejected)');
+
+console.log('--- unchanged guarantees ---');
+g=G({grammatical_role:{choice:'direct_object',confidence:0.81}},card('猫','猫を見た。',['cat']),'猫'); ok(/functioning as/.test(g.markdown)&&!/likely/.test(g.markdown),'0.81 -> confident prose');
+g=G({grammatical_role:{choice:'direct_object',confidence:0.72}},card('猫','猫を見た。',['cat']),'猫'); ok(/likely functioning as/.test(g.markdown),'0.72 -> hedged prose');
+g=G({grammatical_role:{choice:'direct_object',confidence:0.6}},card('猫','猫を見た。',['cat']),'猫'); ok(!g.role,'0.60 -> LLM');
+g=G(A('direct_object',0.9),{vocab:'猫',meanings:[],sentenceJP:'猫を見た。'},'猫'); ok(!g.role&&g.markdown==='','no scraped meanings -> LLM');
+
+return { name: 'Vocab explainer verification', pass, fail };
+})());
+
+console.log('\n==================== SUMMARY ====================');
+let totalFail = 0;
+for (const r of results) { console.log(`${r.fail ? 'FAIL' : 'ok  '} ${r.name}: ${r.pass} passed, ${r.fail} failed`); totalFail += r.fail; }
+
+async function live() {
+  let callJev;
+  try { ({ callJev } = require('./jev_client')); } catch { console.log('\n(--live requested but ./jev_client.js not found; skipping)'); return; }
+  console.log('\n==================== LIVE JEV (informational, not asserted) ====================');
+  const cases = [
+    { vocab: 'かける', meanings: ['to put on', 'to hang', 'to spend'], jp: '眼鏡をかけた。', en: 'I put on glasses.', words: ['眼鏡を', 'かけた'], clean: 'かける' },
+    { vocab: 'この', meanings: ['this (close to speaker)'], jp: '私はこの言葉の意味を知りません。', en: "I don't know the meaning of this word.", words: ['私は', 'この', '言葉の', '意味を', '知りません'], clean: 'この' }
+  ];
+  for (const c of cases) {
+    const card = { vocab: c.vocab, meanings: c.meanings, sentenceJP: c.jp, sentenceEN: c.en };
+    const q = X.buildVocabExplanationQuestions(card, c.clean, c.words);           // <- real signature
+    const state = { japanese_sentence: c.jp, target_vocabulary: c.vocab, target_meanings: c.meanings, reference_translation: c.en, words: c.words };
+    const res = await callJev(state, q);
+    const a = res && res.answers;
+    if (!a) { console.log(c.vocab, '-> no answers'); continue; }
+    const gen = X.generateVocabExplanation(a, card, c.clean);
+    console.log(`${c.vocab}: role=${a.grammatical_role?.choice} (${a.grammatical_role?.confidence}) -> ${gen.role ? 'FAST PATH' : 'LLM'}${gen.rejectedBy ? ' [rejected: ' + gen.rejectedBy + ']' : ''}`);
   }
+}
+
+(async () => {
+  if (process.argv.includes('--live')) await live();
+  process.exit(totalFail ? 1 : 0);
 })();
-`);
-
-const sandbox = {
-  location: { pathname: '/review' },
-  document: { readyState: 'loading', addEventListener: () => {} },
-  window: {},
-  GM_getValue: () => '',
-  GM_setValue: () => {},
-  GM_registerMenuCommand: () => {},
-  console: console,
-  __USERSCRIPT_EXPORTS__: {}
-};
-sandbox.window = sandbox;
-vm.createContext(sandbox);
-vm.runInContext(exportedCode, sandbox);
-
-const {
-  parseCompoundKanjiNum,
-  extractJapaneseNumbers,
-  extractEnglishNumbers,
-  assessNumeralStatus,
-  buildVocabExplanationQuestions,
-  generateVocabExplanation,
-  parseJevScores
-} = sandbox.__USERSCRIPT_EXPORTS__;
-
-console.log('======================================================================');
-console.log('🧪 1. ADVERSARIAL NUMERAL & COUNTER ENGINE UNIT TESTS (CLAUDE TABLE)');
-console.log('======================================================================');
-
-const adversarialNumeralTests = [
-  {
-    jp: "これは私にはちょっと高い",
-    student: "This one is a bit expensive",
-    ref: "This is a bit expensive.",
-    expectedStatus: "clean",
-    label: "Idiom にはちょっと (contains に/はち) + 'This one' (pronoun)"
-  },
-  {
-    jp: "三千円",
-    student: "It's 3,000 yen",
-    ref: "3000 yen",
-    expectedStatus: "clean",
-    label: "三千 (3000) vs comma-formatted '3,000'"
-  },
-  {
-    jp: "二千円",
-    student: "two thousand yen",
-    ref: "2000 yen",
-    expectedStatus: "clean",
-    label: "二千 (2000) vs 'two thousand'"
-  },
-  {
-    jp: "一万二千円",
-    student: "12,000 yen",
-    ref: "12000 yen",
-    expectedStatus: "clean",
-    label: "一万二千 (12000) vs comma-formatted '12,000'"
-  },
-  {
-    jp: "二人で…",
-    student: "The two of us used this one",
-    ref: "The two of us...",
-    expectedStatus: "clean",
-    label: "二人 (2) vs 'two' with 'this one' (pronoun)"
-  },
-  {
-    jp: "田中さんが来た",
-    student: "Three people including Tanaka came",
-    ref: "Tanaka came",
-    expectedStatus: "mismatch",
-    label: "田中さん (さん != 3) vs hallucinated 'Three people'"
-  },
-  {
-    jp: "ありがとうございます",
-    student: "five times over",
-    ref: "Thank you very much",
-    expectedStatus: "mismatch",
-    label: "ございます (ご != 5) vs hallucinated 'five times'"
-  },
-  {
-    jp: "三月五日",
-    student: "March 7th",
-    ref: "March 5th",
-    expectedStatus: "mismatch",
-    label: "三月五日 (3, 5) vs ordinal contradiction 'March 7th' (7)"
-  },
-  {
-    jp: "りんごを三つ買った。",
-    student: "I bought a few apples.",
-    ref: "I bought three apples.",
-    expectedStatus: "unverified",
-    label: "三つ (3) vs unparsed paraphrase 'a few' -> unverified (routes to LLM, no false critique)"
-  },
-  {
-    jp: "30分待った。",
-    student: "I waited half an hour.",
-    ref: "I waited for 30 minutes.",
-    expectedStatus: "clean",
-    label: "30分 (30) vs duration idiom 'half an hour' (30)"
-  }
-];
-
-let numeralPassed = 0;
-for (const nt of adversarialNumeralTests) {
-  const res = assessNumeralStatus(nt.jp, nt.student, nt.ref);
-  const ok = res.status === nt.expectedStatus;
-  if (ok) numeralPassed++;
-  console.log(`  [${ok ? 'PASS' : 'FAIL'}] ${nt.label} -> got '${res.status}', expected '${nt.expectedStatus}'`);
-}
-console.log(`Numeral check result: ${numeralPassed}/${adversarialNumeralTests.length} passed.\n`);
-
-console.log('======================================================================');
-console.log('🧪 2. SHIPPED PARSE_JEV_SCORES & DILUTION-PROOF TRIGGERING TESTS');
-console.log('======================================================================');
-
-// Test 2a: Dilution prevention on passive error
-// Summary flags passive error at 0.45, but voice question says "correct" at 0.98
-const dilutionAnswers = {
-  grade_bracket: { choice: '5_moderate_error', confidence: 0.90 },
-  is_flawless: { noul: 0.10, confidence: 0.90 },
-  sentence_critique_summary: { choice: 'passive_voice_reversed', confidence: 0.45 },
-  predicate_mood_and_voice: { choice: 'correct_or_not_applicable', confidence: 0.98 },
-  benefactive_direction: { choice: 'correct_or_not_applicable', confidence: 0.99 },
-  severity_rating: { choice: 'moderate_error', confidence: 0.90 }
-};
-
-const dilutionParsed = parseJevScores(dilutionAnswers, ['食べられた'], '食べる', 'I ate it', 'It was eaten', '食べられた');
-const isTriggeringDiluted = dilutionParsed.triggeringConfidence === 0.98;
-const isTriggeringAccurate = dilutionParsed.triggeringConfidence === 0.45;
-const isCritiqueSourceAccurate = dilutionParsed.critiqueSource === 'sentence_critique_summary';
-console.log(`  [${isTriggeringAccurate ? 'PASS' : 'FAIL'}] Triggering confidence bound strictly to error question (0.45, NOT diluted 0.98): ${dilutionParsed.triggeringConfidence}`);
-console.log(`  [${isCritiqueSourceAccurate ? 'PASS' : 'FAIL'}] Critique source recorded as 'sentence_critique_summary': ${dilutionParsed.critiqueSource}`);
-const passesFastPathGate = dilutionParsed.triggeringConfidence >= 0.75;
-console.log(`  [${!passesFastPathGate ? 'PASS' : 'FAIL'}] Low-confidence critique (0.45) rejected by >= 0.75 fast-path gate: ${!passesFastPathGate}`);
-
-// Test 2b: Excerpt contrast min-confidence gate (< 0.70 aborted)
-const lowConfExcerptAnswers = {
-  grade_bracket: { choice: '8_minor_nuance', confidence: 0.85 },
-  flawed_student_excerpt: { choice: 'walked', confidence: 0.95 },
-  correct_reference_excerpt: { choice: 'ran', confidence: 0.90 },
-  contrast_relation: { choice: 'minor_word_choice_difference', confidence: 0.45 }
-};
-const excerptParsed = parseJevScores(lowConfExcerptAnswers, ['走った'], '走る', 'I walked', 'I ran', '走った');
-const excerptAborted = excerptParsed.critiqueSource !== 'contrast_relation';
-console.log(`  [${excerptAborted ? 'PASS' : 'FAIL'}] Excerpt contrast with weak relation (0.45) aborts contrast branch: ${excerptAborted}`);
-
-// Test 2c: Fail-closed strict 10/10 consensus tests
-const perfectAnswers = {
-  grade_bracket: { choice: '10_flawless', confidence: 0.92 },
-  is_flawless: { noul: 0.95, confidence: 0.92 },
-  sentence_critique_summary: { choice: 'no_flaws_accurate', confidence: 0.88 },
-  predicate_mood_and_voice: { choice: 'correct_or_not_applicable', confidence: 0.99 },
-  benefactive_direction: { choice: 'correct_or_not_applicable', confidence: 0.99 },
-  severity: { score: 3.8, confidence: 0.95 }
-};
-const perfectParsed = parseJevScores(perfectAnswers, ['猫がいる'], '猫', 'There is a cat', 'There is a cat', '猫がいる');
-console.log(`  [${perfectParsed.isStrict10Consensus && perfectParsed.overall === 10 ? 'PASS' : 'FAIL'}] Perfect translation achieves strict 10/10 consensus: ${perfectParsed.overall}/10`);
-
-// Incomplete consensus (missing summary)
-const incompleteAnswers = { ...perfectAnswers };
-delete incompleteAnswers.sentence_critique_summary;
-const incompleteParsed = parseJevScores(incompleteAnswers, ['猫がいる'], '猫', 'There is a cat', 'There is a cat', '猫がいる');
-console.log(`  [${!incompleteParsed.isStrict10Consensus && incompleteParsed.overall !== 10 ? 'PASS' : 'FAIL'}] Missing summary critique fails closed (blocks 10/10): overall=${incompleteParsed.overall}\n`);
-
-console.log('======================================================================');
-console.log('🧪 3. SHIPPED VOCAB EXPLAINER GATES & TIGHTENED CRITERIA TESTS');
-console.log('======================================================================');
-
-const polyMeaningCard = {
-  vocab: "かける",
-  meanings: ["to hang", "to put on", "to spend"],
-  sentenceJP: "眼鏡をかけた。",
-  sentenceEN: "I put on glasses."
-};
-const singleMeaningCard = {
-  vocab: "猫",
-  meanings: ["cat"],
-  sentenceJP: "可愛い猫がいる。",
-  sentenceEN: "There is a cute cat."
-};
-
-const polyQuestions = buildVocabExplanationQuestions(polyMeaningCard);
-const criteriaText = polyQuestions.grammatical_role.criteria.other_or_unclear;
-const isTightened = criteriaText.includes('Use ONLY if the word has an idiosyncratic syntactic role');
-console.log(`  [${isTightened ? 'PASS' : 'FAIL'}] other_or_unclear criteria is strictly tightened: ${isTightened}`);
-
-// Test 3b: Confident prose at 0.81 confidence (>= 0.80 threshold)
-const highConfGen = generateVocabExplanation({
-  grammatical_role: { choice: 'direct_object', confidence: 0.81 }
-}, singleMeaningCard, '猫');
-const hasConfidentProse = highConfGen.markdown.includes('functioning as') && !highConfGen.markdown.includes('likely functioning as');
-console.log(`  [${hasConfidentProse ? 'PASS' : 'FAIL'}] role confidence 0.81 uses confident 'functioning as': ${hasConfidentProse}`);
-
-// Test 3c: Hedged prose at 0.72 confidence
-const midConfGen = generateVocabExplanation({
-  grammatical_role: { choice: 'direct_object', confidence: 0.72 }
-}, singleMeaningCard, '猫');
-const hasHedge = midConfGen.markdown.includes('likely functioning as');
-console.log(`  [${hasHedge ? 'PASS' : 'FAIL'}] role confidence 0.72 hedges with 'likely functioning as': ${hasHedge}\n`);
-
-console.log('======================================================================');
-console.log('🚀 4. LIVE JEV SYSTEM ONE EXECUTION (HARDENED GATES & TIGHT CRITERIA)');
-console.log('======================================================================');
-
-async function testLiveJev() {
-  console.log('\n--- Live Test 1: Polysemous Vocab (眼鏡をかける) ---');
-  const t0 = Date.now();
-  const polyQ = buildVocabExplanationQuestions(polyMeaningCard);
-  const state1 = {
-    japanese_sentence: polyMeaningCard.sentenceJP,
-    target_vocabulary: polyMeaningCard.vocab,
-    target_meanings: polyMeaningCard.meanings,
-    reference_translation: polyMeaningCard.sentenceEN,
-    words: ['眼鏡を', 'かけた']
-  };
-
-  const res1 = await callJev(state1, polyQ);
-  const elapsed1 = Date.now() - t0;
-  console.log(`  Jev Response time: ${elapsed1}ms`);
-  if (res1 && res1.answers) {
-    const roleAns = res1.answers.grammatical_role;
-    const senseAns = res1.answers.applied_meaning;
-    console.log(`  Role: ${roleAns?.choice} (conf: ${roleAns?.confidence})`);
-    console.log(`  Applied sense: ${senseAns?.choice} (conf: ${senseAns?.confidence})`);
-
-    const gen = generateVocabExplanation(res1.answers, polyMeaningCard, 'かける');
-    console.log(`  Generated explanation role: ${gen.role}`);
-    console.log(`  Explanation snippet:\n    ${gen.markdown.split('\n').filter(l => l.trim()).join('\n    ')}`);
-  }
-
-  console.log('\n--- Live Test 2: Pre-noun Determiner (この言葉) ---');
-  const konoCard = {
-    vocab: "この",
-    meanings: ["this (close to speaker)"],
-    sentenceJP: "私はこの言葉の意味を知りません。",
-    sentenceEN: "I don't know the meaning of this word."
-  };
-  const konoQ = buildVocabExplanationQuestions(konoCard);
-  const state2 = {
-    japanese_sentence: konoCard.sentenceJP,
-    target_vocabulary: konoCard.vocab,
-    target_meanings: konoCard.meanings,
-    reference_translation: konoCard.sentenceEN,
-    words: ['私は', 'この', '言葉の', '意味を', '知りません']
-  };
-
-  const res2 = await callJev(state2, konoQ);
-  if (res2 && res2.answers) {
-    console.log(`  Role: ${res2.answers.grammatical_role?.choice} (conf: ${res2.answers.grammatical_role?.confidence})`);
-    const gen2 = generateVocabExplanation(res2.answers, konoCard, 'この');
-    console.log(`  Explanation snippet:\n    ${gen2.markdown.split('\n').filter(l => l.trim()).join('\n    ')}`);
-  }
-
-  console.log('\n======================================================================');
-  console.log('✅ ALL TEST RUN CHECKS COMPLETE');
-  console.log('======================================================================');
-}
-
-testLiveJev().catch(console.error);

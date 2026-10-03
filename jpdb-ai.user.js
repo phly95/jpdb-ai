@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.91
+// @version      1.0.92
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -727,13 +727,22 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
   }
 
   // ---------- Code-side Numeral & Counter Value Verification ----------
+  // Design rules (v1.0.92):
+  //  * Anything the parser cannot be sure about returns 'unverified' (routes to the LLM), never 'mismatch'.
+  //  * 'mismatch' is only asserted for HARD numbers (digits, unambiguous number words). The bare word "one" and
+  //    ordinal WORDS ("first", "second") are SOFT: they are frequently non-numeric ("a second", "at first", "one's").
+  //  * If Japanese or the reference expresses a quantity and the student expresses none, the result is 'unverified'.
   const KANJI_DIGITS = { '〇': 0, '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
-  // Only distinct native Japanese counting words (single-syllable kana like に, ご, さん, はち removed to prevent substring false-matches)
+  const KANJI_SMALL_UNITS = { '十': 10, '百': 100, '千': 1000 };
+  const KANJI_BIG_UNITS = { '万': 1e4, '億': 1e8, '兆': 1e12 };
+  // Only distinct multi-syllable native counting words (single-syllable kana like に, ご, さん, はち are never matched)
   const KANA_NUM_MAP = {
     'ひとつ': 1, 'ふたつ': 2, 'みっつ': 3, 'よっつ': 4, 'いつつ': 5,
     'むっつ': 6, 'ななつ': 7, 'やっつ': 8, 'ここのつ': 9, 'とお': 10,
     'ひとり': 1, 'ふたり': 2
   };
+  // Kanji compounds that contain numeral characters but are not quantities (checked before numeral extraction)
+  const NON_NUMERIC_JP_RE = /(?:一方で|一方|一緒|一番|一人で|一切|一般|一生懸命|一生|一度|一旦|一応|一部|一定|一気|一層|一概|一律|一流|一向|同一|唯一|統一|万一|万歳|万年筆|万能|万国|十分|十中八九|七転び八起き|三日坊主|千葉|百科|百貨店|八百屋|九州|四国|三味線|二日酔い|四季|七五三)/g;
 
   const SMALL_ENGLISH_NUMS = {
     'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
@@ -752,37 +761,30 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
   function parseCompoundKanjiNum(str) {
     if (!str) return null;
+    const hasUnit = /[十百千万億兆]/.test(str);
+    if (!hasUnit) {
+      // Pure digit run: positional notation (二〇二四 -> 2024)
+      if (!/^[〇零一二三四五六七八九]+$/.test(str)) return null;
+      let v = 0;
+      for (const ch of str) v = v * 10 + KANJI_DIGITS[ch];
+      return v;
+    }
     let total = 0;
     let section = 0;
     let current = 0;
-    let hasKanjiNum = false;
-
-    for (let i = 0; i < str.length; i++) {
-      const ch = str[i];
+    for (const ch of str) {
       if (KANJI_DIGITS[ch] !== undefined) {
         current = KANJI_DIGITS[ch];
-        hasKanjiNum = true;
-      } else if (ch === '十') {
-        section += (current === 0 ? 1 : current) * 10;
+      } else if (KANJI_SMALL_UNITS[ch]) {
+        section += (current === 0 ? 1 : current) * KANJI_SMALL_UNITS[ch];
         current = 0;
-        hasKanjiNum = true;
-      } else if (ch === '百') {
-        section += (current === 0 ? 1 : current) * 100;
-        current = 0;
-        hasKanjiNum = true;
-      } else if (ch === '千') {
-        section += (current === 0 ? 1 : current) * 1000;
-        current = 0;
-        hasKanjiNum = true;
-      } else if (ch === '万') {
+      } else if (KANJI_BIG_UNITS[ch]) {
         section += current;
-        total += (section === 0 ? 1 : section) * 10000;
+        total += (section === 0 ? 1 : section) * KANJI_BIG_UNITS[ch];
         section = 0;
         current = 0;
-        hasKanjiNum = true;
       }
     }
-    if (!hasKanjiNum) return null;
     return total + section + current;
   }
 
@@ -791,170 +793,253 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     if (!str) return nums;
     let clean = str.normalize('NFKC');
 
-    // 1. Remove non-numeric idioms containing 一 or other kanji
-    clean = clean.replace(/(?:一方で|一方|一緒|一番|一人で|一切|一般|一生|一度|万一|十中八九|七転び八起き|三日坊主)/g, '');
+    // 1. Remove non-numeric compounds and thousands separators
+    clean = clean.replace(NON_NUMERIC_JP_RE, ' ');
+    clean = clean.replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
 
-    // 2. Arabic digits in Japanese text
-    const digits = clean.match(/\d+/g);
-    if (digits) digits.forEach((d) => nums.add(parseInt(d, 10)));
+    // 2. Arabic digit + 万/億 composites (3万5000円 -> 35000, 3万 -> 30000) and 千/百 (3千 -> 3000)
+    clean = clean.replace(/(\d+(?:\.\d+)?)\s*(億|万)(?:\s*(\d{1,4}))?/g, (m, n, unit, rest) => {
+      const mult = KANJI_BIG_UNITS[unit];
+      const base = Math.round(parseFloat(n) * mult);
+      nums.add(base + (rest ? parseInt(rest, 10) : 0));
+      if (rest) nums.add(parseInt(rest, 10));
+      return ' ';
+    });
+    clean = clean.replace(/(\d+)\s*(千|百)/g, (m, n, unit) => {
+      nums.add(parseInt(n, 10) * KANJI_SMALL_UNITS[unit]);
+      return ' ';
+    });
 
-    // 3. Special duration "30分" or "半" (half past)
-    if (/半|30分/.test(clean)) {
-      nums.add(30);
-    }
+    // 3. Plain Arabic numerals (integers and decimals)
+    const digits = clean.match(/\d+(?:\.\d+)?/g);
+    if (digits) digits.forEach((d) => nums.add(parseFloat(d)));
 
-    // 4. Kana numerals (only distinct native words)
+    // 4. "X時間半" (X and a half hours) and "X時半" (half past X)
+    clean.replace(/([〇零一二三四五六七八九十百\d]+)時間半/g, (m, n) => {
+      const v = /^\d+$/.test(n) ? parseInt(n, 10) : parseCompoundKanjiNum(n);
+      if (v !== null) nums.add(v + 0.5);
+      return m;
+    });
+    if (/時半/.test(clean)) nums.add(30);
+
+    // 5. Native counting words. Only とお needs a boundary guard (とおり / とおい / とおく / とおる are not "ten").
     for (const [k, v] of Object.entries(KANA_NUM_MAP)) {
-      if (clean.includes(k)) nums.add(v);
+      if (k === 'とお') {
+        if (/(?<![ぁ-ん])とお(?![ぁ-ん])/.test(clean)) nums.add(v);
+      } else if (clean.includes(k)) {
+        nums.add(v);
+      }
     }
 
-    // 5. Compound Kanji numerals: find sequences of Kanji numerals
-    const kanjiMatches = clean.match(/[〇零一二三四五六七八九十百千万]+/g);
+    // 6. Kanji numeral runs. Pure digit runs without a unit are also expanded digit-by-digit
+    //    (二三日 = "two or three days"), which only ever loosens the check.
+    const kanjiMatches = clean.match(/[〇零一二三四五六七八九十百千万億兆]+/g);
     if (kanjiMatches) {
       kanjiMatches.forEach((km) => {
         const val = parseCompoundKanjiNum(km);
         if (val !== null) nums.add(val);
+        if (km.length > 1 && /^[〇零一二三四五六七八九]+$/.test(km)) {
+          for (const ch of km) nums.add(KANJI_DIGITS[ch]);
+        }
       });
     }
 
     return nums;
   }
 
-  function extractEnglishNumbers(str) {
-    const nums = new Set();
-    if (!str) return nums;
+  // Returns { all: Set<number>, soft: Set<number> }. "soft" values come only from the bare word "one" or ordinal words.
+  function extractEnglishNumberInfo(str) {
+    const hard = new Set();
+    const softRaw = new Set();
+    if (!str) return { all: hard, soft: softRaw };
     let clean = str.normalize('NFKC').toLowerCase();
 
-    // 1. Strip thousands separators (e.g. 3,000 -> 3000, 12,000 -> 12000)
-    clean = clean.replace(/(\d+),(\d+)/g, '$1$2');
+    // Thousands separators
+    clean = clean.replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
 
-    // 2. Strip ordinal suffixes on digits (e.g. 7th -> 7, 1st -> 1, 5th -> 5)
-    clean = clean.replace(/\b(\d+)(?:st|nd|rd|th)\b/g, '$1');
+    // Clock times (3:30, 15:00 pm) and am/pm
+    clean = clean.replace(/\b(\d{1,2}):(\d{2})\b(?:\s*(a\.?m\.?|p\.?m\.?))?/g, (m, h, mm, ap) => {
+      const H = parseInt(h, 10);
+      hard.add(H);
+      if (parseInt(mm, 10) > 0) hard.add(parseInt(mm, 10));
+      if (H > 12) hard.add(H - 12);
+      if (ap && /^p/.test(ap) && H < 12) hard.add(H + 12);
+      return ' ';
+    });
+    clean = clean.replace(/\b(\d{1,2})\s*(a\.?m\.?|p\.?m\.?)(?![a-z])/g, (m, h, ap) => {
+      const H = parseInt(h, 10);
+      hard.add(H);
+      if (/^p/.test(ap) && H < 12) hard.add(H + 12);
+      return ' ';
+    });
 
-    // 3. Strip pronoun and non-numeric uses of 'one'
+    // Ordinal digits (7th -> 7): hard numbers (dates)
+    clean = clean.replace(/\b(\d+)(?:st|nd|rd|th)\b/g, (m, d) => { hard.add(parseInt(d, 10)); return ' '; });
+
+    // Non-numeric uses of "one"
     clean = clean.replace(/\b(?:this|that|which|each|every|another|some|any|no)\s+one\b/g, ' ');
     clean = clean.replace(/\b(?:the|a|an)\s+(?:[a-z]+\s+)?one\b/g, ' ');
     clean = clean.replace(/\bone\s+another\b/g, ' ');
     clean = clean.replace(/\bone\s+of\b/g, ' ');
+    clean = clean.replace(/\bone(?:'s|self)\b/g, ' ');
+    clean = clean.replace(/\bone\s+(?:can|could|should|must|may|might|has|had|is|was|would|will|needs?)\b/g, ' ');
 
-    // 4. Digits
-    const digits = clean.match(/\b\d+\b/g);
-    if (digits) digits.forEach((d) => nums.add(parseInt(d, 10)));
+    // Plain digits (integers/decimals), including those glued to units (5km)
+    const digits = clean.match(/(?<![a-z\d.])\d+(?:\.\d+)?/g);
+    if (digits) digits.forEach((d) => hard.add(parseFloat(d)));
 
-    // 5. Idiomatic durations: "half an hour" / "half hour" -> 30 (minutes)
-    if (/\bhalf\s+(?:an\s+)?hour\b/.test(clean)) {
-      nums.add(30);
-    }
+    // Idiomatic duration
+    if (/\bhalf\s+(?:an\s+)?hour\b/.test(clean)) hard.add(30);
 
-    // 6. Tokenize words for compound scale parsing
-    const words = clean.replace(/[^a-z\s-]/g, ' ').split(/\s+/);
+    // Number words with scale parsing
+    const words = clean.replace(/[^a-z\s-]/g, ' ').split(/\s+/).filter(Boolean);
     let currentGroup = 0;
     let total = 0;
     let inNum = false;
+    let groupWordCount = 0;
+    let groupLast = '';
+
+    const flush = () => {
+      if (!inNum) return;
+      const value = total + currentGroup;
+      if (groupWordCount === 1 && groupLast === 'one') softRaw.add(value); else hard.add(value);
+      currentGroup = 0; total = 0; inNum = false; groupWordCount = 0; groupLast = '';
+    };
+    const isNumWord = (w) => {
+      if (!w) return false;
+      if (SMALL_ENGLISH_NUMS[w] !== undefined) return true;
+      if (w.includes('-')) {
+        const p = w.split('-');
+        return p.length === 2 && SMALL_ENGLISH_NUMS[p[0]] !== undefined && SMALL_ENGLISH_NUMS[p[1]] !== undefined;
+      }
+      return false;
+    };
 
     for (let i = 0; i < words.length; i++) {
       const raw = words[i];
-      if (!raw) continue;
 
       if (ORDINAL_MAP[raw] !== undefined) {
-        if (inNum) {
-          nums.add(total + currentGroup);
-          currentGroup = 0; total = 0; inNum = false;
-        }
-        nums.add(ORDINAL_MAP[raw]);
+        flush();
+        softRaw.add(ORDINAL_MAP[raw]);
         continue;
       }
 
-      let hyphenVal = 0;
-      if (raw.includes('-')) {
-        const parts = raw.split('-');
-        if (parts.length === 2 && SMALL_ENGLISH_NUMS[parts[0]] !== undefined && SMALL_ENGLISH_NUMS[parts[1]] !== undefined) {
-          hyphenVal = SMALL_ENGLISH_NUMS[parts[0]] + SMALL_ENGLISH_NUMS[parts[1]];
-        }
+      if (raw === 'and' && inNum && isNumWord(words[i + 1]) && (currentGroup >= 100 || (currentGroup === 0 && total > 0))) {
+        continue; // "one hundred and twenty"
       }
 
-      if (hyphenVal > 0) {
-        currentGroup += hyphenVal;
-        inNum = true;
+      if (raw.includes('-') && isNumWord(raw)) {
+        const p = raw.split('-');
+        currentGroup += SMALL_ENGLISH_NUMS[p[0]] + SMALL_ENGLISH_NUMS[p[1]];
+        inNum = true; groupWordCount += 2; groupLast = raw;
       } else if (SMALL_ENGLISH_NUMS[raw] !== undefined) {
         currentGroup += SMALL_ENGLISH_NUMS[raw];
-        inNum = true;
+        inNum = true; groupWordCount++; groupLast = raw;
       } else if (raw === 'hundred') {
         currentGroup = (currentGroup === 0 ? 1 : currentGroup) * 100;
-        inNum = true;
+        inNum = true; groupWordCount++; groupLast = raw;
       } else if (raw === 'thousand') {
         total += (currentGroup === 0 ? 1 : currentGroup) * 1000;
         currentGroup = 0;
-        inNum = true;
+        inNum = true; groupWordCount++; groupLast = raw;
       } else if (raw === 'million') {
         total += (currentGroup === 0 ? 1 : currentGroup) * 1000000;
         currentGroup = 0;
-        inNum = true;
+        inNum = true; groupWordCount++; groupLast = raw;
       } else {
-        if (inNum) {
-          nums.add(total + currentGroup);
-          currentGroup = 0;
-          total = 0;
-          inNum = false;
-        }
+        flush();
       }
     }
-    if (inNum) nums.add(total + currentGroup);
+    flush();
 
-    return nums;
+    const soft = new Set([...softRaw].filter((v) => !hard.has(v)));
+    return { all: new Set([...hard, ...softRaw]), soft };
+  }
+
+  function extractEnglishNumbers(str) {
+    return extractEnglishNumberInfo(str).all;
   }
 
   function assessNumeralStatus(sentenceJP, studentEN, refEN) {
     const jpNums = extractJapaneseNumbers(sentenceJP);
-    const refNums = extractEnglishNumbers(refEN);
+    const refInfo = extractEnglishNumberInfo(refEN);
+    const stInfo = extractEnglishNumberInfo(studentEN);
+    const refNums = refInfo.all;
+    const studentNums = stInfo.all;
+    const expected = new Set([...jpNums, ...refNums]);
 
-    // If neither Japanese nor reference translation mentions a numeral:
+    // Nothing numeric expected anywhere: only a HARD student number is a hallucination.
+    // Soft-only ("at first", "a second", "one's best") is not a numeric claim.
     if (jpNums.size === 0 && refNums.size === 0) {
-      const studentNums = extractEnglishNumbers(studentEN);
-      // Student hallucinates a number not in JP or Ref
-      if (studentNums.size > 0) {
+      const hardOnly = Array.from(studentNums).filter((n) => !stInfo.soft.has(n));
+      if (hardOnly.length > 0) {
         return {
           status: 'mismatch',
-          reason: `Student translation contains number ${Array.from(studentNums).join(', ')} not present in Japanese sentence.`
+          reason: `Student translation contains number ${hardOnly.join(', ')} not present in Japanese sentence.`
         };
       }
       return { status: 'clean', reason: '' };
     }
 
-    const studentNums = extractEnglishNumbers(studentEN);
-
-    // Check for an explicit contradicting number in student translation
-    // e.g. JP has [3], student explicitly has [5]
+    let softUnmatched = false;
     for (const sn of studentNums) {
-      if (!jpNums.has(sn) && !refNums.has(sn)) {
-        return {
-          status: 'mismatch',
-          reason: `Student translation contains number ${sn} which does not match Japanese sentence.`
-        };
-      }
-    }
-
-    // If both JP and reference require numbers (e.g. [2]), but student has none explicitly parsed:
-    // Do NOT assert a false mismatch (it could be an unparsed paraphrase like "a cup"),
-    // but treat as 'unverified' so it safely falls back to LLM instead of fast-pathing to 10/10!
-    if (jpNums.size > 0 && refNums.size > 0 && studentNums.size === 0) {
+      if (expected.has(sn)) continue;
+      if (stInfo.soft.has(sn)) { softUnmatched = true; continue; }
       return {
-        status: 'unverified',
-        reason: 'Numeral required by sentence/reference was not explicitly parsed in student translation.'
+        status: 'mismatch',
+        reason: `Student translation contains number ${sn} which does not match Japanese sentence.`
       };
     }
+    if (softUnmatched) {
+      return { status: 'unverified', reason: 'Ambiguous number word ("one"/ordinal) could not be matched to the sentence.' };
+    }
 
-    // Check if any required number in JP/Ref is missing in student
+    // A quantity is expressed in the Japanese (or reference) but the student expresses none: cannot verify, never assert.
+    if ((jpNums.size > 0 || refNums.size > 0) && studentNums.size === 0) {
+      return { status: 'unverified', reason: 'Numeral required by sentence/reference was not explicitly parsed in student translation.' };
+    }
+
+    // Required number present in both JP and reference but absent from student
     for (const jn of jpNums) {
       if (refNums.has(jn) && !studentNums.has(jn)) {
-        return {
-          status: 'unverified',
-          reason: `Japanese numeral ${jn} was not clearly verified in student translation.`
-        };
+        return { status: 'unverified', reason: `Japanese numeral ${jn} was not clearly verified in student translation.` };
       }
     }
 
     return { status: 'clean', reason: '' };
+  }
+
+  // ---------- Typo grounding (code-side check of the model's "suspected typo" claim) ----------
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  // A real slip is a word in the draft that is NOT in the reference but is a near-miss (edit distance <= 2) of one that is.
+  function isGroundedTypo(typoWord, userDraft, referenceTranslation) {
+    if (!typoWord || typoWord === 'none') return false;
+    const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const w = norm(typoWord);
+    if (w.length < 2) return false;
+    if (!userDraft || !userDraft.toLowerCase().includes(typoWord.toLowerCase())) return false;
+    const refWords = (referenceTranslation || '').split(/\s+/)
+      .map((x) => x.replace(/^[^\w']+|[^\w']+$/g, ''))
+      .filter(Boolean);
+    if (refWords.some((r) => r.toLowerCase() === typoWord.toLowerCase())) return false;
+    return refWords.some((r) => {
+      const n = norm(r);
+      return n.length >= 2 && Math.abs(n.length - w.length) <= 2 && levenshtein(w, n) <= 2;
+    });
   }
 
   function parseJevScores(answers, words, targetVocab, userDraft, referenceTranslation, sentenceJP) {
@@ -992,10 +1077,22 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const scopeCheck = answers.question_type_and_scope?.choice;
     const complexChoice = answers.predicate_complex_conjugation?.choice;
 
+    // Typo is a HIGH-RISK shortcut (it tells the learner their comprehension is sound), so it is grounded in code:
+    //  - the model must name a specific word, and that word must be a near-miss of a reference word (not in the reference),
+    //  - confidence is the MIN of the typo question and the typo-word question,
+    //  - Jev's own bracket must agree the translation is good (10 or 8), no numeral mismatch, and is_flawless must not object.
     const typoCheck = answers.english_typo_check?.choice;
-    const typoConf = answers.english_typo_check?.confidence ?? 0;
+    const typoCheckConf = answers.english_typo_check?.confidence ?? 0;
     const typoWord = answers.suspected_typo_word?.choice;
-    const isTypo = typoCheck === 'likely_english_typo_with_sound_comprehension' && typoConf >= 0.70;
+    const typoWordConf = answers.suspected_typo_word?.confidence ?? 0;
+    const typoConf = Math.min(typoCheckConf, typoWordConf);
+    const typoGrounded = isGroundedTypo(typoWord, userDraft, referenceTranslation);
+    const isTypo = typoCheck === 'likely_english_typo_with_sound_comprehension' &&
+      typoGrounded &&
+      typoConf >= 0.70 &&
+      (bracketChoice === '10_flawless' || bracketChoice === '8_minor_nuance') &&
+      !hasNumeralMismatch &&
+      isFlawlessProb >= 0.60;
 
     if (scopeCheck === 'confused_indefinite_with_wh_word') {
       sentenceCritiques.push({
@@ -1099,21 +1196,27 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       }
     }
 
-    // Dynamic Excerpt Contrast: strictly verify substring containment in respective drafts
+    // Dynamic Excerpt Contrast. The three excerpt questions are independent (the model never sees its own other answers),
+    // so a contrast is only shown when ALL THREE are confident and the two excerpts actually differ.
     const stEx = answers.flawed_student_excerpt?.choice;
     const refEx = answers.correct_reference_excerpt?.choice;
     const rel = answers.contrast_relation?.choice;
+    const relConf = answers.contrast_relation?.confidence ?? 0;
+    const excerptConf = Math.min(
+      answers.flawed_student_excerpt?.confidence ?? 0,
+      answers.correct_reference_excerpt?.confidence ?? 0,
+      relConf
+    );
+    const normEx = (s) => (s || '').toLowerCase().replace(/[^a-z0-9\u3040-\u30ff\u4e00-\u9fff]+/g, ' ').trim();
+    const excerptsDistinct = !!stEx && !!refEx && normEx(stEx) !== normEx(refEx);
+    const excerptUsable = excerptsDistinct && excerptConf >= 0.70;
     let excerptComparison = null;
-    if (stEx && refEx && rel && rel !== 'accurate_equivalent') {
-      const stContained = !userDraft || userDraft.toLowerCase().includes(stEx.toLowerCase());
-      const refContained = !referenceTranslation || referenceTranslation.toLowerCase().includes(refEx.toLowerCase());
-      if (stContained && refContained) {
-        excerptComparison = {
-          studentExcerpt: stEx,
-          referenceExcerpt: refEx,
-          relation: rel
-        };
-      }
+    if (stEx && refEx && rel && rel !== 'accurate_equivalent' && excerptUsable) {
+      excerptComparison = {
+        studentExcerpt: stEx,
+        referenceExcerpt: refEx,
+        relation: rel
+      };
     }
 
     const mistakes = [];
@@ -1259,12 +1362,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     let triggeringConfidence = bracketConf;
     let critiqueSource = 'grade_bracket';
 
-    const excerptConf = Math.min(
-      answers.flawed_student_excerpt?.confidence ?? 0,
-      answers.correct_reference_excerpt?.confidence ?? 0,
-      answers.contrast_relation?.confidence ?? 0
-    );
-
     if (isTypo) {
       critiqueSource = 'english_typo_check';
       triggeringConfidence = typoConf;
@@ -1276,14 +1373,46 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     } else if (omittedItem && (!isTargetFlawed || omittedItem.word === cleanTarget)) {
       critiqueSource = 'omitted_word';
       triggeringConfidence = omittedItem.confidence ?? 0.85;
-      if (stEx && refEx) {
-        dynamicCritique = `Your draft ("${stEx}") missed **${omittedItem.word}**, omitting the degree nuance conveyed in the reference translation ("${refEx}").`;
+      if (excerptUsable) {
+        dynamicCritique = `Your translation doesn't seem to include **${omittedItem.word}**. Compare your phrasing ("${stEx}") with the reference ("${refEx}").`;
       } else {
-        dynamicCritique = `Your translation missed the word **${omittedItem.word}**, omitting the nuance of degree in this context.`;
+        dynamicCritique = `Your translation doesn't seem to include the meaning of **${omittedItem.word}**.`;
       }
-    } else if (stEx && refEx && rel && rel !== 'accurate_equivalent' && excerptConf >= 0.70) {
+    } else if (stEx && refEx && rel && rel !== 'accurate_equivalent' && excerptUsable) {
       critiqueSource = 'contrast_relation';
-      triggeringConfidence = excerptConf;
+      // The critique TEXT is chosen by relation OR by a summary/predicate signal. Bind the confidence to the signals that
+      // actually assert the chosen claim (max over asserting signals), then cap by the excerpt triple-confidence.
+      const sumConfC = answers.sentence_critique_summary?.confidence ?? 0;
+      const predConfC = answers.predicate_mood_and_voice?.confidence ?? 0;
+      const benConfC = answers.benefactive_direction?.confidence ?? 0;
+      const complexConfC = answers.predicate_complex_conjugation?.confidence ?? 0;
+      const scopeConfC = answers.question_type_and_scope?.confidence ?? 0;
+      const assertConf = (pairs) => Math.max(0, ...pairs.filter((p) => p[0]).map((p) => p[1]));
+      const claimConf = (function () {
+        if (rel === 'passive_vs_active_reversal' || summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') {
+          return assertConf([[rel === 'passive_vs_active_reversal', relConf], [summaryCritiqueChoice === 'passive_voice_reversed', sumConfC], [predCheck === 'passive_vs_active_error', predConfC]]);
+        }
+        if (rel === 'causative_reversal' || complexChoice === 'causative_passive_inverted') {
+          return assertConf([[rel === 'causative_reversal', relConf], [complexChoice === 'causative_passive_inverted', complexConfC]]);
+        }
+        if (rel === 'benefactive_direction_inverted' || summaryCritiqueChoice === 'wrong_benefactive_or_recipient' || benefactiveChoice === 'recipient_reversed_self_vs_other') {
+          return assertConf([[rel === 'benefactive_direction_inverted', relConf], [summaryCritiqueChoice === 'wrong_benefactive_or_recipient', sumConfC], [benefactiveChoice === 'recipient_reversed_self_vs_other', benConfC]]);
+        }
+        if (rel === 'potential_vs_intent' || summaryCritiqueChoice === 'potential_or_modality_error' || predCheck === 'potential_vs_intent_error') {
+          return assertConf([[rel === 'potential_vs_intent', relConf], [summaryCritiqueChoice === 'potential_or_modality_error', sumConfC], [predCheck === 'potential_vs_intent_error', predConfC]]);
+        }
+        if (rel === 'obligation_vs_absence' || complexChoice === 'double_negative_obligation_inverted') {
+          return assertConf([[rel === 'obligation_vs_absence', relConf], [complexChoice === 'double_negative_obligation_inverted', complexConfC]]);
+        }
+        if (rel === 'counterfactual_regret_vs_condition' || complexChoice === 'conditional_regret_missed') {
+          return assertConf([[rel === 'counterfactual_regret_vs_condition', relConf], [complexChoice === 'conditional_regret_missed', complexConfC]]);
+        }
+        if (rel === 'question_vs_statement' || summaryCritiqueChoice === 'interrogative_or_question_error' || scopeCheck === 'confused_indefinite_with_wh_word') {
+          return assertConf([[rel === 'question_vs_statement', relConf], [summaryCritiqueChoice === 'interrogative_or_question_error', sumConfC], [scopeCheck === 'confused_indefinite_with_wh_word', scopeConfC]]);
+        }
+        return relConf;
+      })();
+      triggeringConfidence = Math.min(excerptConf, claimConf);
       if (rel === 'passive_vs_active_reversal' || summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') {
         dynamicCritique = `Instead of translating "${predWord}" as passive ("${refEx}"), your draft translated it actively as "${stEx}", reversing who received the action.`;
       } else if (rel === 'causative_reversal' || complexChoice === 'causative_passive_inverted') {
@@ -1396,11 +1525,40 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       triggeringConfidence = 1.0;
     }
 
+    // When no concrete verb token could be identified, avoid quoting the placeholder ("The predicate") as if it were a word.
+    if (dynamicCritique) {
+      dynamicCritique = dynamicCritique.replace(/^"The predicate"/, 'The main verb').replace(/"The predicate"/g, 'the main verb');
+    }
+
     // 5. Strict Scoring and Presentation Reconciliation:
     const hasCriticalFault = sentenceCritiques.some((sc) => sc.severity === 'critical') || mistakes.some((m) => m.type === 'wrong_definition_or_misinterpreted');
     const hasModerateFault = sentenceCritiques.some((sc) => sc.severity === 'moderate');
 
     const summaryConf = answers.sentence_critique_summary?.confidence ?? 0;
+
+    // Fail-closed guards: every error-detector question must be PRESENT, answer its "no problem" option, and be confident.
+    // (Previously a dropped/missing answer silently counted as "no error found".)
+    const GUARD_OK_FLOOR = 0.60;
+    const guardSpecs = [
+      ['predicate_mood_and_voice', ['correct_or_not_applicable']],
+      ['benefactive_direction', ['correct_benefactive_or_not_applicable']],
+      ['predicate_complex_conjugation', ['accurate_or_not_stacked']],
+      ['interrogative_check', ['correct_or_no_interrogative']],
+      ['question_type_and_scope', ['correct_question_type_and_pronoun', 'not_applicable']],
+      ['polarity_check', ['polarity_preserved']]
+    ];
+    if (cleanTarget) guardSpecs.push(['target_vocab_handling', ['natural_accurate_sense']]);
+    const failedGuards = guardSpecs
+      .filter(([key, okChoices]) => {
+        const a = answers[key];
+        return !(a && okChoices.includes(a.choice) && (a.confidence ?? 0) >= GUARD_OK_FLOOR);
+      })
+      .map(([key]) => key);
+    const guardsOk = failedGuards.length === 0;
+
+    // Per-word coverage: the per-word sense/grammar answers must actually be there for (nearly) every word.
+    const wordsAnswered = words.filter((w, i) => answers['word_' + i + '_sense'] && answers['word_' + i + '_grammar']).length;
+    const wordCoverageOk = words.length === 0 || (wordsAnswered / words.length) >= 0.8;
 
     // Multi-signal strict consensus for 10/10 flawless:
     // Fail-closed: Requires explicit positive confirmation across all signals
@@ -1416,7 +1574,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       advisories.length === 0 &&
       sentenceCritiques.length === 0 &&
       !hasNumeralMismatch &&
-      isNumeralClean
+      isNumeralClean &&
+      guardsOk &&
+      wordCoverageOk
     );
 
     let overall = 8;
@@ -1464,6 +1624,35 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const displayMistakes = (overall === 10 || isTypo) ? [] : (summaryCritiqueText ? mistakes.filter((m) => m.word !== cleanTarget && !m.word.startsWith('Sentence:')) : mistakes);
     const displayAdvisories = (overall === 10 || isTypo) ? [] : (summaryCritiqueText ? advisories.filter((a) => a.word !== cleanTarget && !a.word.startsWith('Sentence:')) : advisories);
 
+    // ---- Fast-path eligibility (computed in code, with machine-readable blockers for telemetry) ----
+    // The critique TEXT must (a) be confident on the signals that asserted it, and (b) agree in kind with Jev's own bracket:
+    // a "minor nuance" message must not ship with a 1/10 score, and an "error" message must not ship with a lenient bracket.
+    const errorSideBracket = ['5_moderate_error', '3_major_error', '1_fatal_error'].includes(bracketChoice);
+    const ERROR_RELATIONS = ['passive_vs_active_reversal', 'causative_reversal', 'benefactive_direction_inverted', 'potential_vs_intent', 'obligation_vs_absence', 'counterfactual_regret_vs_condition', 'question_vs_statement'];
+    let critiqueKind = 'none';
+    if (dynamicCritique) {
+      if (critiqueSource === 'english_typo_check' || critiqueSource === 'omitted_word') {
+        critiqueKind = 'minor';
+      } else if (critiqueSource === 'contrast_relation') {
+        critiqueKind = (ERROR_RELATIONS.includes(rel) || hasCriticalFault || hasModerateFault) ? 'error' : 'minor';
+      } else if (critiqueSource === 'sentence_critique_summary') {
+        critiqueKind = summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference' ? 'minor' : 'error';
+      } else if (['predicate_complex_conjugation', 'polarity_check', 'predicate_mood_and_voice', 'benefactive_direction', 'question_type_and_scope'].includes(critiqueSource)) {
+        critiqueKind = 'error';
+      }
+    }
+    const fastPathBlockers = [];
+    if (!dynamicCritique) fastPathBlockers.push('no_critique_text');
+    if (triggeringConfidence < 0.75) fastPathBlockers.push('low_triggering_confidence');
+    if (bracketConf < 0.65) fastPathBlockers.push('low_bracket_confidence');
+    if (dynamicCritique && critiqueKind === 'none') fastPathBlockers.push('unclassified_critique');
+    if (critiqueKind === 'minor' && (errorSideBracket || hasCriticalFault)) fastPathBlockers.push('critique_undersells_error');
+    if (critiqueKind === 'error' && !errorSideBracket) fastPathBlockers.push('error_critique_vs_lenient_bracket');
+    if (hasNumeralMismatch) fastPathBlockers.push('numeral_mismatch_unreported');
+    if (isTypo) fastPathBlockers.push('typo_uses_own_path');
+    const critiqueFastPathOk = fastPathBlockers.length === 0;
+    const typoFastPathOk = isTypo && typoConf >= 0.80;
+
     const isClearComplexError = complexChoice && complexChoice !== 'accurate_or_not_stacked' && complexChoice !== 'stacked_conjugation_not_applicable' && (answers.predicate_complex_conjugation?.confidence ?? 0) >= 0.75;
     const isClearBenefactiveError = benefactiveChoice === 'recipient_reversed_self_vs_other' && (answers.benefactive_direction?.confidence ?? 0) >= 0.80;
     const isClearVoiceError = (summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') && ((answers.sentence_critique_summary?.confidence ?? 0) >= 0.75 || (answers.predicate_mood_and_voice?.confidence ?? 0) >= 0.75);
@@ -1493,6 +1682,14 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       triggeringConfidence,
       critiqueSource,
       isStrict10Consensus,
+      guardsOk,
+      failedGuards,
+      wordCoverageOk,
+      critiqueKind,
+      critiqueFastPathOk,
+      typoFastPathOk,
+      fastPathBlockers,
+      numeralStatus: numeralAssessed.status,
       hasNumeralMismatch,
       isTypo,
       typoConfidence: typoConf,
@@ -1820,7 +2017,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       const toCriteria = (arr) => Object.fromEntries(arr.map((k) => [k, null]));
 
       if (userWords.length > 0) {
-        const typoCandidates = ['none', ...userWords.slice(0, 10)];
+        const typoCandidates = Array.from(new Set(['none', ...userWords.slice(0, 10)]));
         questions.suspected_typo_word = {
           type: 'choice',
           instructions: 'Which word in `user_translation` is the suspected typo or keyboard slip? If there are no typos, select none.',
@@ -2006,35 +2203,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       }
     };
 
-    questions.attachment_and_particles = {
-      type: 'choice',
-      instructions: `How does "${cleanTarget}" attach to adjacent words in \`japanese_sentence\`?`,
-      options: [
-        'particle_wo_object',
-        'particle_ga_subject',
-        'particle_wa_topic',
-        'particle_ni_target',
-        'particle_de_location_means',
-        'particle_to_quotation_or_companion',
-        'particle_no_genitive',
-        'direct_noun_modification',
-        'te_form_connection',
-        'sentence_final'
-      ],
-      criteria: {
-        particle_wo_object: 'Followed by object particle を.',
-        particle_ga_subject: 'Followed by subject particle が.',
-        particle_wa_topic: 'Followed by topic particle は.',
-        particle_ni_target: 'Followed by particle に (target/location/beneficiary/time).',
-        particle_de_location_means: 'Followed by particle で (location of action / means).',
-        particle_to_quotation_or_companion: 'Followed by quotative or companion particle と.',
-        particle_no_genitive: 'Followed by possessive/genitive particle の.',
-        direct_noun_modification: 'Directly modifies a noun (attributive / 連体修飾).',
-        te_form_connection: 'Connects in te-form (〜て) to an auxiliary verb.',
-        sentence_final: 'Occurs at the end of the sentence or clause.'
-      }
-    };
-
     questions.inflection_form = {
       type: 'choice',
       instructions: `What grammatical conjugation or inflection form is "${cleanTarget}" in?`,
@@ -2112,8 +2280,89 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     return questions;
   }
 
+  // ---------- Code-side verification of vocab-explainer claims ----------
+  // The model classifies; the code only asserts what it can ground in the sentence text.
+  function textAfterTarget(jp, target) {
+    const out = [];
+    if (!jp || !target) return out;
+    let i = -1;
+    while ((i = jp.indexOf(target, i + 1)) !== -1) out.push({ idx: i, after: jp.slice(i + target.length) });
+    return out;
+  }
+
+  const VERB_FORMS = ['plain_present_dictionary', 'past_ta_form', 'te_form', 'passive_voice', 'potential_form', 'causative_or_causative_passive', 'conditional_form', 'polite_masu_desu', 'adverbial_form'];
+  const PARTICLE_FOR_ROLE = {
+    direct_object: ['を'],
+    grammatical_subject: ['が'],
+    topic_marker: ['は'],
+    indirect_object_or_destination: ['に', 'へ'],
+    location_or_means: ['で']
+  };
+
+  // Returns { ok, reason }. ok=false routes the card to the LLM.
+  function verifyVocabRole(role, cleanTarget, sentenceJP, inflect, inflectConf) {
+    const jp = (sentenceJP || '').replace(/\([^)]*\)/g, '');
+
+    // 1. Particle-marked roles: the prose says "marked by を/が/は/に/で", so that particle must actually follow the word.
+    const expected = PARTICLE_FOR_ROLE[role];
+    if (expected) {
+      const hits = textAfterTarget(jp, cleanTarget);
+      if (hits.length === 0) return { ok: false, reason: 'target_not_found_in_sentence' };
+      if (!hits.some((h) => expected.some((p) => h.after.startsWith(p)))) {
+        return { ok: false, reason: 'claimed_particle_not_present' };
+      }
+    }
+
+    // 2. Role vs inflection cross-check (two independent questions that must not contradict each other)
+    if (inflect && inflectConf >= 0.75) {
+      const nounish = ['direct_object', 'grammatical_subject', 'topic_marker', 'indirect_object_or_destination', 'location_or_means', 'demonstrative_determiner'];
+      if (nounish.includes(role) && VERB_FORMS.includes(inflect)) return { ok: false, reason: 'noun_role_but_verb_inflection' };
+      if (role === 'connective_te_form' && inflect !== 'te_form') return { ok: false, reason: 'te_role_but_other_inflection' };
+      if (role === 'main_predicate_verb' && ['te_form', 'adverbial_form', 'conditional_form'].includes(inflect)) return { ok: false, reason: 'main_predicate_but_non_final_inflection' };
+    }
+    return { ok: true, reason: '' };
+  }
+
+  // Only keep a "connected word" if its position in the sentence supports the sentence we are about to write.
+  function verifyConnectedWord(role, targetWord, cleanTarget, sentenceJP) {
+    if (!targetWord) return null;
+    const jp = (sentenceJP || '').replace(/\([^)]*\)/g, '');
+    const noun = targetWord.replace(/[はがをにでとのへ]+$/, '');
+    if (!noun) return null;
+    const hits = textAfterTarget(jp, cleanTarget);
+    if (hits.length === 0) return null;
+    if (role === 'demonstrative_determiner' || role === 'noun_modifying_relative_clause') {
+      // A modifier directly precedes the noun it modifies.
+      return hits.some((h) => h.after.startsWith(noun)) ? targetWord : null;
+    }
+    if (role === 'adverbial_modifier' || role === 'connective_te_form') {
+      // Japanese is predicate-final: the governed predicate must come after the word.
+      return hits.some((h) => h.after.includes(noun)) ? targetWord : null;
+    }
+    return targetWord;
+  }
+
+  // Tips are advice that sticks, so each one must be supported by something visible in the sentence/word.
+  function isTipRelevant(tip, role, cleanTarget, sentenceJP, inflect, inflectConf) {
+    const jp = (sentenceJP || '').replace(/\([^)]*\)/g, '');
+    switch (tip) {
+      case 'ko_so_a_do_proximity': return /^[こそあど]/.test(cleanTarget);
+      case 'prenoun_determiner_no_particle': return role === 'demonstrative_determiner';
+      case 'give_receive_direction': return /(?:あげ|くれ|くだ|もら|いただ|やる|やっ|やれ)/.test(jp);
+      case 'passive_adversative_nuance': return inflect === 'passive_voice' && inflectConf >= 0.75;
+      case 'potential_vs_intent': return (inflect === 'potential_form' && inflectConf >= 0.75) || /でき/.test(jp);
+      case 'polite_softener_not_literal_contrast': return /(?:けど|けれど|が[。、！？]?$)/.test(jp);
+      case 'colloquial_contraction': return /(?:ちゃ|じゃ|ちゃう|ちゃった|じゃん|てる|とく|んない)/.test(jp);
+      case 'case_particle_governance': return true;
+      case 'standard_usage': return true;
+      case 'idiomatic_set_phrase':
+      case 'transitive_vs_intransitive_pair': return true; // not verifiable in code; caller applies a higher confidence floor (0.85)
+      default: return false;
+    }
+  }
+
   function generateVocabExplanation(answers, cardInfo, cleanTarget) {
-    const { applied_meaning, grammatical_role, attachment_and_particles, inflection_form, pedagogical_tip_type, connected_target_word } = answers || {};
+    const { applied_meaning, grammatical_role, inflection_form, pedagogical_tip_type, connected_target_word } = answers || {};
 
     const meanings = cardInfo.meanings || [];
     if (!meanings.length) {
@@ -2145,21 +2394,40 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const role = grammatical_role?.choice;
     const roleConfidence = grammatical_role?.confidence ?? 0;
     const targetWordConf = connected_target_word?.confidence ?? 0;
-    const targetWord = (targetWordConf >= 0.70 && connected_target_word?.choice && connected_target_word.choice !== 'none_or_independent') ? connected_target_word.choice : null;
+    const rawTargetWord = (targetWordConf >= 0.70 && connected_target_word?.choice && connected_target_word.choice !== 'none_or_independent') ? connected_target_word.choice : null;
 
-    // Reject fast-path if role is unclear, other, or below docs-compliant threshold (>= 0.65)
+    // Reject fast-path if role is unclear, other, or below the confidence floor (>= 0.65)
     if (!role || role === 'other_or_unclear' || roleConfidence < 0.65) {
       return {
         markdown: '',
         role: null,
         chosenSense: cleanSense,
-        targetWord
+        targetWord: rawTargetWord
       };
     }
 
     const inflect = inflection_form?.choice;
+    const inflectConf = inflection_form?.confidence ?? 0;
+
+    // Ground the claims in the sentence text (particle really follows the word, role agrees with inflection)
+    const verdict = verifyVocabRole(role, cleanTarget, cardInfo.sentenceJP, inflect, inflectConf);
+    if (!verdict.ok) {
+      return {
+        markdown: '',
+        role: null,
+        chosenSense: cleanSense,
+        targetWord: rawTargetWord,
+        rejectedBy: verdict.reason
+      };
+    }
+    const targetWord = verifyConnectedWord(role, rawTargetWord, cleanTarget, cardInfo.sentenceJP);
+
     const tipConf = pedagogical_tip_type?.confidence ?? 0;
-    const tip = (tipConf >= 0.70 && pedagogical_tip_type?.choice) ? pedagogical_tip_type.choice : 'standard_usage';
+    const proposedTip = pedagogical_tip_type?.choice;
+    const tipFloor = (proposedTip === 'idiomatic_set_phrase' || proposedTip === 'transitive_vs_intransitive_pair') ? 0.85 : 0.70;
+    const tip = (proposedTip && tipConf >= tipFloor && isTipRelevant(proposedTip, role, cleanTarget, cardInfo.sentenceJP, inflect, inflectConf))
+      ? proposedTip
+      : 'standard_usage';
 
     const isHighConf = roleConfidence >= 0.80;
     const hedgeVerb = isHighConf ? 'functioning as' : 'likely functioning as';
@@ -2180,7 +2448,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       adverbial_form: 'adverbial form'
     };
 
-    const isInflectionConfident = (inflection_form?.confidence || 0) >= 0.75;
+    const isInflectionConfident = inflectConf >= 0.75;
     const inflectionText = isInflectionConfident && inflect && inflect !== 'uninflected_noun_or_particle'
       ? ` (${inflectionLabels[inflect] || inflect})`
       : '';
@@ -2503,7 +2771,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       const timeStr = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
       const jevScore = typeof item.jev?.overall === 'number' ? `${item.jev.overall}/10` : (item.jev?.badge || '?');
       const jevBadgeClass = item.jev?.overall === 10 ? 'high' : (item.jev?.overall >= 7 ? 'med' : 'low');
-      const llmScoreVal = item.llm?.elapsedMs === 0 ? '10/10 (⚡ skipped)' : (typeof item.llm?.score === 'number' ? `${item.llm.score}/10` : '?');
+      const llmScoreVal = (item.llm?.isFastPathReply || item.llm?.elapsedMs === 0) && typeof item.llm?.score !== 'number' ? '⚡ skipped (no LLM yet)' : (typeof item.llm?.score === 'number' ? `${item.llm.score}/10` : '?');
       const divTag = isDiv ? `<span class="jpdb-ai-diag-badge-div" title="${escapeHtml(item.divergence?.reason || '')}">Δ ${item.divergence?.scoreDiff ?? '?'} pts</span>` : '';
 
       const mistakesList = (function() {
@@ -2586,7 +2854,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     });
   }
 
-  function recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsedMs, llmReply, llmScore, llmElapsedMs) {
+  function recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsedMs, llmReply, llmScore, llmElapsedMs, meta) {
     try {
       const list = getDiagnosticsLog();
       const entryId = 'diag_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
@@ -2636,12 +2904,22 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           isFlawlessProb: jevMetrics.isFlawlessProb,
           words: jevMetrics.words,
           answers: jevMetrics.rawAnswers,
+          fastPath: (meta && meta.fastPath) || null,
+          critiqueSource: jevMetrics.critiqueSource,
+          critiqueKind: jevMetrics.critiqueKind,
+          triggeringConfidence: jevMetrics.triggeringConfidence,
+          bracketConfidence: jevMetrics.bracketConfidence,
+          numeralStatus: jevMetrics.numeralStatus,
+          failedGuards: jevMetrics.failedGuards || [],
+          fastPathBlockers: jevMetrics.fastPathBlockers || [],
+          isTypo: !!jevMetrics.isTypo,
         } : null,
         llm: {
           model: CFG.model,
           elapsedMs: llmElapsedMs,
           score: llmScore,
           text: llmReply,
+          isFastPathReply: !!(meta && meta.fastPath),
         },
         divergence: {
           diverged,
@@ -3431,6 +3709,29 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     }
   }
 
+  // Shadow evaluation: re-run the LLM in the background on a sample of fast-path hits to measure the true false-positive rate.
+  // The two paths that tell the learner "you're right" (flawless / typo) are sampled much more heavily than critiques.
+  // The shadow call is STATELESS (system + this prompt only): it never sees the fast-path reply or earlier chat turns,
+  // so it cannot anchor on the answer it is meant to audit.
+  const SHADOW_RATE_FLAWLESS = 0.5;
+  const SHADOW_RATE_TYPO = 0.5;
+  const SHADOW_RATE_CRITIQUE = 0.2;
+
+  function scheduleShadowEval(entry, userPrompt, rate) {
+    if (!entry || !(Math.random() < rate)) return;
+    (async () => {
+      try {
+        const t0_shadow = Date.now();
+        const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: userPrompt }];
+        const shadowReply = await callLLM(msgs);
+        const shadowScore = extractLlmScore(shadowReply);
+        updateDiagnosticWithShadowLlm(entry.id, shadowReply, shadowScore, Date.now() - t0_shadow);
+      } catch (err) {
+        console.warn('[JPDB AI] Shadow LLM execution error:', err);
+      }
+    })();
+  }
+
   async function runRateTranslation() {
     if (busy) return;
     await ensureCardData();
@@ -3451,8 +3752,12 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
 
     const t0 = Date.now();
     try {
-      // Step 1: Launch fast System One evaluation (Jev-1.13)
-      const jevPromise = callJevEvaluation(info, userDraft);
+      // Step 1: Launch fast System One evaluation (Jev-1.13).
+      // With no student draft Jev would grade the reference translation against itself (guaranteed "flawless"),
+      // so the fast paths are skipped entirely and the LLM critiques the card's translation as before.
+      const jevPromise = userDraft
+        ? callJevEvaluation(info, userDraft)
+        : Promise.resolve({ cardHtml: '', metrics: null, elapsedMs: 0 });
       const jevTimeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
       const jevRes = await Promise.race([jevPromise, jevTimeoutPromise]);
       const jevElapsed = jevRes?.elapsedMs || (Date.now() - t0);
@@ -3465,33 +3770,19 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         setMsgMarkdown(thinking, flawlessReply, jevCardHtml);
         const logEntry = { role: 'assistant', text: flawlessReply, jevHtml: jevCardHtml, isErr: false };
         msgLog.push(logEntry);
-        const priorHistory = [...history];
         history.push({ role: 'user', content: userPrompt });
         history.push({ role: 'assistant', content: flawlessReply });
         saveSession();
-        const entry = recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, flawlessReply, 10, 0);
-
-        // 20% shadow LLM evaluation in background to track true false-flawless rate without user latency penalty
-        if (entry && Math.random() < 0.20) {
-          (async () => {
-            try {
-              const t0_shadow = Date.now();
-              const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, ...priorHistory, { role: 'user', content: userPrompt }];
-              const shadowReply = await callLLM(msgs);
-              const shadowScore = extractLlmScore(shadowReply);
-              updateDiagnosticWithShadowLlm(entry.id, shadowReply, shadowScore, Date.now() - t0_shadow);
-            } catch (err) {
-              console.warn('[JPDB AI] Shadow LLM execution error:', err);
-            }
-          })();
-        }
+        // llmScore is null: the fast-path reply is NOT an LLM opinion, so no fake zero-divergence is recorded.
+        const entry = recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, flawlessReply, null, 0, { fastPath: 'flawless' });
+        scheduleShadowEval(entry, userPrompt, SHADOW_RATE_FLAWLESS);
         return;
       }
 
       // Step 2b: Safe fast-pass expansion:
       // Must have dynamic critique AND triggeringConfidence >= 0.75 (NOT diluted average confidence)
-      const isTypoFastPath = jevMetrics && jevMetrics.isTypo && (jevMetrics.typoConfidence >= 0.80);
-      const isConfidentCritiqueFastPath = jevMetrics && jevMetrics.dynamicCritique && (jevMetrics.triggeringConfidence >= 0.75) && (jevMetrics.bracketConfidence >= 0.65);
+      const isTypoFastPath = !!(jevMetrics && jevMetrics.typoFastPathOk);
+      const isConfidentCritiqueFastPath = !!(jevMetrics && jevMetrics.critiqueFastPathOk);
 
       if (isTypoFastPath || isConfidentCritiqueFastPath) {
         const scoreBracket = jevMetrics.bracketLabel || `${jevMetrics.overall}/10`;
@@ -3500,26 +3791,11 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         setMsgMarkdown(thinking, fastReply, jevCardHtml);
         const logEntry = { role: 'assistant', text: fastReply, jevHtml: jevCardHtml, isErr: false };
         msgLog.push(logEntry);
-        const priorHistory = [...history];
         history.push({ role: 'user', content: userPrompt });
         history.push({ role: 'assistant', content: fastReply });
         saveSession();
-        const entry = recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, fastReply, jevMetrics.overall, 0);
-
-        // 20% shadow LLM evaluation in background
-        if (entry && Math.random() < 0.20) {
-          (async () => {
-            try {
-              const t0_shadow = Date.now();
-              const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, ...priorHistory, { role: 'user', content: userPrompt }];
-              const shadowReply = await callLLM(msgs);
-              const shadowScore = extractLlmScore(shadowReply);
-              updateDiagnosticWithShadowLlm(entry.id, shadowReply, shadowScore, Date.now() - t0_shadow);
-            } catch (err) {
-              console.warn('[JPDB AI] Shadow LLM execution error:', err);
-            }
-          })();
-        }
+        const entry = recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, fastReply, null, 0, { fastPath: isTypoFastPath ? 'typo' : 'critique' });
+        scheduleShadowEval(entry, userPrompt, isTypoFastPath ? SHADOW_RATE_TYPO : SHADOW_RATE_CRITIQUE);
         return;
       }
 
@@ -3534,12 +3810,19 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
       const llmElapsed = Date.now() - t0_llm;
       const llmScore = extractLlmScore(reply);
 
-      // In case Jev was slow (>1500ms) but finished while LLM was thinking
+      // In case Jev was slow (>1500ms) but finished while LLM was thinking: keep BOTH the card and the metrics.
+      // (Previously the late metrics were discarded, so the diagnostics log only ever contained fast Jev calls.)
+      let diagMetrics = jevMetrics;
+      let diagElapsed = jevElapsed;
       if (!jevCardHtml) {
         try {
           const lateRes = await Promise.race([jevPromise, Promise.resolve(null)]);
           if (lateRes && lateRes.cardHtml) {
             jevCardHtml = lateRes.cardHtml;
+          }
+          if (lateRes && lateRes.metrics && !diagMetrics) {
+            diagMetrics = lateRes.metrics;
+            diagElapsed = lateRes.elapsedMs;
           }
         } catch {}
       }
@@ -3551,7 +3834,7 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
       history.push({ role: 'assistant', content: reply });
       saveSession();
 
-      recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, reply, llmScore, llmElapsed);
+      recordDiagnosticEntry(info, userDraft, diagMetrics, diagElapsed, reply, llmScore, llmElapsed, { lateJev: !jevMetrics && !!diagMetrics });
     } catch (e) {
       msgLog.push({ role: 'assistant', text: 'Error: ' + (e.message || e), isErr: true });
       thinking.textContent = 'Error: ' + (e.message || e);
