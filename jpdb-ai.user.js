@@ -1196,28 +1196,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       }
     }
 
-    // Dynamic Excerpt Contrast. The three excerpt questions are independent (the model never sees its own other answers),
-    // so a contrast is only shown when ALL THREE are confident and the two excerpts actually differ.
-    const stEx = answers.flawed_student_excerpt?.choice;
-    const refEx = answers.correct_reference_excerpt?.choice;
-    const rel = answers.contrast_relation?.choice;
-    const relConf = answers.contrast_relation?.confidence ?? 0;
-    const excerptConf = Math.min(
-      answers.flawed_student_excerpt?.confidence ?? 0,
-      answers.correct_reference_excerpt?.confidence ?? 0,
-      relConf
-    );
-    const normEx = (s) => (s || '').toLowerCase().replace(/[^a-z0-9\u3040-\u30ff\u4e00-\u9fff]+/g, ' ').trim();
-    const excerptsDistinct = !!stEx && !!refEx && normEx(stEx) !== normEx(refEx);
-    const excerptUsable = excerptsDistinct && excerptConf >= 0.70;
-    let excerptComparison = null;
-    if (stEx && refEx && rel && rel !== 'accurate_equivalent' && excerptUsable) {
-      excerptComparison = {
-        studentExcerpt: stEx,
-        referenceExcerpt: refEx,
-        relation: rel
-      };
-    }
+    // Note: answers.flawed_student_excerpt is received but contrast_relation is no longer requested (see BACKLOG.md).
+    const excerptComparison = null;
 
     const mistakes = [];
     const advisories = [];
@@ -1373,69 +1353,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     } else if (omittedItem && (!isTargetFlawed || omittedItem.word === cleanTarget)) {
       critiqueSource = 'omitted_word';
       triggeringConfidence = omittedItem.confidence ?? 0.85;
-      if (excerptUsable) {
-        dynamicCritique = `Your translation doesn't seem to include **${omittedItem.word}**. Compare your phrasing ("${stEx}") with the reference ("${refEx}").`;
-      } else {
-        dynamicCritique = `Your translation doesn't seem to include the meaning of **${omittedItem.word}**.`;
-      }
-    } else if (stEx && refEx && rel && rel !== 'accurate_equivalent' && excerptUsable) {
-      critiqueSource = 'contrast_relation';
-      // The critique TEXT is chosen by relation OR by a summary/predicate signal. Bind the confidence to the signals that
-      // actually assert the chosen claim (max over asserting signals), then cap by the excerpt triple-confidence.
-      const sumConfC = answers.sentence_critique_summary?.confidence ?? 0;
-      const predConfC = answers.predicate_mood_and_voice?.confidence ?? 0;
-      const benConfC = answers.benefactive_direction?.confidence ?? 0;
-      const complexConfC = answers.predicate_complex_conjugation?.confidence ?? 0;
-      const scopeConfC = answers.question_type_and_scope?.confidence ?? 0;
-      const assertConf = (pairs) => Math.max(0, ...pairs.filter((p) => p[0]).map((p) => p[1]));
-      const claimConf = (function () {
-        if (rel === 'passive_vs_active_reversal' || summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') {
-          return assertConf([[rel === 'passive_vs_active_reversal', relConf], [summaryCritiqueChoice === 'passive_voice_reversed', sumConfC], [predCheck === 'passive_vs_active_error', predConfC]]);
-        }
-        if (rel === 'causative_reversal' || complexChoice === 'causative_passive_inverted') {
-          return assertConf([[rel === 'causative_reversal', relConf], [complexChoice === 'causative_passive_inverted', complexConfC]]);
-        }
-        if (rel === 'benefactive_direction_inverted' || summaryCritiqueChoice === 'wrong_benefactive_or_recipient' || benefactiveChoice === 'recipient_reversed_self_vs_other') {
-          return assertConf([[rel === 'benefactive_direction_inverted', relConf], [summaryCritiqueChoice === 'wrong_benefactive_or_recipient', sumConfC], [benefactiveChoice === 'recipient_reversed_self_vs_other', benConfC]]);
-        }
-        if (rel === 'potential_vs_intent' || summaryCritiqueChoice === 'potential_or_modality_error' || predCheck === 'potential_vs_intent_error') {
-          return assertConf([[rel === 'potential_vs_intent', relConf], [summaryCritiqueChoice === 'potential_or_modality_error', sumConfC], [predCheck === 'potential_vs_intent_error', predConfC]]);
-        }
-        if (rel === 'obligation_vs_absence' || complexChoice === 'double_negative_obligation_inverted') {
-          return assertConf([[rel === 'obligation_vs_absence', relConf], [complexChoice === 'double_negative_obligation_inverted', complexConfC]]);
-        }
-        if (rel === 'counterfactual_regret_vs_condition' || complexChoice === 'conditional_regret_missed') {
-          return assertConf([[rel === 'counterfactual_regret_vs_condition', relConf], [complexChoice === 'conditional_regret_missed', complexConfC]]);
-        }
-        if (rel === 'question_vs_statement' || summaryCritiqueChoice === 'interrogative_or_question_error' || scopeCheck === 'confused_indefinite_with_wh_word') {
-          return assertConf([[rel === 'question_vs_statement', relConf], [summaryCritiqueChoice === 'interrogative_or_question_error', sumConfC], [scopeCheck === 'confused_indefinite_with_wh_word', scopeConfC]]);
-        }
-        return relConf;
-      })();
-      triggeringConfidence = Math.min(excerptConf, claimConf);
-      if (rel === 'passive_vs_active_reversal' || summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') {
-        dynamicCritique = `Instead of translating "${predWord}" as passive ("${refEx}"), your draft translated it actively as "${stEx}", reversing who received the action.`;
-      } else if (rel === 'causative_reversal' || complexChoice === 'causative_passive_inverted') {
-        dynamicCritique = `In Japanese, the causative-passive "${predWord}" expresses being subjected to an action ("${refEx}"), but you translated it as causing the action ("${stEx}").`;
-      } else if (rel === 'benefactive_direction_inverted' || summaryCritiqueChoice === 'wrong_benefactive_or_recipient' || benefactiveChoice === 'recipient_reversed_self_vs_other') {
-        dynamicCritique = `You translated "${predWord}" as "${stEx}", but it indicates a favor received from someone else ("${refEx}"), not a favor you performed.`;
-      } else if (rel === 'potential_vs_intent' || summaryCritiqueChoice === 'potential_or_modality_error' || predCheck === 'potential_vs_intent_error') {
-        dynamicCritique = `You translated "${predWord}" as "${stEx}", but the potential form expresses "${refEx}" (ability/possibility rather than future certainty).`;
-      } else if (rel === 'obligation_vs_absence' || complexChoice === 'double_negative_obligation_inverted') {
-        dynamicCritique = `"${predWord}" expresses an obligation ("${refEx}"), but your translation "${stEx}" turned it into an absence of obligation.`;
-      } else if (rel === 'counterfactual_regret_vs_condition' || complexChoice === 'conditional_regret_missed') {
-        dynamicCritique = `"${predWord}" expresses counterfactual regret ("${refEx}"), rather than a literal factual condition ("${stEx}").`;
-      } else if (rel === 'question_vs_statement' || summaryCritiqueChoice === 'interrogative_or_question_error' || scopeCheck === 'confused_indefinite_with_wh_word') {
-        dynamicCritique = `You translated this as an open question ("${stEx}"), but "${predWord}" is an indefinite pronoun in a statement ("${refEx}").`;
-      } else if (rel === 'degree_or_modifier_omitted') {
-        dynamicCritique = `Your draft ("${stEx}") omitted a modifier or degree nuance conveyed in the reference translation ("${refEx}").`;
-      } else {
-        if (targetWord && isTargetFlawed) {
-          dynamicCritique = `In this context, "${targetWord}" naturally translates to "${refEx}", whereas "${stEx}" sounds slightly awkward or overly literal.`;
-        } else {
-          dynamicCritique = `In this sentence, the natural phrasing is "${refEx}" rather than "${stEx}".`;
-        }
-      }
+      dynamicCritique = `Your translation doesn't seem to include the meaning of **${omittedItem.word}**.`;
     } else if (complexChoice && complexChoice !== 'accurate_or_not_stacked' && complexChoice !== 'stacked_conjugation_not_applicable') {
       critiqueSource = 'predicate_complex_conjugation';
       triggeringConfidence = answers.predicate_complex_conjugation?.confidence ?? 0;
@@ -1622,7 +1540,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     if (overall === 10 || isTypo) {
       if (overall === 10) dynamicCritique = '';
-      excerptComparison = null;
     }
 
     const summaryCritiqueText = overall === 10 ? '' : (dynamicCritique || (sentenceCritiques.length > 0 ? sentenceCritiques[0].label : ''));
@@ -1637,13 +1554,10 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     // The critique TEXT must (a) be confident on the signals that asserted it, and (b) agree in kind with Jev's own bracket:
     // a "minor nuance" message must not ship with a 1/10 score, and an "error" message must not ship with a lenient bracket.
     const errorSideBracket = ['5_moderate_error', '3_major_error', '1_fatal_error'].includes(bracketChoice);
-    const ERROR_RELATIONS = ['passive_vs_active_reversal', 'causative_reversal', 'benefactive_direction_inverted', 'potential_vs_intent', 'obligation_vs_absence', 'counterfactual_regret_vs_condition', 'question_vs_statement'];
     let critiqueKind = 'none';
     if (dynamicCritique) {
       if (critiqueSource === 'english_typo_check' || critiqueSource === 'omitted_word') {
         critiqueKind = 'minor';
-      } else if (critiqueSource === 'contrast_relation') {
-        critiqueKind = (ERROR_RELATIONS.includes(rel) || hasCriticalFault || hasModerateFault) ? 'error' : 'minor';
       } else if (critiqueSource === 'sentence_critique_summary') {
         critiqueKind = summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference' ? 'minor' : 'error';
       } else if (['predicate_complex_conjugation', 'polarity_check', 'predicate_mood_and_voice', 'benefactive_direction', 'question_type_and_scope'].includes(critiqueSource)) {
@@ -1744,14 +1658,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           <span class="jpdb-ai-jev-score ${finalScoreClass}" title="${escapeHtml(pillTitle)}">${finalScoreLabel}${finalBracketLabel ? ` (${escapeHtml(finalBracketLabel)})` : ''}</span>
         </summary>
         <div class="jpdb-ai-jev-body">
-          ${finalScore < 10 && excerptComparison ? `
-            <div class="jpdb-ai-jev-excerpt">
-              <span class="jpdb-ai-jev-pill err" title="Your draft excerpt">"${escapeHtml(excerptComparison.studentExcerpt)}"</span>
-              <span class="jpdb-ai-jev-arrow">➔</span>
-              <span class="jpdb-ai-jev-pill ok" title="Reference translation excerpt">"${escapeHtml(excerptComparison.referenceExcerpt)}"</span>
-            </div>
-          ` : ''}
-
           ${finalScore < 10 && summaryCritiqueText ? `
             <div class="jpdb-ai-jev-summary ${isMinor ? 'minor' : ''}">
               <span class="jpdb-ai-jev-summary-icon">⚠️</span>

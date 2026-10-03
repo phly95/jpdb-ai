@@ -155,21 +155,12 @@ m=typoA({suspected_typo_word:{choice:'now',confidence:0.5}}); ok(!m.typoFastPath
 console.log('--- critique text/confidence/severity coherence ---');
 m=P(clean({grade_bracket:{choice:'8_minor_nuance',confidence:0.8},word_0_omitted:{noul:0.9}}),{words:['昨日','猫が'],tv:'猫',draft:'I like cats',ref:'I liked cats yesterday',jp:'昨日猫が好きだった'});
 ok(m.critiqueSource==='omitted_word'&&!/degree/.test(m.dynamicCritique),'omission text is neutral (no hard-coded "degree nuance")',m.dynamicCritique);
-const ex=(st,rf,rel,c=0.9)=>({flawed_student_excerpt:{choice:st,confidence:c},correct_reference_excerpt:{choice:rf,confidence:c},contrast_relation:{choice:rel,confidence:c}});
-m=P(clean({grade_bracket:{choice:'1_fatal_error',confidence:0.9},...ex('I like cats','I like cats','word_choice_or_nuance_mismatch')}));
-ok(m.excerptComparison===null&&!/rather than "I like cats"\./.test(m.dynamicCritique),'identical excerpts never produce "X rather than X"',m.dynamicCritique);
-m=P(clean({grade_bracket:{choice:'1_fatal_error',confidence:0.9},...ex('I like','I really like','word_choice_or_nuance_mismatch')}));
-ok(!m.critiqueFastPathOk&&m.fastPathBlockers.includes('critique_undersells_error'),'1/10 score + minor-nuance message is blocked',m.fastPathBlockers.join());
 m=P(clean({grade_bracket:{choice:'10_flawless',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9}}));
 ok(!m.critiqueFastPathOk&&m.fastPathBlockers.includes('error_critique_vs_lenient_bracket'),'"passive reversed" + flawless bracket conflict is blocked',m.fastPathBlockers.join());
 m=P(clean({grade_bracket:{choice:'5_moderate_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.45}}));
 ok(m.triggeringConfidence===0.45&&!m.critiqueFastPathOk,'summary 0.45 vs "correct" voice 0.98 stays 0.45 and is blocked',`trig=${m.triggeringConfidence}`);
-m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.30},...ex('I told','was told','word_choice_or_nuance_mismatch',0.9)}));
-ok(m.critiqueSource==='contrast_relation'&&m.triggeringConfidence<=0.30&&!m.critiqueFastPathOk,'contrast text chosen by a 0.30 summary cannot ride on 0.90 excerpt confidence',`trig=${m.triggeringConfidence}`);
-m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9},predicate_mood_and_voice:{choice:'passive_vs_active_error',confidence:0.9},...ex('I told him','He was told','passive_vs_active_reversal',0.9)}));
+m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9},predicate_mood_and_voice:{choice:'passive_vs_active_error',confidence:0.9}}));
 ok(m.critiqueFastPathOk&&m.critiqueKind==='error'&&m.overall===3,'legit, corroborated passive reversal passes the gate',`${m.fastPathBlockers.join()||'no blockers'} | ${m.dynamicCritique.slice(0,70)}`);
-m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},...ex('I told','was told','passive_vs_active_reversal',0.45)}));
-ok(m.excerptComparison===null&&!m.critiqueFastPathOk,'weak excerpt relation (0.45): no contrast card, no fast path');
 m=P(clean({grade_bracket:{choice:'3_major_error',confidence:0.9},sentence_critique_summary:{choice:'passive_voice_reversed',confidence:0.9}}),{draft:'There are five cats',ref:'There are three cats',jp:'猫が三匹いる'});
 ok(m.hasNumeralMismatch&&!m.critiqueFastPathOk&&m.fastPathBlockers.includes('numeral_mismatch_unreported'),'numeral mismatch is never hidden behind another critique',m.fastPathBlockers.join());
 
