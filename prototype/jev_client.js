@@ -67,11 +67,14 @@ function postJson(urlStr, headers, bodyObj, timeoutMs = 20000) {
 async function callJev(state, questions) {
   const t0 = Date.now();
   const endpoint = config.jevEndpoint;
-  const headers = {
-    'Authorization': `Bearer ${config.jevKey}`,
-    'HTTP-Referer': 'https://jpdb.io',
-    'X-Title': 'JPDB AI Explainer Prototype'
-  };
+  const headers = {};
+  if (config.jevKey && !endpoint.includes('opencode.ai')) {
+    headers['Authorization'] = `Bearer ${config.jevKey}`;
+  }
+  if (endpoint.includes('openrouter.ai')) {
+    headers['HTTP-Referer'] = 'https://jpdb.io';
+    headers['X-Title'] = 'JPDB AI Explainer Prototype';
+  }
 
   const body = {
     model: config.jevModel,

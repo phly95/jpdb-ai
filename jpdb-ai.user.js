@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.1.0
+// @version      1.1.1
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -24,8 +24,8 @@
   const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
   const DEFAULT_API_KEY = '';
 
-  const DEFAULT_JEV_ENDPOINT = 'https://openrouter.ai/api/alpha/decisions';
-  const DEFAULT_JEV_MODEL = 'typesafe/jev-1.13';
+  const DEFAULT_JEV_ENDPOINT = 'https://opencode.ai/zen/v1/systemone';
+  const DEFAULT_JEV_MODEL = 'jev-1.13-free';
   const DEFAULT_JEV_KEY = '';
 
   // Keep reasoning cheap/fast: "low" thinking level for both APIs.
@@ -1752,7 +1752,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     }
 
     const headers = { 'Content-Type': 'application/json' };
-    if (key) headers['Authorization'] = 'Bearer ' + key;
+    if (key && !url.includes('opencode.ai')) headers['Authorization'] = 'Bearer ' + key;
     if (url.includes('openrouter.ai')) {
       headers['HTTP-Referer'] = 'https://jpdb.io';
       headers['X-Title'] = 'JPDB AI Explainer';
