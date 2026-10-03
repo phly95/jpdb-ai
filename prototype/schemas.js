@@ -315,6 +315,7 @@ function buildVocabExplanationQuestions(info) {
         'topic_marker',
         'indirect_object_or_destination',
         'location_or_means',
+        'demonstrative_determiner',
         'noun_modifying_relative_clause',
         'main_predicate_verb',
         'connective_te_form',
@@ -328,7 +329,8 @@ function buildVocabExplanationQuestions(info) {
         topic_marker: 'The topic or conversational framing noun (marked by は).',
         indirect_object_or_destination: 'Target, recipient, or destination of motion/action (marked by に or へ).',
         location_or_means: 'Location of action, instrument, or means (marked by で).',
-        noun_modifying_relative_clause: 'Verb, adjective, or clause directly modifying a following noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
+        demonstrative_determiner: 'Demonstrative or pre-noun adjectival determiner (連体詞) directly modifying a following noun (e.g. この, その, あの, どの, 大きな, 小さな).',
+        noun_modifying_relative_clause: 'Verb, adjective, or clause acting as an attributive / relative clause modifying a noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
         main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
         connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
         subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
@@ -396,6 +398,8 @@ function buildVocabExplanationQuestions(info) {
       type: 'choice',
       instructions: 'Which pedagogical tip or common pitfall is most relevant for a Japanese learner encountering this word in this context?',
       options: [
+        'ko_so_a_do_proximity',
+        'prenoun_determiner_no_particle',
         'give_receive_direction',
         'passive_adversative_nuance',
         'potential_vs_intent',
@@ -407,10 +411,12 @@ function buildVocabExplanationQuestions(info) {
         'standard_usage'
       ],
       criteria: {
+        ko_so_a_do_proximity: 'Ko-so-a-do proximity: こ (near speaker), そ (near listener / mentioned), あ (far from both), ど (question/which).',
+        prenoun_determiner_no_particle: 'Pre-noun determiners (連体詞 like この, その, 大きな) attach directly to nouns and never take particles directly.',
         give_receive_direction: 'Direction of favors (~てやる vs ~てくれる vs ~てもらう).',
         passive_adversative_nuance: 'The Japanese passive often carries an adversative/troubled nuance ("suffering passive").',
         potential_vs_intent: 'Distinguishing ability ("can do") from willingness ("will do").',
-        polite_softener_not_literal_contrast: 'Sentence-ending けど / んだけど softens requests rather than meaning a harsh "but".',
+        polite_softener_not_literal_contrast: 'Sentence-ending softeners like 〜けど or 〜んだけど soften the tone and avoid abruptness; they rarely mean a harsh "but".',
         colloquial_contraction: 'Slang or conversational contractions (e.g. 〜ちゃった, 〜じゃん).',
         idiomatic_set_phrase: 'Fixed idiomatic expression whose meaning is greater than individual parts.',
         transitive_vs_intransitive_pair: 'Pair confusion (e.g. 開ける vs 開く, 落とす vs 落ちる).',
@@ -421,7 +427,8 @@ function buildVocabExplanationQuestions(info) {
   };
 
   const candidateWords = (info.words || [])
-    .filter(w => w && w !== cleanTarget && !cleanTarget.includes(w) && !['は', 'が', 'を', 'に', 'で', 'と', 'の'].includes(w))
+    .map(w => (w || '').replace(/[はがをにでとのへ]+$/, '').trim())
+    .filter(w => w && w !== cleanTarget && !cleanTarget.includes(w))
     .slice(0, 6);
   if (candidateWords.length > 0) {
     const toCriteria = (arr) => Object.fromEntries(arr.map((k) => [k, null]));

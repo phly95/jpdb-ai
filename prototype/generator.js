@@ -215,9 +215,15 @@ function generateVocabExplanation(answers, cardInfo) {
     } else {
       roleExplanation = `specifying the location of the action or the means used, marked by **で**`;
     }
+  } else if (role === 'demonstrative_determiner') {
+    const cleanNoun = targetWord ? targetWord.replace(/[はがをにでとのへ]+$/, '') : '';
+    roleExplanation = cleanNoun
+      ? `functioning as a demonstrative determiner (連体詞) directly modifying the noun **${cleanNoun}**`
+      : `functioning as a demonstrative determiner (連体詞) specifying the following noun`;
   } else if (role === 'noun_modifying_relative_clause') {
-    if (targetWord) {
-      roleExplanation = `functioning as an attributive modifier directly describing the noun **${targetWord}**`;
+    const cleanNoun = targetWord ? targetWord.replace(/[はがをにでとのへ]+$/, '') : '';
+    if (cleanNoun) {
+      roleExplanation = `functioning as an attributive modifier directly describing the noun **${cleanNoun}**`;
     } else {
       roleExplanation = `functioning as an attributive / relative clause directly modifying the following noun`;
     }
@@ -243,6 +249,8 @@ function generateVocabExplanation(answers, cardInfo) {
   }
 
   const tipsMap = {
+    ko_so_a_do_proximity: 'Remember the ko-so-a-do proximity system: こ- indicates something close to the speaker (or currently being mentioned), そ- is close to the listener, あ- is distant from both, and ど- is the question form ("which").',
+    prenoun_determiner_no_particle: 'This word is a pre-noun determiner (連体詞): it always modifies a noun directly and cannot stand alone or take particles like の or は.',
     give_receive_direction: 'Pay attention to favor direction: 〜てやる is done for someone younger, a pet, or third party; 〜てくれる is done for the speaker ("for me"); 〜てもらう is receiving a favor.',
     passive_adversative_nuance: 'In Japanese, the passive voice often expresses that the subject was negatively affected or troubled by someone else\'s action (the "adversative" or suffering passive).',
     potential_vs_intent: 'Potential forms express capability or opportunity ("can do"), not just future intention.',
@@ -251,7 +259,9 @@ function generateVocabExplanation(answers, cardInfo) {
     transitive_vs_intransitive_pair: 'Watch out for transitive vs. intransitive verb pairing in this construction.',
     polysemous_idiomatic_sense: `Notice how context dictates this specific sense over other dictionary definitions.`,
     case_particle_governance: 'Pay close attention to which particle marks this word (を for direct object, が for subject, に for target, で for location/means).',
-    standard_usage: 'Focus on how the attached particle or inflection connects this word to the main predicate.'
+    standard_usage: role === 'demonstrative_determiner'
+      ? 'Remember the ko-so-a-do system: この refers to something physically or contextually close to the speaker.'
+      : 'Focus on how the attached particle or inflection connects this word to the main predicate.'
   };
 
   const lines = [

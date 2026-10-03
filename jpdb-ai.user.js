@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.87
+// @version      1.0.88
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -1645,6 +1645,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           'topic_marker',
           'indirect_object_or_destination',
           'location_or_means',
+          'demonstrative_determiner',
           'noun_modifying_relative_clause',
           'main_predicate_verb',
           'connective_te_form',
@@ -1658,7 +1659,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           topic_marker: 'The topic or conversational framing noun (marked by は).',
           indirect_object_or_destination: 'Target, recipient, or destination of motion/action (marked by に or へ).',
           location_or_means: 'Location of action, instrument, or means (marked by で).',
-          noun_modifying_relative_clause: 'Verb, adjective, or clause directly modifying a following noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
+          demonstrative_determiner: 'Demonstrative or pre-noun adjectival determiner (連体詞) directly modifying a following noun (e.g. この, その, あの, どの, 大きな, 小さな).',
+          noun_modifying_relative_clause: 'Verb, adjective, or clause acting as an attributive / relative clause modifying a noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
           main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
           connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
           subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
@@ -1726,6 +1728,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         type: 'choice',
         instructions: 'Which pedagogical tip or common pitfall is most relevant for a Japanese learner encountering this word in this context?',
         options: [
+          'ko_so_a_do_proximity',
+          'prenoun_determiner_no_particle',
           'give_receive_direction',
           'passive_adversative_nuance',
           'potential_vs_intent',
@@ -1737,6 +1741,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
           'standard_usage'
         ],
         criteria: {
+          ko_so_a_do_proximity: 'Ko-so-a-do proximity: こ (near speaker), そ (near listener / mentioned), あ (far from both), ど (question/which).',
+          prenoun_determiner_no_particle: 'Pre-noun determiners (連体詞 like この, その, 大きな) attach directly to nouns and never take particles directly.',
           give_receive_direction: 'Direction of favors (~てやる vs ~てくれる vs ~てもらう).',
           passive_adversative_nuance: 'The Japanese passive often carries an adversative/troubled nuance ("suffering passive").',
           potential_vs_intent: 'Distinguishing ability ("can do"), not just future intention.',
@@ -1751,7 +1757,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     };
 
     const candidateWords = (words || [])
-      .filter((w) => w && w !== cleanTarget && !cleanTarget.includes(w) && !['は', 'が', 'を', 'に', 'で', 'と', 'の'].includes(w))
+      .map((w) => (w || '').replace(/[はがをにでとのへ]+$/, '').trim())
+      .filter((w) => w && w !== cleanTarget && !cleanTarget.includes(w))
       .slice(0, 6);
     if (candidateWords.length > 0) {
       const toCriteria = (arr) => Object.fromEntries(arr.map((k) => [k, null]));
@@ -1819,10 +1826,18 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       roleExplanation = targetWord
         ? `specifying the location, means, or instrument where **${targetWord}** takes place, marked by **で**`
         : `specifying the location of the action or the means used, marked by **で**`;
+    } else if (role === 'demonstrative_determiner') {
+      const cleanNoun = targetWord ? targetWord.replace(/[はがをにでとのへ]+$/, '') : '';
+      roleExplanation = cleanNoun
+        ? `functioning as a demonstrative determiner (連体詞) directly modifying the noun **${cleanNoun}**`
+        : `functioning as a demonstrative determiner (連体詞) specifying the following noun`;
     } else if (role === 'noun_modifying_relative_clause') {
-      roleExplanation = targetWord
-        ? `functioning as an attributive modifier directly describing the noun **${targetWord}**`
-        : `functioning as an attributive / relative clause directly modifying the following noun`;
+      const cleanNoun = targetWord ? targetWord.replace(/[はがをにでとのへ]+$/, '') : '';
+      if (cleanNoun) {
+        roleExplanation = `functioning as an attributive modifier directly describing the noun **${cleanNoun}**`;
+      } else {
+        roleExplanation = `functioning as an attributive / relative clause directly modifying the following noun`;
+      }
     } else if (role === 'adverbial_modifier') {
       roleExplanation = targetWord
         ? `functioning as an adverbial modifier modifying the predicate **${targetWord}**`
@@ -1840,6 +1855,8 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     }
 
     const tipsMap = {
+      ko_so_a_do_proximity: 'Remember the ko-so-a-do proximity system: こ- indicates something close to the speaker (or currently being mentioned), そ- is close to the listener, あ- is distant from both, and ど- is the question form ("which").',
+      prenoun_determiner_no_particle: 'This word is a pre-noun determiner (連体詞): it always modifies a noun directly and cannot stand alone or take particles like の or は.',
       give_receive_direction: 'Pay attention to favor direction: 〜てやる is done for someone younger, a pet, or third party; 〜てくれる is done for the speaker ("for me"); 〜てもらう is receiving a favor.',
       passive_adversative_nuance: 'In Japanese, the passive voice often expresses that the subject was negatively affected or troubled by someone else\'s action (the "adversative" or suffering passive).',
       potential_vs_intent: 'Potential forms express capability or opportunity ("can do"), not just future intention.',
@@ -1848,7 +1865,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       idiomatic_set_phrase: 'This is part of a common Japanese idiomatic set phrase.',
       transitive_vs_intransitive_pair: 'Watch the transitive/intransitive pair: pay close attention to whether the subject performs the action or undergoes it.',
       case_particle_governance: 'Pay close attention to which particle marks this word (を for direct object, が for subject, に for target, で for location/means).',
-      standard_usage: 'Focus on how the attached particle or inflection connects this word to the main predicate.'
+      standard_usage: role === 'demonstrative_determiner'
+        ? 'Remember the ko-so-a-do system: この refers to something physically or contextually close to the speaker.'
+        : 'Focus on how the attached particle or inflection connects this word to the main predicate.'
     };
 
     const nuanceTip = tipsMap[tip] || 'Focus on how the attached particle or inflection connects this word to the main predicate.';
@@ -1902,7 +1921,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
               ${words.map((w) => {
                 const isTarget = w === cleanTarget || w.includes(cleanTarget) || cleanTarget.includes(w);
                 const isConn = vocabResult.targetWord && (w === vocabResult.targetWord || w.includes(vocabResult.targetWord));
-                const cls = isTarget ? 'err' : (isConn ? 'advisory' : 'ok');
+                const cls = isTarget ? 'target' : (isConn ? 'advisory' : 'ok');
                 return `<span class="jpdb-ai-jev-token ${cls}">${escapeHtml(w)}</span>`;
               }).join(' ')}
             </div>
@@ -2537,6 +2556,8 @@ html.dark-mode .jpdb-ai-jev-tokens{border-color:rgba(147,197,253,.2)}
 .jpdb-ai-jev-token.ok{background:rgba(22,163,74,.1);color:#15803d}
 html.dark-mode .jpdb-ai-jev-token.ok{background:rgba(22,163,74,.2);color:#86efac}
 .jpdb-ai-jev-token.err{background:rgba(239,68,68,.12);color:#b91c1c;font-weight:700}
+.jpdb-ai-jev-token.target{background:rgba(99,102,241,.18);color:#4338ca;font-weight:700;border:1px solid rgba(99,102,241,.35)}
+html.dark-mode .jpdb-ai-jev-token.target{background:rgba(129,140,248,.25);color:#c7d2fe;border-color:rgba(129,140,248,.45)}
 .jpdb-ai-jev-waiting{margin-top:10px;font-size:11.5px;opacity:.75;font-style:italic;display:flex;align-items:center;gap:5px}
 .jpdb-ai-jev-excerpt{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 10px;background:rgba(0,0,0,.03);border-radius:6px;border:1px solid rgba(0,0,0,.06);font-size:12px;flex-wrap:wrap}
 html.dark-mode .jpdb-ai-jev-excerpt{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1)}
