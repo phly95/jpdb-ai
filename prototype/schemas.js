@@ -279,25 +279,21 @@ function extractPhraseChunks(text) {
 function buildVocabExplanationQuestions(info) {
   const cleanTarget = (info.vocab || '').replace(/\([^)]*\)/g, '').trim();
   const meanings = (info.meanings || []).slice(0, 8);
-  
-  // Format meanings as selectable criteria options
-  const meaningOptions = [];
-  const meaningCriteria = {};
-  meanings.forEach((m, idx) => {
-    const optKey = `sense_${idx}`;
-    meaningOptions.push(optKey);
-    meaningCriteria[optKey] = {
-      what: m,
-      index: idx
-    };
-  });
-  if (meaningOptions.length === 0) {
-    meaningOptions.push('sense_0');
-    meaningCriteria['sense_0'] = { what: 'primary dictionary meaning', index: 0 };
-  }
+  const questions = {};
 
-  const questions = {
-    applied_meaning: {
+  // Avoid degenerate 1-option Choice question: only ask applied_meaning if polysemous (2+ definitions)
+  if (meanings.length > 1) {
+    const meaningOptions = [];
+    const meaningCriteria = {};
+    meanings.forEach((m, idx) => {
+      const optKey = `sense_${idx}`;
+      meaningOptions.push(optKey);
+      meaningCriteria[optKey] = {
+        what: m,
+        index: idx
+      };
+    });
+    questions.applied_meaning = {
       type: 'choice',
       instructions: {
         question: `Which of the dictionary meanings for "${cleanTarget}" is being used in \`japanese_sentence\`?`,
@@ -305,124 +301,130 @@ function buildVocabExplanationQuestions(info) {
       },
       options: meaningOptions,
       criteria: meaningCriteria
-    },
-    grammatical_role: {
-      type: 'choice',
-      instructions: `What is the primary syntactic role of "${cleanTarget}" in \`japanese_sentence\`?`,
-      options: [
-        'direct_object',
-        'grammatical_subject',
-        'topic_marker',
-        'indirect_object_or_destination',
-        'location_or_means',
-        'demonstrative_determiner',
-        'noun_modifying_relative_clause',
-        'main_predicate_verb',
-        'connective_te_form',
-        'subordinate_clause_verb',
-        'adverbial_modifier',
-        'particle_or_sentence_ender'
-      ],
-      criteria: {
-        direct_object: 'The noun directly receiving the action (marked by を or topicalized).',
-        grammatical_subject: 'The noun performing the action or being described (marked by が).',
-        topic_marker: 'The topic or conversational framing noun (marked by は).',
-        indirect_object_or_destination: 'Target, recipient, or destination of motion/action (marked by に or へ).',
-        location_or_means: 'Location of action, instrument, or means (marked by で).',
-        demonstrative_determiner: 'Demonstrative or pre-noun adjectival determiner (連体詞) directly modifying a following noun (e.g. この, その, あの, どの, 大きな, 小さな).',
-        noun_modifying_relative_clause: 'Verb, adjective, or clause acting as an attributive / relative clause modifying a noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
-        main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
-        connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
-        subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
-        adverbial_modifier: 'An adverb, time expression, or modifier altering the verb/adjective (e.g. ゆっくり, とても).',
-        particle_or_sentence_ender: 'Colloquial particle, conversational softener, or sentence-ending expression (e.g. ね, よ, けど).'
-      }
-    },
-    attachment_and_particles: {
-      type: 'choice',
-      instructions: `How does "${cleanTarget}" attach to adjacent words in \`japanese_sentence\`?`,
-      options: [
-        'particle_wo_object',
-        'particle_ga_subject',
-        'particle_wa_topic',
-        'particle_ni_target',
-        'particle_de_location_means',
-        'particle_to_quotation_or_companion',
-        'particle_no_genitive',
-        'direct_noun_modification',
-        'te_form_connection',
-        'sentence_final'
-      ],
-      criteria: {
-        particle_wo_object: 'Followed by object particle を.',
-        particle_ga_subject: 'Followed by subject particle が.',
-        particle_wa_topic: 'Followed by topic particle は.',
-        particle_ni_target: 'Followed by particle に (target/location/beneficiary/time).',
-        particle_de_location_means: 'Followed by particle で (location of action / means).',
-        particle_to_quotation_or_companion: 'Followed by quotative or companion particle と.',
-        particle_no_genitive: 'Followed by possessive/genitive particle の.',
-        direct_noun_modification: 'Directly modifies a noun (attributive / 連体修飾).',
-        te_form_connection: 'Connects in te-form (〜て) to an auxiliary verb.',
-        sentence_final: 'Occurs at the end of the sentence or clause.'
-      }
-    },
-    inflection_form: {
-      type: 'choice',
-      instructions: `What grammatical conjugation or inflection form is "${cleanTarget}" in?`,
-      options: [
-        'uninflected_noun_or_particle',
-        'plain_present_dictionary',
-        'past_ta_form',
-        'te_form',
-        'passive_voice',
-        'potential_form',
-        'causative_or_causative_passive',
-        'conditional_form',
-        'polite_masu_desu',
-        'adverbial_form'
-      ],
-      criteria: {
-        uninflected_noun_or_particle: 'Noun, pronoun, or invariable word.',
-        plain_present_dictionary: 'Plain non-past dictionary form (e.g. 食べる, 行く, 静かだ).',
-        past_ta_form: 'Plain past tense (e.g. た, だ).',
-        te_form: 'Te-form (e.g. て, で).',
-        passive_voice: 'Passive form (e.g. られる, れる).',
-        potential_form: 'Potential form ("can do", e.g. 買える, できる).',
-        causative_or_causative_passive: 'Causative (〜せる/〜させる) or Causative-Passive (〜させられる).',
-        conditional_form: 'Conditional form (〜たら, 〜ば, 〜なら).',
-        polite_masu_desu: 'Polite speech (〜ます, 〜です).',
-        adverbial_form: 'Adverbial inflection (e.g. 〜く, 〜に).'
-      }
-    },
-    pedagogical_tip_type: {
-      type: 'choice',
-      instructions: 'Which pedagogical tip or common pitfall is most relevant for a Japanese learner encountering this word in this context?',
-      options: [
-        'ko_so_a_do_proximity',
-        'prenoun_determiner_no_particle',
-        'give_receive_direction',
-        'passive_adversative_nuance',
-        'potential_vs_intent',
-        'polite_softener_not_literal_contrast',
-        'colloquial_contraction',
-        'idiomatic_set_phrase',
-        'transitive_vs_intransitive_pair',
-        'case_particle_governance',
-        'standard_usage'
-      ],
-      criteria: {
-        ko_so_a_do_proximity: 'Ko-so-a-do proximity: こ (near speaker), そ (near listener / mentioned), あ (far from both), ど (question/which).',
-        prenoun_determiner_no_particle: 'Pre-noun determiners (連体詞 like この, その, 大きな) attach directly to nouns and never take particles directly.',
-        give_receive_direction: 'Direction of favors (~てやる vs ~てくれる vs ~てもらう).',
-        passive_adversative_nuance: 'The Japanese passive often carries an adversative/troubled nuance ("suffering passive").',
-        potential_vs_intent: 'Distinguishing ability ("can do") from willingness ("will do").',
-        polite_softener_not_literal_contrast: 'Sentence-ending softeners like 〜けど or 〜んだけど soften the tone and avoid abruptness; they rarely mean a harsh "but".',
-        colloquial_contraction: 'Slang or conversational contractions (e.g. 〜ちゃった, 〜じゃん).',
-        idiomatic_set_phrase: 'Fixed idiomatic expression whose meaning is greater than individual parts.',
-        transitive_vs_intransitive_pair: 'Pair confusion (e.g. 開ける vs 開く, 落とす vs 落ちる).',
-        case_particle_governance: 'Pay attention to which particle marks this argument (を, が, に, で).',
-        standard_usage: 'Standard straightforward vocabulary usage.'
-      }
+    };
+  }
+
+  questions.grammatical_role = {
+    type: 'choice',
+    instructions: `What is the primary syntactic role of "${cleanTarget}" in \`japanese_sentence\`?`,
+    options: [
+      'direct_object',
+      'grammatical_subject',
+      'topic_marker',
+      'indirect_object_or_destination',
+      'location_or_means',
+      'demonstrative_determiner',
+      'noun_modifying_relative_clause',
+      'main_predicate_verb',
+      'connective_te_form',
+      'subordinate_clause_verb',
+      'adverbial_modifier',
+      'particle_or_sentence_ender',
+      'other_or_unclear'
+    ],
+    criteria: {
+      direct_object: 'The noun directly receiving the action (marked by を or topicalized).',
+      grammatical_subject: 'The noun performing the action or being described (marked by が).',
+      topic_marker: 'The topic or conversational framing noun (marked by は).',
+      indirect_object_or_destination: 'Target, recipient, or destination of motion/action (marked by に or へ).',
+      location_or_means: 'Location of action, instrument, or means (marked by で).',
+      demonstrative_determiner: 'Demonstrative or pre-noun adjectival determiner (連体詞) directly modifying a following noun (e.g. この, その, あの, どの, 大きな, 小さな).',
+      noun_modifying_relative_clause: 'Verb, adjective, or clause acting as an attributive / relative clause modifying a noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
+      main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
+      connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
+      subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
+      adverbial_modifier: 'An adverb, time expression, or modifier altering the verb/adjective (e.g. ゆっくり, とても).',
+      particle_or_sentence_ender: 'Colloquial particle, conversational softener, or sentence-ending expression (e.g. ね, よ, けど).',
+      other_or_unclear: 'Syntactic role does not cleanly fit any of the above categories, or is ambiguous.'
+    }
+  };
+
+  questions.attachment_and_particles = {
+    type: 'choice',
+    instructions: `How does "${cleanTarget}" attach to adjacent words in \`japanese_sentence\`?`,
+    options: [
+      'particle_wo_object',
+      'particle_ga_subject',
+      'particle_wa_topic',
+      'particle_ni_target',
+      'particle_de_location_means',
+      'particle_to_quotation_or_companion',
+      'particle_no_genitive',
+      'direct_noun_modification',
+      'te_form_connection',
+      'sentence_final'
+    ],
+    criteria: {
+      particle_wo_object: 'Followed by object particle を.',
+      particle_ga_subject: 'Followed by subject particle が.',
+      particle_wa_topic: 'Followed by topic particle は.',
+      particle_ni_target: 'Followed by particle に (target/location/beneficiary/time).',
+      particle_de_location_means: 'Followed by particle で (location of action / means).',
+      particle_to_quotation_or_companion: 'Followed by quotative or companion particle と.',
+      particle_no_genitive: 'Followed by possessive/genitive particle の.',
+      direct_noun_modification: 'Directly modifies a noun (attributive / 連体修飾).',
+      te_form_connection: 'Connects in te-form (〜て) to an auxiliary verb.',
+      sentence_final: 'Occurs at the end of the sentence or clause.'
+    }
+  };
+
+  questions.inflection_form = {
+    type: 'choice',
+    instructions: `What grammatical conjugation or inflection form is "${cleanTarget}" in?`,
+    options: [
+      'uninflected_noun_or_particle',
+      'plain_present_dictionary',
+      'past_ta_form',
+      'te_form',
+      'passive_voice',
+      'potential_form',
+      'causative_or_causative_passive',
+      'conditional_form',
+      'polite_masu_desu',
+      'adverbial_form'
+    ],
+    criteria: {
+      uninflected_noun_or_particle: 'Noun, pronoun, or invariable word.',
+      plain_present_dictionary: 'Plain non-past dictionary form (e.g. 食べる, 行く, 静かだ).',
+      past_ta_form: 'Plain past tense (e.g. た, だ).',
+      te_form: 'Te-form (e.g. て, で).',
+      passive_voice: 'Passive form (e.g. られる, れる).',
+      potential_form: 'Potential form ("can do", e.g. 買える, できる).',
+      causative_or_causative_passive: 'Causative (〜せる/〜させる) or Causative-Passive (〜させられる).',
+      conditional_form: 'Conditional form (〜たら, 〜ば, 〜なら).',
+      polite_masu_desu: 'Polite speech (〜ます, 〜です).',
+      adverbial_form: 'Adverbial inflection (e.g. 〜く, 〜に).'
+    }
+  };
+
+  questions.pedagogical_tip_type = {
+    type: 'choice',
+    instructions: 'Which pedagogical tip or common pitfall is most relevant for a Japanese learner encountering this word in this context?',
+    options: [
+      'ko_so_a_do_proximity',
+      'prenoun_determiner_no_particle',
+      'give_receive_direction',
+      'passive_adversative_nuance',
+      'potential_vs_intent',
+      'polite_softener_not_literal_contrast',
+      'colloquial_contraction',
+      'idiomatic_set_phrase',
+      'transitive_vs_intransitive_pair',
+      'case_particle_governance',
+      'standard_usage'
+    ],
+    criteria: {
+      ko_so_a_do_proximity: 'Ko-so-a-do proximity: こ (near speaker), そ (near listener / mentioned), あ (far from both), ど (question/which).',
+      prenoun_determiner_no_particle: 'Pre-noun determiners (連体詞 like この, その, 大きな) attach directly to nouns and never take particles directly.',
+      give_receive_direction: 'Direction of favors (~てやる vs ~てくれる vs ~てもらう).',
+      passive_adversative_nuance: 'The Japanese passive often carries an adversative/troubled nuance ("suffering passive").',
+      potential_vs_intent: 'Distinguishing ability ("can do") from willingness ("will do").',
+      polite_softener_not_literal_contrast: 'Sentence-ending softeners like 〜けど or 〜んだけど soften the tone and avoid abruptness; they rarely mean a harsh "but".',
+      colloquial_contraction: 'Slang or conversational contractions (e.g. 〜ちゃった, 〜じゃん).',
+      idiomatic_set_phrase: 'Fixed idiomatic expression whose meaning is greater than individual parts.',
+      transitive_vs_intransitive_pair: 'Pair confusion (e.g. 開ける vs 開く, 落とす vs 落ちる).',
+      case_particle_governance: 'Pay attention to which particle marks this argument (を, が, に, で).',
+      standard_usage: 'Standard straightforward vocabulary usage.'
     }
   };
 

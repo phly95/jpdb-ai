@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      1.0.88
+// @version      1.0.89
 // @description  Adds an AI button to jpdb.io reviews to explain the tested vocab's role in the sentence + free chat. Uses OpenAI-compatible Responses API.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -726,7 +726,50 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     return { minConf, avgConf };
   }
 
-  function parseJevScores(answers, words, targetVocab, userDraft, referenceTranslation) {
+  // ---------- Code-side Numeral Consistency Check ----------
+  const KANJI_NUM_MAP = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10, '百': 100, '千': 1000, '万': 10000 };
+  const WORD_NUM_MAP = { 'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12, 'twenty': 20, 'thirty': 30, 'hundred': 100, 'thousand': 1000 };
+
+  function extractNumbersFromText(str, isJapanese) {
+    const nums = new Set();
+    if (!str) return nums;
+    const normalized = str.normalize('NFKC');
+    const digits = normalized.match(/\d+/g);
+    if (digits) digits.forEach((d) => nums.add(parseInt(d, 10)));
+
+    if (isJapanese) {
+      const cleaned = normalized.replace(/(?:一緒|一番|一人で|一切|一般|一生)/g, '');
+      for (const [k, v] of Object.entries(KANJI_NUM_MAP)) {
+        if (cleaned.includes(k)) nums.add(v);
+      }
+    } else {
+      const words = normalized.toLowerCase().match(/[a-z]+/g) || [];
+      words.forEach((w) => {
+        if (WORD_NUM_MAP[w] !== undefined) nums.add(WORD_NUM_MAP[w]);
+      });
+    }
+    return nums;
+  }
+
+  function checkNumeralMismatch(sentenceJP, studentEN, refEN) {
+    const jpNums = extractNumbersFromText(sentenceJP, true);
+    const refNums = extractNumbersFromText(refEN, false);
+    // Only enforce numeral consistency when reference translation also confirms a numeral concept
+    if (jpNums.size === 0 || refNums.size === 0) return false;
+
+    const studentNums = extractNumbersFromText(studentEN, false);
+    // Missing required number present in both Japanese and reference
+    for (const n of refNums) {
+      if (jpNums.has(n) && !studentNums.has(n)) return true;
+    }
+    // Mismatched or hallucinated number
+    for (const n of studentNums) {
+      if (!jpNums.has(n)) return true;
+    }
+    return false;
+  }
+
+  function parseJevScores(answers, words, targetVocab, userDraft, referenceTranslation, sentenceJP) {
     if (!answers) return null;
     words = Array.isArray(words) ? words : [];
 
@@ -739,6 +782,17 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     // 1. Sentence-level structural checks (tokenizer-independent, evaluated independently)
     const sentenceCritiques = [];
+
+    // Deterministic numeral & counter check
+    const hasNumeralMismatch = checkNumeralMismatch(sentenceJP, userDraft, referenceTranslation);
+    if (hasNumeralMismatch) {
+      sentenceCritiques.push({
+        code: 'numeral_or_counter_mismatch',
+        severity: 'moderate',
+        label: 'Numeral or counter mismatch: A number, counter, or quantity expressed in the Japanese sentence or reference was omitted or translated incorrectly.'
+      });
+    }
+
     const summaryCritiqueChoice = answers.sentence_critique_summary?.choice;
     const benefactiveChoice = answers.benefactive_direction?.choice;
     const predCheck = answers.predicate_mood_and_voice?.choice;
@@ -854,17 +908,21 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       }
     }
 
-    // Dynamic Excerpt Contrast
+    // Dynamic Excerpt Contrast: strictly verify substring containment in respective drafts
     const stEx = answers.flawed_student_excerpt?.choice;
     const refEx = answers.correct_reference_excerpt?.choice;
     const rel = answers.contrast_relation?.choice;
     let excerptComparison = null;
     if (stEx && refEx && rel && rel !== 'accurate_equivalent') {
-      excerptComparison = {
-        studentExcerpt: stEx,
-        referenceExcerpt: refEx,
-        relation: rel
-      };
+      const stContained = !userDraft || userDraft.toLowerCase().includes(stEx.toLowerCase());
+      const refContained = !referenceTranslation || referenceTranslation.toLowerCase().includes(refEx.toLowerCase());
+      if (stContained && refContained) {
+        excerptComparison = {
+          studentExcerpt: stEx,
+          referenceExcerpt: refEx,
+          relation: rel
+        };
+      }
     }
 
     const mistakes = [];
@@ -1070,9 +1128,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     } else if (predCheck === 'tense_past_present_error' || summaryCritiqueChoice === 'tense_or_aspect_error') {
       dynamicCritique = `Tense mismatch: past tense was translated as present/future (or continuous aspect was missed).`;
     } else if (summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference') {
-      if (isTargetFlawed && predWord === '今度') {
-        dynamicCritique = `In an invitation context, 今度 naturally means "sometime soon" or "next time", whereas translating it literally as "this time" sounds awkward in English.`;
-      } else if (specificWordIssue && specificWordIssue.word !== cleanTarget) {
+      if (specificWordIssue && specificWordIssue.word !== cleanTarget) {
         dynamicCritique = `Noticeable nuance gap with **${specificWordIssue.word}**: ${specificWordIssue.description}.`;
       } else {
         dynamicCritique = `The overall communicative meaning is understood, but there is a slight nuance gap or dropped modifier compared to natural native phrasing.`;
@@ -1084,28 +1140,41 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     // 5. Strict Scoring and Presentation Reconciliation:
     const hasCriticalFault = sentenceCritiques.some((sc) => sc.severity === 'critical') || mistakes.some((m) => m.type === 'wrong_definition_or_misinterpreted');
     const hasModerateFault = sentenceCritiques.some((sc) => sc.severity === 'moderate');
-    const isCleanFlawless = (!hasCriticalFault && !hasModerateFault && mistakes.length === 0 && advisories.length === 0 && sentenceCritiques.length === 0 && isFlawlessProb >= 0.80);
-    const hasAdvisory = advisories.length > 0 || mistakes.length > 0 || (!isCleanFlawless && summaryCritiqueChoice === 'minor_nuance_or_word_choice_difference');
 
-    const isFlawlessCandidate = (isFlawlessProb >= 0.85 && bracketChoice === '10_flawless' && (severityScore === null || severityScore >= 3.5));
+    // Multi-signal strict consensus for 10/10 flawless:
+    // Requires consensus across bracket, flawless probability, absence of critique summary, high severity, no numeral mismatch, and zero faults
+    const isStrict10Consensus = (
+      bracketChoice === '10_flawless' &&
+      isFlawlessProb >= 0.82 &&
+      (summaryCritiqueChoice === 'no_flaws_accurate' || !summaryCritiqueChoice) &&
+      (severityScore === null || severityScore >= 3.5) &&
+      mistakes.length === 0 &&
+      advisories.length === 0 &&
+      sentenceCritiques.length === 0 &&
+      !hasNumeralMismatch
+    );
 
     let overall = 8;
     if (isTypo) {
       overall = 8;
-    } else if (!hasCriticalFault && !hasModerateFault && !hasAdvisory && (isCleanFlawless || isFlawlessCandidate || bracketChoice === '10_flawless' || isFlawlessProb >= 0.85)) {
+    } else if (isStrict10Consensus) {
       overall = 10;
+    } else if (hasCriticalFault) {
+      overall = bracketChoice === '1_fatal_error' ? 1 : (bracketChoice === '3_major_error' ? 3 : 5);
+    } else if (hasModerateFault || hasNumeralMismatch) {
+      overall = 7;
     } else if (bracketChoice === '10_flawless') {
-      overall = hasCriticalFault ? 5 : (hasModerateFault ? 7 : 8);
+      overall = (mistakes.length > 0 || advisories.length > 0) ? 8 : 9;
     } else if (bracketChoice === '8_minor_nuance') {
-      overall = (mistakes.length === 0 && sentenceCritiques.length === 0 && isFlawlessProb >= 0.80) ? 10 : (hasCriticalFault ? 6 : 8);
+      overall = 8;
     } else if (bracketChoice === '5_moderate_error') {
-      overall = (severityScore !== null ? severityScore >= 2.15 : false) ? 6 : 5;
+      overall = (severityScore !== null && severityScore >= 2.15) ? 6 : 5;
     } else if (bracketChoice === '3_major_error') {
-      overall = (severityScore !== null ? severityScore >= 1.25 : false) ? 4 : 3;
+      overall = (severityScore !== null && severityScore >= 1.25) ? 4 : 3;
     } else if (bracketChoice === '1_fatal_error') {
-      overall = (severityScore !== null ? severityScore >= 0.7 : false) ? 2 : 1;
+      overall = (severityScore !== null && severityScore >= 0.7) ? 2 : 1;
     } else {
-      overall = hasCriticalFault ? 4 : (hasModerateFault ? 6 : 8);
+      overall = 8;
     }
 
     const bracketLabels = {
@@ -1130,8 +1199,27 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     const displayMistakes = (overall === 10 || isTypo) ? [] : (summaryCritiqueText ? mistakes.filter((m) => m.word !== cleanTarget && !m.word.startsWith('Sentence:')) : mistakes);
     const displayAdvisories = (overall === 10 || isTypo) ? [] : (summaryCritiqueText ? advisories.filter((a) => a.word !== cleanTarget && !a.word.startsWith('Sentence:')) : advisories);
 
-    // Decision-level confidence assessment
+    // Decision-level confidence assessment: track confidence of the triggering question specifically
     const bracketConf = answers.grade_bracket?.confidence ?? 0;
+    let triggeringConfidence = bracketConf;
+    if (isTypo) {
+      triggeringConfidence = typoConf;
+    } else if (hasNumeralMismatch) {
+      triggeringConfidence = 1.0;
+    } else if (complexChoice && complexChoice !== 'accurate_or_not_stacked' && complexChoice !== 'stacked_conjugation_not_applicable') {
+      triggeringConfidence = answers.predicate_complex_conjugation?.confidence ?? 0;
+    } else if (benefactiveChoice && benefactiveChoice !== 'correct_benefactive_or_not_applicable') {
+      triggeringConfidence = answers.benefactive_direction?.confidence ?? 0;
+    } else if (predCheck && predCheck !== 'correct_mood_and_voice') {
+      triggeringConfidence = answers.predicate_mood_and_voice?.confidence ?? 0;
+    } else if (polCheck === 'polarity_inverted') {
+      triggeringConfidence = answers.polarity_check?.confidence ?? 0;
+    } else if (scopeCheck === 'confused_indefinite_with_wh_word') {
+      triggeringConfidence = answers.question_type_and_scope?.confidence ?? 0;
+    } else if (summaryCritiqueChoice && summaryCritiqueChoice !== 'no_flaws_accurate') {
+      triggeringConfidence = answers.sentence_critique_summary?.confidence ?? 0;
+    }
+
     const isClearComplexError = complexChoice && complexChoice !== 'accurate_or_not_stacked' && complexChoice !== 'stacked_conjugation_not_applicable' && (answers.predicate_complex_conjugation?.confidence ?? 0) >= 0.75;
     const isClearBenefactiveError = benefactiveChoice === 'recipient_reversed_self_vs_other' && (answers.benefactive_direction?.confidence ?? 0) >= 0.80;
     const isClearVoiceError = (summaryCritiqueChoice === 'passive_voice_reversed' || predCheck === 'passive_vs_active_error') && ((answers.sentence_critique_summary?.confidence ?? 0) >= 0.75 || (answers.predicate_mood_and_voice?.confidence ?? 0) >= 0.75);
@@ -1158,6 +1246,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       words,
       minConfidence,
       avgConfidence,
+      triggeringConfidence,
+      isStrict10Consensus,
+      hasNumeralMismatch,
       isTypo,
       typoConfidence: typoConf,
       typoWord: (typoWord && typoWord !== 'none') ? typoWord : null,
@@ -1593,7 +1684,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       if (res.status >= 200 && res.status < 300) {
         const data = JSON.parse(res.responseText);
         if (data && data.answers) {
-          const metrics = parseJevScores(data.answers, words, cleanTarget, targetText, info.sentenceEN);
+          const metrics = parseJevScores(data.answers, words, cleanTarget, targetText, info.sentenceEN, info.sentenceJP);
           return {
             cardHtml: renderJevCard(metrics, model),
             metrics,
@@ -1613,21 +1704,18 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
   function buildVocabExplanationQuestions(info, cleanTarget, words) {
     const meanings = (info.meanings || []).slice(0, 8);
+    const questions = {};
 
-    const meaningOptions = [];
-    const meaningCriteria = {};
-    meanings.forEach((m, idx) => {
-      const optKey = `sense_${idx}`;
-      meaningOptions.push(optKey);
-      meaningCriteria[optKey] = { what: m, index: idx };
-    });
-    if (meaningOptions.length === 0) {
-      meaningOptions.push('sense_0');
-      meaningCriteria['sense_0'] = { what: 'primary dictionary meaning', index: 0 };
-    }
-
-    const questions = {
-      applied_meaning: {
+    // Avoid degenerate 1-option Choice question: only ask applied_meaning if polysemous (2+ definitions)
+    if (meanings.length > 1) {
+      const meaningOptions = [];
+      const meaningCriteria = {};
+      meanings.forEach((m, idx) => {
+        const optKey = `sense_${idx}`;
+        meaningOptions.push(optKey);
+        meaningCriteria[optKey] = { what: m, index: idx };
+      });
+      questions.applied_meaning = {
         type: 'choice',
         instructions: {
           question: `Which of the dictionary meanings for "${cleanTarget}" is being used in \`japanese_sentence\`?`,
@@ -1635,124 +1723,130 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         },
         options: meaningOptions,
         criteria: meaningCriteria
-      },
-      grammatical_role: {
-        type: 'choice',
-        instructions: `What is the primary syntactic role of "${cleanTarget}" in \`japanese_sentence\`?`,
-        options: [
-          'direct_object',
-          'grammatical_subject',
-          'topic_marker',
-          'indirect_object_or_destination',
-          'location_or_means',
-          'demonstrative_determiner',
-          'noun_modifying_relative_clause',
-          'main_predicate_verb',
-          'connective_te_form',
-          'subordinate_clause_verb',
-          'adverbial_modifier',
-          'particle_or_sentence_ender'
-        ],
-        criteria: {
-          direct_object: 'The noun directly receiving the action (marked by を or topicalized).',
-          grammatical_subject: 'The noun performing the action or being described (marked by が).',
-          topic_marker: 'The topic or conversational framing noun (marked by は).',
-          indirect_object_or_destination: 'Target, recipient, or destination of motion/action (marked by に or へ).',
-          location_or_means: 'Location of action, instrument, or means (marked by で).',
-          demonstrative_determiner: 'Demonstrative or pre-noun adjectival determiner (連体詞) directly modifying a following noun (e.g. この, その, あの, どの, 大きな, 小さな).',
-          noun_modifying_relative_clause: 'Verb, adjective, or clause acting as an attributive / relative clause modifying a noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
-          main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
-          connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
-          subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
-          adverbial_modifier: 'An adverb, time expression, or modifier altering the verb/adjective (e.g. ゆっくり, とても).',
-          particle_or_sentence_ender: 'Colloquial particle, conversational softener, or sentence-ending expression (e.g. ね, よ, けど).'
-        }
-      },
-      attachment_and_particles: {
-        type: 'choice',
-        instructions: `How does "${cleanTarget}" attach to adjacent words in \`japanese_sentence\`?`,
-        options: [
-          'particle_wo_object',
-          'particle_ga_subject',
-          'particle_wa_topic',
-          'particle_ni_target',
-          'particle_de_location_means',
-          'particle_to_quotation_or_companion',
-          'particle_no_genitive',
-          'direct_noun_modification',
-          'te_form_connection',
-          'sentence_final'
-        ],
-        criteria: {
-          particle_wo_object: 'Followed by object particle を.',
-          particle_ga_subject: 'Followed by subject particle が.',
-          particle_wa_topic: 'Followed by topic particle は.',
-          particle_ni_target: 'Followed by particle に (target/location/beneficiary/time).',
-          particle_de_location_means: 'Followed by particle で (location of action / means).',
-          particle_to_quotation_or_companion: 'Followed by quotative or companion particle と.',
-          particle_no_genitive: 'Followed by possessive/genitive particle の.',
-          direct_noun_modification: 'Directly modifies a noun (attributive / 連体修飾).',
-          te_form_connection: 'Connects in te-form (〜て) to an auxiliary verb.',
-          sentence_final: 'Occurs at the end of the sentence or clause.'
-        }
-      },
-      inflection_form: {
-        type: 'choice',
-        instructions: `What grammatical conjugation or inflection form is "${cleanTarget}" in?`,
-        options: [
-          'uninflected_noun_or_particle',
-          'plain_present_dictionary',
-          'past_ta_form',
-          'te_form',
-          'passive_voice',
-          'potential_form',
-          'causative_or_causative_passive',
-          'conditional_form',
-          'polite_masu_desu',
-          'adverbial_form'
-        ],
-        criteria: {
-          uninflected_noun_or_particle: 'Noun, pronoun, or invariable word.',
-          plain_present_dictionary: 'Plain non-past dictionary form (e.g. 食べる, 行く, 静かだ).',
-          past_ta_form: 'Plain past tense (e.g. た, だ).',
-          te_form: 'Te-form (e.g. て, で).',
-          passive_voice: 'Passive form (e.g. られる, れる).',
-          potential_form: 'Potential form ("can do", e.g. 買える, できる).',
-          causative_or_causative_passive: 'Causative (〜せる/〜させる) or Causative-Passive (〜させられる).',
-          conditional_form: 'Conditional form (〜たら, 〜ば, 〜なら).',
-          polite_masu_desu: 'Polite speech (〜ます, 〜です).',
-          adverbial_form: 'Adverbial inflection (e.g. 〜く, 〜に).'
-        }
-      },
-      pedagogical_tip_type: {
-        type: 'choice',
-        instructions: 'Which pedagogical tip or common pitfall is most relevant for a Japanese learner encountering this word in this context?',
-        options: [
-          'ko_so_a_do_proximity',
-          'prenoun_determiner_no_particle',
-          'give_receive_direction',
-          'passive_adversative_nuance',
-          'potential_vs_intent',
-          'polite_softener_not_literal_contrast',
-          'colloquial_contraction',
-          'idiomatic_set_phrase',
-          'transitive_vs_intransitive_pair',
-          'case_particle_governance',
-          'standard_usage'
-        ],
-        criteria: {
-          ko_so_a_do_proximity: 'Ko-so-a-do proximity: こ (near speaker), そ (near listener / mentioned), あ (far from both), ど (question/which).',
-          prenoun_determiner_no_particle: 'Pre-noun determiners (連体詞 like この, その, 大きな) attach directly to nouns and never take particles directly.',
-          give_receive_direction: 'Direction of favors (~てやる vs ~てくれる vs ~てもらう).',
-          passive_adversative_nuance: 'The Japanese passive often carries an adversative/troubled nuance ("suffering passive").',
-          potential_vs_intent: 'Distinguishing ability ("can do"), not just future intention.',
-          polite_softener_not_literal_contrast: 'Sentence-ending softeners like 〜けど or 〜んだけど soften the tone and avoid abruptness; they rarely mean a harsh "but".',
-          colloquial_contraction: 'Slang or conversational contractions (e.g. 〜ちゃった, 〜じゃん).',
-          idiomatic_set_phrase: 'Fixed idiomatic expression whose meaning is greater than individual parts.',
-          transitive_vs_intransitive_pair: 'Pair confusion (e.g. 開ける vs 開く, 落とす vs 落ちる).',
-          case_particle_governance: 'Pay attention to which particle marks this argument (を, が, に, で).',
-          standard_usage: 'Standard straightforward vocabulary usage.'
-        }
+      };
+    }
+
+    questions.grammatical_role = {
+      type: 'choice',
+      instructions: `What is the primary syntactic role of "${cleanTarget}" in \`japanese_sentence\`?`,
+      options: [
+        'direct_object',
+        'grammatical_subject',
+        'topic_marker',
+        'indirect_object_or_destination',
+        'location_or_means',
+        'demonstrative_determiner',
+        'noun_modifying_relative_clause',
+        'main_predicate_verb',
+        'connective_te_form',
+        'subordinate_clause_verb',
+        'adverbial_modifier',
+        'particle_or_sentence_ender',
+        'other_or_unclear'
+      ],
+      criteria: {
+        direct_object: 'The noun directly receiving the action (marked by を or topicalized).',
+        grammatical_subject: 'The noun performing the action or being described (marked by が).',
+        topic_marker: 'The topic or conversational framing noun (marked by は).',
+        indirect_object_or_destination: 'Target, recipient, or destination of motion/action (marked by に or へ).',
+        location_or_means: 'Location of action, instrument, or means (marked by で).',
+        demonstrative_determiner: 'Demonstrative or pre-noun adjectival determiner (連体詞) directly modifying a following noun (e.g. この, その, あの, どの, 大きな, 小さな).',
+        noun_modifying_relative_clause: 'Verb, adjective, or clause acting as an attributive / relative clause modifying a noun (e.g. 読んだ本, 走る犬, 静かな部屋).',
+        main_predicate_verb: 'The primary verb or adjective at the end of the sentence or main clause.',
+        connective_te_form: 'Verb in te-form (〜て) linking sequential actions or connecting to auxiliary verbs.',
+        subordinate_clause_verb: 'Verb inside an embedded clause, conditional (〜たら, 〜ば), reason (〜ので), or concession (〜のに).',
+        adverbial_modifier: 'An adverb, time expression, or modifier altering the verb/adjective (e.g. ゆっくり, とても).',
+        particle_or_sentence_ender: 'Colloquial particle, conversational softener, or sentence-ending expression (e.g. ね, よ, けど).',
+        other_or_unclear: 'Syntactic role does not cleanly fit any of the above categories, or is ambiguous.'
+      }
+    };
+
+    questions.attachment_and_particles = {
+      type: 'choice',
+      instructions: `How does "${cleanTarget}" attach to adjacent words in \`japanese_sentence\`?`,
+      options: [
+        'particle_wo_object',
+        'particle_ga_subject',
+        'particle_wa_topic',
+        'particle_ni_target',
+        'particle_de_location_means',
+        'particle_to_quotation_or_companion',
+        'particle_no_genitive',
+        'direct_noun_modification',
+        'te_form_connection',
+        'sentence_final'
+      ],
+      criteria: {
+        particle_wo_object: 'Followed by object particle を.',
+        particle_ga_subject: 'Followed by subject particle が.',
+        particle_wa_topic: 'Followed by topic particle は.',
+        particle_ni_target: 'Followed by particle に (target/location/beneficiary/time).',
+        particle_de_location_means: 'Followed by particle で (location of action / means).',
+        particle_to_quotation_or_companion: 'Followed by quotative or companion particle と.',
+        particle_no_genitive: 'Followed by possessive/genitive particle の.',
+        direct_noun_modification: 'Directly modifies a noun (attributive / 連体修飾).',
+        te_form_connection: 'Connects in te-form (〜て) to an auxiliary verb.',
+        sentence_final: 'Occurs at the end of the sentence or clause.'
+      }
+    };
+
+    questions.inflection_form = {
+      type: 'choice',
+      instructions: `What grammatical conjugation or inflection form is "${cleanTarget}" in?`,
+      options: [
+        'uninflected_noun_or_particle',
+        'plain_present_dictionary',
+        'past_ta_form',
+        'te_form',
+        'passive_voice',
+        'potential_form',
+        'causative_or_causative_passive',
+        'conditional_form',
+        'polite_masu_desu',
+        'adverbial_form'
+      ],
+      criteria: {
+        uninflected_noun_or_particle: 'Noun, pronoun, or invariable word.',
+        plain_present_dictionary: 'Plain non-past dictionary form (e.g. 食べる, 行く, 静かだ).',
+        past_ta_form: 'Plain past tense (e.g. た, だ).',
+        te_form: 'Te-form (e.g. て, で).',
+        passive_voice: 'Passive form (e.g. られる, れる).',
+        potential_form: 'Potential form ("can do", e.g. 買える, できる).',
+        causative_or_causative_passive: 'Causative (〜せる/〜させる) or Causative-Passive (〜させられる).',
+        conditional_form: 'Conditional form (〜たら, 〜ば, 〜なら).',
+        polite_masu_desu: 'Polite speech (〜ます, 〜です).',
+        adverbial_form: 'Adverbial inflection (e.g. 〜く, 〜に).'
+      }
+    };
+
+    questions.pedagogical_tip_type = {
+      type: 'choice',
+      instructions: 'Which pedagogical tip or common pitfall is most relevant for a Japanese learner encountering this word in this context?',
+      options: [
+        'ko_so_a_do_proximity',
+        'prenoun_determiner_no_particle',
+        'give_receive_direction',
+        'passive_adversative_nuance',
+        'potential_vs_intent',
+        'polite_softener_not_literal_contrast',
+        'colloquial_contraction',
+        'idiomatic_set_phrase',
+        'transitive_vs_intransitive_pair',
+        'case_particle_governance',
+        'standard_usage'
+      ],
+      criteria: {
+        ko_so_a_do_proximity: 'Ko-so-a-do proximity: こ (near speaker), そ (near listener / mentioned), あ (far from both), ど (question/which).',
+        prenoun_determiner_no_particle: 'Pre-noun determiners (連体詞 like この, その, 大きな) attach directly to nouns and never take particles directly.',
+        give_receive_direction: 'Direction of favors (~てやる vs ~てくれる vs ~てもらう).',
+        passive_adversative_nuance: 'The Japanese passive often carries an adversative/troubled nuance ("suffering passive").',
+        potential_vs_intent: 'Distinguishing ability ("can do"), not just future intention.',
+        polite_softener_not_literal_contrast: 'Sentence-ending softeners like 〜けど or 〜んだけど soften the tone and avoid abruptness; they rarely mean a harsh "but".',
+        colloquial_contraction: 'Slang or conversational contractions (e.g. 〜ちゃった, 〜じゃん).',
+        idiomatic_set_phrase: 'Fixed idiomatic expression whose meaning is greater than individual parts.',
+        transitive_vs_intransitive_pair: 'Pair confusion (e.g. 開ける vs 開く, 落とす vs 落ちる).',
+        case_particle_governance: 'Pay attention to which particle marks this argument (を, が, に, で).',
+        standard_usage: 'Standard straightforward vocabulary usage.'
       }
     };
 
@@ -1785,10 +1879,39 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
       }
     }
 
+    let cleanSense = chosenSense;
+    if (cleanSense.includes(' — ')) {
+      cleanSense = cleanSense.split(' — ')[0].trim();
+    }
+    cleanSense = cleanSense.replace(/^\d+[\.\)]\s*/, '').trim();
+    const semiParts = cleanSense.split(';');
+    if (semiParts.length > 1) {
+      cleanSense = semiParts.slice(0, 2).join(';').trim();
+    }
+
     const role = grammatical_role?.choice;
+    const roleConfidence = grammatical_role?.confidence ?? 0;
+    const targetWord = (connected_target_word?.choice && connected_target_word.choice !== 'none_or_independent') ? connected_target_word.choice : null;
+
+    // Reject fast-path if role is unclear, other, or below docs-compliant threshold (>= 0.65)
+    if (!role || role === 'other_or_unclear' || roleConfidence < 0.65) {
+      return {
+        markdown: '',
+        role: null,
+        chosenSense: cleanSense,
+        targetWord
+      };
+    }
+
     const inflect = inflection_form?.choice;
     const tip = pedagogical_tip_type?.choice;
-    const targetWord = (connected_target_word?.choice && connected_target_word.choice !== 'none_or_independent') ? connected_target_word.choice : null;
+
+    const isHighConf = roleConfidence >= 0.85;
+    const hedgeVerb = isHighConf ? 'functioning as' : 'likely functioning as';
+    const hedgeServes = isHighConf ? 'serving as' : 'likely serving as';
+    const hedgeIndicating = isHighConf ? 'indicating' : 'likely indicating';
+    const hedgeSpecifying = isHighConf ? 'specifying' : 'likely specifying';
+    const hedgeIs = isHighConf ? 'is' : 'appears to be';
 
     const inflectionLabels = {
       plain_present_dictionary: 'plain non-past dictionary form',
@@ -1810,48 +1933,48 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     let roleExplanation = '';
     if (role === 'direct_object') {
       roleExplanation = targetWord
-        ? `functioning as the direct object (marked by **を**) in the clause with **${targetWord}**`
-        : `functioning as the direct object receiving the action of the verb, marked by **を**`;
+        ? `${hedgeVerb} the direct object (marked by **を**) in the clause with **${targetWord}**`
+        : `${hedgeVerb} the direct object receiving the action of the verb, marked by **を**`;
     } else if (role === 'grammatical_subject') {
       roleExplanation = targetWord
-        ? `functioning as the grammatical subject (marked by **が**) associated with **${targetWord}**`
-        : `functioning as the grammatical subject performing or undergoing the action, marked by the identifier particle **が**`;
+        ? `${hedgeVerb} the grammatical subject (marked by **が**) associated with **${targetWord}**`
+        : `${hedgeVerb} the grammatical subject performing or undergoing the action, marked by the identifier particle **が**`;
     } else if (role === 'topic_marker') {
-      roleExplanation = `functioning as the conversational topic and contextual anchor of the sentence, framed by the topic particle **は**`;
+      roleExplanation = `${hedgeVerb} the conversational topic and contextual anchor of the sentence, framed by the topic particle **は**`;
     } else if (role === 'indirect_object_or_destination') {
       roleExplanation = targetWord
-        ? `indicating the destination, target, or recipient for **${targetWord}**, marked by **に** / **へ**`
-        : `indicating the target, recipient, or direction of the action, marked by **に** / **へ**`;
+        ? `${hedgeIndicating} the destination, target, or recipient for **${targetWord}**, marked by **に** / **へ**`
+        : `${hedgeIndicating} the target, recipient, or direction of the action, marked by **に** / **へ**`;
     } else if (role === 'location_or_means') {
       roleExplanation = targetWord
-        ? `specifying the location, means, or instrument where **${targetWord}** takes place, marked by **で**`
-        : `specifying the location of the action or the means used, marked by **で**`;
+        ? `${hedgeSpecifying} the location, means, or instrument where **${targetWord}** takes place, marked by **で**`
+        : `${hedgeSpecifying} the location of the action or the means used, marked by **で**`;
     } else if (role === 'demonstrative_determiner') {
       const cleanNoun = targetWord ? targetWord.replace(/[はがをにでとのへ]+$/, '') : '';
       roleExplanation = cleanNoun
-        ? `functioning as a demonstrative determiner (連体詞) directly modifying the noun **${cleanNoun}**`
-        : `functioning as a demonstrative determiner (連体詞) specifying the following noun`;
+        ? `${hedgeVerb} a demonstrative determiner (連体詞) directly modifying the noun **${cleanNoun}**`
+        : `${hedgeVerb} a demonstrative determiner (連体詞) specifying the following noun`;
     } else if (role === 'noun_modifying_relative_clause') {
       const cleanNoun = targetWord ? targetWord.replace(/[はがをにでとのへ]+$/, '') : '';
       if (cleanNoun) {
-        roleExplanation = `functioning as an attributive modifier directly describing the noun **${cleanNoun}**`;
+        roleExplanation = `${hedgeVerb} an attributive modifier directly describing the noun **${cleanNoun}**`;
       } else {
-        roleExplanation = `functioning as an attributive / relative clause directly modifying the following noun`;
+        roleExplanation = `${hedgeVerb} an attributive / relative clause directly modifying the following noun`;
       }
     } else if (role === 'adverbial_modifier') {
       roleExplanation = targetWord
-        ? `functioning as an adverbial modifier modifying the predicate **${targetWord}**`
-        : `functioning as an adverbial modifier describing manner, degree, or time`;
+        ? `${hedgeVerb} an adverbial modifier modifying the predicate **${targetWord}**`
+        : `${hedgeVerb} an adverbial modifier describing manner, degree, or time`;
     } else if (role === 'connective_te_form') {
       roleExplanation = targetWord
-        ? `is in the connective 〜て form, chaining this action into **${targetWord}**`
-        : `is in the connective 〜て form, linking sequential actions or attaching to an auxiliary verb`;
+        ? `${hedgeIs} in the connective 〜て form, chaining this action into **${targetWord}**`
+        : `${hedgeIs} in the connective 〜て form, linking sequential actions or attaching to an auxiliary verb`;
     } else if (role === 'subordinate_clause_verb') {
-      roleExplanation = `functioning as the verb within an embedded, conditional, or subordinate clause`;
+      roleExplanation = `${hedgeVerb} the verb within an embedded, conditional, or subordinate clause`;
     } else if (role === 'particle_or_sentence_ender') {
-      roleExplanation = `functions as a conversational particle or sentence-ending expression providing pragmatic nuance`;
+      roleExplanation = `${isHighConf ? 'functions as' : 'likely functions as'} a conversational particle or sentence-ending expression providing pragmatic nuance`;
     } else {
-      roleExplanation = `serving as the main predicate verb of the sentence${inflectionText}`;
+      roleExplanation = `${hedgeServes} the main predicate verb of the sentence${inflectionText}`;
     }
 
     const tipsMap = {
@@ -1872,16 +1995,6 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     const nuanceTip = tipsMap[tip] || 'Focus on how the attached particle or inflection connects this word to the main predicate.';
 
-    let cleanSense = chosenSense;
-    if (cleanSense.includes(' — ')) {
-      cleanSense = cleanSense.split(' — ')[0].trim();
-    }
-    cleanSense = cleanSense.replace(/^\d+[\.\)]\s*/, '').trim();
-    const semiParts = cleanSense.split(';');
-    if (semiParts.length > 1) {
-      cleanSense = semiParts.slice(0, 2).join(';').trim();
-    }
-
     const lines = [
       `### Role of **${cleanTarget}** in this Sentence\n`,
       `In this sentence, **${cleanTarget}** means **"${cleanSense}"**, ${roleExplanation}.\n`,
@@ -1890,7 +2003,7 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
 
     return {
       markdown: lines.join('\n'),
-      role: role || 'main_predicate_verb',
+      role: role,
       chosenSense: cleanSense,
       targetWord
     };
@@ -1959,9 +2072,9 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
         const data = JSON.parse(res.responseText);
         if (data && data.answers) {
           const gen = generateVocabExplanation(data.answers, info, cleanTarget);
-          const roleConf = data.answers.grammatical_role?.confidence ?? 0.8;
-          const senseConf = data.answers.applied_meaning?.confidence ?? 0.8;
-          const isFastPath = roleConf >= 0.40 && senseConf >= 0.40 && !!gen.role;
+          const roleConf = data.answers.grammatical_role?.confidence ?? 0;
+          const senseConf = data.answers.applied_meaning ? (data.answers.applied_meaning.confidence ?? 0) : 1.0;
+          const isFastPath = roleConf >= 0.65 && senseConf >= 0.65 && !!gen.role;
           return {
             cardHtml: renderJevVocabCard(gen, conn.model, words, cleanTarget),
             markdown: gen.markdown,
@@ -2288,6 +2401,54 @@ Use clean Markdown with bold labels and lists. Do not output raw HTML, CSS class
     } catch (err) {
       console.warn('[JPDB AI] Failed to record diagnostic entry:', err);
       return null;
+    }
+  }
+
+  function updateDiagnosticWithShadowLlm(entryId, llmReply, llmScore, llmElapsedMs) {
+    try {
+      const list = getDiagnosticsLog();
+      const entry = list.find((e) => e.id === entryId);
+      if (!entry) return;
+
+      entry.llm = {
+        model: CFG.model,
+        elapsedMs: llmElapsedMs,
+        score: llmScore,
+        text: llmReply,
+        isShadow: true
+      };
+
+      if (entry.jev && typeof llmScore === 'number' && typeof entry.jev.overall === 'number') {
+        const scoreDiff = Number(Math.abs(entry.jev.overall - llmScore).toFixed(1));
+        const jevTier = entry.jev.overall >= 7 ? 'Good' : (entry.jev.overall >= 5 ? 'Borderline' : 'Needs Work');
+        const llmTier = llmScore >= 7.0 ? 'Good' : (llmScore >= 4.0 ? 'Borderline' : 'Needs Work');
+
+        let diverged = false;
+        let divergenceReason = '';
+        if (scoreDiff >= 2.0) {
+          diverged = true;
+          divergenceReason = `[Shadow LLM] Score gap of ${scoreDiff} pts (Jev: ${entry.jev.overall}/10 vs LLM: ${llmScore}/10)`;
+        } else if (jevTier !== llmTier && ((jevTier === 'Good' && llmScore <= 4.0) || (jevTier === 'Needs Work' && llmScore >= 7.0))) {
+          diverged = true;
+          divergenceReason = `[Shadow LLM] Tier mismatch: Jev rated "${jevTier}" (${entry.jev.overall}/10) while LLM scored ${llmScore}/10 ("${llmTier}")`;
+        }
+
+        entry.divergence = {
+          diverged,
+          scoreDiff,
+          reason: divergenceReason,
+          higher: entry.jev.overall > llmScore ? 'jev' : (llmScore > entry.jev.overall ? 'llm' : 'equal'),
+        };
+      }
+
+      saveDiagnosticsLog(list);
+      updateDiagFooterLink();
+      const diagView = document.getElementById('jpdb-ai-diag-view');
+      if (diagView && diagView.style.display === 'flex') {
+        renderDiagList();
+      }
+    } catch (err) {
+      console.warn('[JPDB AI] Failed to update diagnostic with shadow LLM:', err);
     }
   }
 
@@ -3036,8 +3197,8 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
       const jevMetrics = jevRes?.metrics || null;
       let jevCardHtml = jevRes?.cardHtml || '';
 
-      // Step 2: Fast-pass! If Jev confirms 10/10 (flawless), skip the LLM call entirely!
-      if (jevMetrics && jevMetrics.overall === 10) {
+      // Step 2: Strict consensus 10/10 fast-pass!
+      if (jevMetrics && jevMetrics.overall === 10 && jevMetrics.isStrict10Consensus) {
         const flawlessReply = '**Score: 10/10 (Flawless)**\n\nYour translation accurately conveys the sentence meaning, tone, and grammatical intent with no errors.';
         setMsgMarkdown(thinking, flawlessReply, jevCardHtml);
         const logEntry = { role: 'assistant', text: flawlessReply, jevHtml: jevCardHtml, isErr: false };
@@ -3045,19 +3206,31 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         history.push({ role: 'user', content: userPrompt });
         history.push({ role: 'assistant', content: flawlessReply });
         saveSession();
-        recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, flawlessReply, 10, 0);
+        const entry = recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, flawlessReply, 10, 0);
+
+        // 20% shadow LLM evaluation in background to track true false-flawless rate without user latency penalty
+        if (entry && Math.random() < 0.20) {
+          (async () => {
+            try {
+              const t0_shadow = Date.now();
+              const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: userPrompt }];
+              const shadowReply = await callLLM(msgs);
+              const shadowScore = extractLlmScore(shadowReply);
+              updateDiagnosticWithShadowLlm(entry.id, shadowReply, shadowScore, Date.now() - t0_shadow);
+            } catch (err) {
+              console.warn('[JPDB AI] Shadow LLM execution error:', err);
+            }
+          })();
+        }
         return;
       }
 
       // Step 2b: Safe fast-pass expansion:
-      // 1. High-confidence English typo detection with sound Japanese comprehension
-      // 2. High-confidence decision-level structural error detection with dynamic critique
-      // 3. Fallback high global confidence (minConf >= 0.80 or avgConf >= 0.88)
+      // Must have dynamic critique AND triggeringConfidence >= 0.75 (NOT diluted average confidence)
       const isTypoFastPath = jevMetrics && jevMetrics.isTypo && (jevMetrics.typoConfidence >= 0.80);
-      const isStructuralDecisionFastPath = jevMetrics && jevMetrics.isDecisionConfident && (jevMetrics.bracketConfidence >= 0.65) && jevMetrics.dynamicCritique;
-      const isGlobalConfidentFastPath = jevMetrics && jevMetrics.dynamicCritique && (jevMetrics.minConfidence >= 0.80 || jevMetrics.avgConfidence >= 0.88);
+      const isConfidentCritiqueFastPath = jevMetrics && jevMetrics.dynamicCritique && (jevMetrics.triggeringConfidence >= 0.75) && (jevMetrics.bracketConfidence >= 0.65);
 
-      if (isTypoFastPath || isStructuralDecisionFastPath || isGlobalConfidentFastPath) {
+      if (isTypoFastPath || isConfidentCritiqueFastPath) {
         const scoreBracket = jevMetrics.bracketLabel || `${jevMetrics.overall}/10`;
         const fastReply = `**Score: ${jevMetrics.overall}/10 (${scoreBracket})**\n\n${jevMetrics.dynamicCritique}` +
           (info.sentenceEN ? `\n\n**Reference Translation:**\n"${info.sentenceEN}"` : '');
@@ -3067,7 +3240,22 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         history.push({ role: 'user', content: userPrompt });
         history.push({ role: 'assistant', content: fastReply });
         saveSession();
-        recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, fastReply, jevMetrics.overall, 0);
+        const entry = recordDiagnosticEntry(info, userDraft, jevMetrics, jevElapsed, fastReply, jevMetrics.overall, 0);
+
+        // 20% shadow LLM evaluation in background
+        if (entry && Math.random() < 0.20) {
+          (async () => {
+            try {
+              const t0_shadow = Date.now();
+              const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: userPrompt }];
+              const shadowReply = await callLLM(msgs);
+              const shadowScore = extractLlmScore(shadowReply);
+              updateDiagnosticWithShadowLlm(entry.id, shadowReply, shadowScore, Date.now() - t0_shadow);
+            } catch (err) {
+              console.warn('[JPDB AI] Shadow LLM execution error:', err);
+            }
+          })();
+        }
         return;
       }
 

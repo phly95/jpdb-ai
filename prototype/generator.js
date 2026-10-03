@@ -164,11 +164,39 @@ function generateVocabExplanation(answers, cardInfo) {
     }
   }
 
+  let cleanSense = chosenSense;
+  if (cleanSense.includes(' — ')) {
+    cleanSense = cleanSense.split(' — ')[0].trim();
+  }
+  cleanSense = cleanSense.replace(/^\d+[\.\)]\s*/, '').trim();
+  const semiParts = cleanSense.split(';');
+  if (semiParts.length > 1) {
+    cleanSense = semiParts.slice(0, 2).join(';').trim();
+  }
+
   const role = grammatical_role?.choice;
-  const attach = attachment_and_particles?.choice;
+  const roleConfidence = grammatical_role?.confidence ?? 0;
+  const targetWord = (connected_target_word?.choice && connected_target_word.choice !== 'none_or_independent') ? connected_target_word.choice : null;
+
+  // Reject fast-path if role is unclear, other, or below docs-compliant threshold (>= 0.65)
+  if (!role || role === 'other_or_unclear' || roleConfidence < 0.65) {
+    return {
+      markdown: '',
+      role: null,
+      chosenSense: cleanSense,
+      targetWord
+    };
+  }
+
   const inflect = inflection_form?.choice;
   const tip = pedagogical_tip_type?.choice;
-  const targetWord = (connected_target_word?.choice && connected_target_word.choice !== 'none_or_independent') ? connected_target_word.choice : null;
+
+  const isHighConf = roleConfidence >= 0.85;
+  const hedgeVerb = isHighConf ? 'functioning as' : 'likely functioning as';
+  const hedgeServes = isHighConf ? 'serving as' : 'likely serving as';
+  const hedgeIndicating = isHighConf ? 'indicating' : 'likely indicating';
+  const hedgeSpecifying = isHighConf ? 'specifying' : 'likely specifying';
+  const hedgeIs = isHighConf ? 'is' : 'appears to be';
 
   const inflectionLabels = {
     plain_present_dictionary: 'plain non-past dictionary form',
@@ -190,62 +218,49 @@ function generateVocabExplanation(answers, cardInfo) {
   let roleExplanation = '';
 
   if (role === 'direct_object') {
-    if (targetWord) {
-      roleExplanation = `functioning as the direct object (marked by **を**) in the clause with **${targetWord}**`;
-    } else {
-      roleExplanation = `functioning as the direct object receiving the action of the verb, marked by **を**`;
-    }
+    roleExplanation = targetWord
+      ? `${hedgeVerb} the direct object (marked by **を**) in the clause with **${targetWord}**`
+      : `${hedgeVerb} the direct object receiving the action of the verb, marked by **を**`;
   } else if (role === 'grammatical_subject') {
-    if (targetWord) {
-      roleExplanation = `functioning as the grammatical subject (marked by **が**) associated with **${targetWord}**`;
-    } else {
-      roleExplanation = `functioning as the grammatical subject performing or undergoing the action, marked by the identifier particle **が**`;
-    }
+    roleExplanation = targetWord
+      ? `${hedgeVerb} the grammatical subject (marked by **が**) associated with **${targetWord}**`
+      : `${hedgeVerb} the grammatical subject performing or undergoing the action, marked by the identifier particle **が**`;
   } else if (role === 'topic_marker') {
-    roleExplanation = `functioning as the conversational topic and contextual anchor of the sentence, framed by the topic particle **は**`;
+    roleExplanation = `${hedgeVerb} the conversational topic and contextual anchor of the sentence, framed by the topic particle **は**`;
   } else if (role === 'indirect_object_or_destination') {
-    if (targetWord) {
-      roleExplanation = `indicating the destination, target, or recipient for **${targetWord}**, marked by **に** / **へ**`;
-    } else {
-      roleExplanation = `indicating the target, recipient, or direction of the action, marked by **に** / **へ**`;
-    }
+    roleExplanation = targetWord
+      ? `${hedgeIndicating} the destination, target, or recipient for **${targetWord}**, marked by **に** / **へ**`
+      : `${hedgeIndicating} the target, recipient, or direction of the action, marked by **に** / **へ**`;
   } else if (role === 'location_or_means') {
-    if (targetWord) {
-      roleExplanation = `specifying the location, means, or instrument where **${targetWord}** takes place, marked by **で**`;
-    } else {
-      roleExplanation = `specifying the location of the action or the means used, marked by **で**`;
-    }
+    roleExplanation = targetWord
+      ? `${hedgeSpecifying} the location, means, or instrument where **${targetWord}** takes place, marked by **で**`
+      : `${hedgeSpecifying} the location of the action or the means used, marked by **で**`;
   } else if (role === 'demonstrative_determiner') {
     const cleanNoun = targetWord ? targetWord.replace(/[はがをにでとのへ]+$/, '') : '';
     roleExplanation = cleanNoun
-      ? `functioning as a demonstrative determiner (連体詞) directly modifying the noun **${cleanNoun}**`
-      : `functioning as a demonstrative determiner (連体詞) specifying the following noun`;
+      ? `${hedgeVerb} a demonstrative determiner (連体詞) directly modifying the noun **${cleanNoun}**`
+      : `${hedgeVerb} a demonstrative determiner (連体詞) specifying the following noun`;
   } else if (role === 'noun_modifying_relative_clause') {
     const cleanNoun = targetWord ? targetWord.replace(/[はがをにでとのへ]+$/, '') : '';
     if (cleanNoun) {
-      roleExplanation = `functioning as an attributive modifier directly describing the noun **${cleanNoun}**`;
+      roleExplanation = `${hedgeVerb} an attributive modifier directly describing the noun **${cleanNoun}**`;
     } else {
-      roleExplanation = `functioning as an attributive / relative clause directly modifying the following noun`;
+      roleExplanation = `${hedgeVerb} an attributive / relative clause directly modifying the following noun`;
     }
   } else if (role === 'adverbial_modifier') {
-    if (targetWord) {
-      roleExplanation = `functioning as an adverbial modifier modifying the predicate **${targetWord}**`;
-    } else {
-      roleExplanation = `functioning as an adverbial modifier describing manner, degree, or time`;
-    }
+    roleExplanation = targetWord
+      ? `${hedgeVerb} an adverbial modifier modifying the predicate **${targetWord}**`
+      : `${hedgeVerb} an adverbial modifier describing manner, degree, or time`;
   } else if (role === 'connective_te_form') {
-    if (targetWord) {
-      roleExplanation = `is in the connective 〜て form, chaining this action into **${targetWord}**`;
-    } else {
-      roleExplanation = `is in the connective 〜て form, linking sequential actions or attaching to an auxiliary verb`;
-    }
+    roleExplanation = targetWord
+      ? `${hedgeIs} in the connective 〜て form, chaining this action into **${targetWord}**`
+      : `${hedgeIs} in the connective 〜て form, linking sequential actions or attaching to an auxiliary verb`;
   } else if (role === 'subordinate_clause_verb') {
-    roleExplanation = `functioning as the verb within an embedded, conditional, or subordinate clause`;
+    roleExplanation = `${hedgeVerb} the verb within an embedded, conditional, or subordinate clause`;
   } else if (role === 'particle_or_sentence_ender') {
-    roleExplanation = `functions as a conversational particle or sentence-ending expression providing pragmatic nuance`;
+    roleExplanation = `${isHighConf ? 'functions as' : 'likely functions as'} a conversational particle or sentence-ending expression providing pragmatic nuance`;
   } else {
-    // main_predicate_verb
-    roleExplanation = `serving as the main predicate verb of the sentence${inflectionText}`;
+    roleExplanation = `${hedgeServes} the main predicate verb of the sentence${inflectionText}`;
   }
 
   const tipsMap = {
@@ -266,12 +281,15 @@ function generateVocabExplanation(answers, cardInfo) {
 
   const lines = [
     `### Role of **${cleanTarget}** in this Sentence\n`,
-    `In this sentence, **${cleanTarget}** means **"${chosenSense}"**, ${roleExplanation}.\n`,
+    `In this sentence, **${cleanTarget}** means **"${cleanSense}"**, ${roleExplanation}.\n`,
     `💡 **Key Nuance:** ${tipsMap[tip] || tipsMap.standard_usage}`
   ];
 
   return {
-    markdown: lines.join('\n')
+    markdown: lines.join('\n'),
+    role: role,
+    chosenSense: cleanSense,
+    targetWord
   };
 }
 
