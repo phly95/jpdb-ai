@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      2.0.5
+// @version      2.0.6
 // @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with instant visual assessment and interactive chat.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -20,9 +20,9 @@
   if (location.pathname.startsWith('/learn')) return;
 
   // ---------- Config Defaults ----------
-  const DEFAULT_API_BASE = 'http://100.117.72.11:20128/v1';
-  const DEFAULT_MODEL = 'ag/gemini-3.8-flash-low';
-  const DEFAULT_API_KEY = 'sk-32c602f2a3bf0a64-sc09zk-98456489';
+  const DEFAULT_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+  const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+  const DEFAULT_API_KEY = '';
 
   // Keep reasoning cheap/fast: "low" thinking level
   const REASONING_EFFORT = 'low';
@@ -32,9 +32,27 @@
   let updateDiagUI = () => {};
 
   const CFG = {
-    get base() { try { return (GM_getValue('jpdb_ai_base', DEFAULT_API_BASE) || DEFAULT_API_BASE).trim().replace(/\/+$/, ''); } catch { return DEFAULT_API_BASE; } },
-    get model() { try { return (GM_getValue('jpdb_ai_model', DEFAULT_MODEL) || DEFAULT_MODEL).trim(); } catch { return DEFAULT_MODEL; } },
-    get key() { try { return (GM_getValue('jpdb_ai_key', DEFAULT_API_KEY) || DEFAULT_API_KEY).trim(); } catch { return DEFAULT_API_KEY; } },
+    get base() {
+      try {
+        const val = GM_getValue('jpdb_ai_base', DEFAULT_API_BASE);
+        if (!val || val === 'http://100.117.72.11:20128/v1') return DEFAULT_API_BASE;
+        return val.trim().replace(/\/+$/, '');
+      } catch { return DEFAULT_API_BASE; }
+    },
+    get model() {
+      try {
+        const val = GM_getValue('jpdb_ai_model', DEFAULT_MODEL);
+        if (!val || val === 'ag/gemini-3.8-flash-low') return DEFAULT_MODEL;
+        return val.trim();
+      } catch { return DEFAULT_MODEL; }
+    },
+    get key() {
+      try {
+        const val = GM_getValue('jpdb_ai_key', DEFAULT_API_KEY);
+        if (!val || val === 'sk-32c602f2a3bf0a64-sc09zk-98456489') return DEFAULT_API_KEY;
+        return val.trim();
+      } catch { return DEFAULT_API_KEY; }
+    },
     get invertEnter() { try { return !!GM_getValue('jpdb_ai_invert_enter', false); } catch { return false; } },
 
     set base(v) { GM_setValue('jpdb_ai_base', (v || '').trim().replace(/\/+$/, '')); },
@@ -351,6 +369,10 @@
     const isGoogleNative = (base.includes('generativelanguage.googleapis.com') && !base.includes('/openai')) || base.includes(':generateContent');
 
     if (isGoogleNative) {
+      if (!key) {
+        throw new Error('Google Gemini API key is missing. Please enter your API key in Settings (⚙️).');
+      }
+
       let url = base;
       if (!url.includes(':generateContent')) {
         url = url.replace(/\/+$/, '') + '/models/' + encodeURIComponent(model.replace(/^models\//, '')) + ':generateContent';
@@ -403,6 +425,9 @@
           throw new Error('Gemini API (' + res.status + '): ' + String(res.responseText || '').slice(0, 200));
         }
       } catch (err) {
+        if (base.includes('generativelanguage.googleapis.com')) {
+          throw err;
+        }
         console.warn('[JPDB AI] Google native API call failed, falling back to OpenAI format:', err);
       }
     }
@@ -1953,16 +1978,16 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
             <div class="jpdb-ai-settings-group-title">Gemini Model Configuration</div>
             <label class="jpdb-ai-settings-label">
               API Base URL
-              <input type="text" id="jpdb-ai-cfg-llm-base" class="jpdb-ai-settings-input" placeholder="http://100.117.72.11:20128/v1" />
+              <input type="text" id="jpdb-ai-cfg-llm-base" class="jpdb-ai-settings-input" placeholder="https://generativelanguage.googleapis.com/v1beta" />
             </label>
             <label class="jpdb-ai-settings-label">
               Model Name
-              <input type="text" id="jpdb-ai-cfg-llm-model" class="jpdb-ai-settings-input" placeholder="ag/gemini-3.8-flash-low or gemini-3.5-flash-lite" />
+              <input type="text" id="jpdb-ai-cfg-llm-model" class="jpdb-ai-settings-input" placeholder="gemini-3.5-flash-lite" />
             </label>
             <label class="jpdb-ai-settings-label">
               API Key
               <div style="display:flex;gap:4px;">
-                <input type="password" id="jpdb-ai-cfg-llm-key" class="jpdb-ai-settings-input" placeholder="sk-..." />
+                <input type="password" id="jpdb-ai-cfg-llm-key" class="jpdb-ai-settings-input" placeholder="AIzaSy..." />
                 <button type="button" class="jpdb-ai-settings-btn-toggle" data-target="jpdb-ai-cfg-llm-key" title="Show/Hide API key">👁️</button>
               </div>
             </label>
