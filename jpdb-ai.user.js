@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      2.0.2
+// @version      2.0.3
 // @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with instant visual assessment and interactive chat.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -478,12 +478,10 @@ Target Vocab: ${info.cleanVocab || info.vocab || '(unknown)'}
 Reference Translation: ${info.sentenceEN || '(none)'}
 Student Translation: "${userDraft || info.sentenceEN || ''}"
 
-Evaluate strictly and accurately:
-- 10/10 (Flawless): Flawless translation conveying all words, nuances, and grammatical intent with no errors.
-- 8-9/10 (Minor Nuance): Mostly accurate with slight phrasing or nuance variations.
-- 5-7/10 (Moderate Error): Noticeable error, misconstrued grammar clause, or missing modifier.
-- 3-4/10 (Major Error): Inverted subject/object, wrong tense reversing meaning, or misread core word.
-- 0-2/10 (Fatal Error): Completely unrelated or reversed meaning.
+In the "thought" field, perform this step-by-step alignment before generating the card:
+1. Diff student vs reference English: Which specific word/phrase was changed or missing? (e.g. if student wrote "I throw what I said", "what I said" is identical and correct; only "know" was replaced with "throw").
+2. Trace to Japanese: Which specific Japanese chunk corresponds to the changed word? (e.g. "know" corresponds to "わかってるよ", while "what I said" corresponds to "何を言ったか").
+3. Determine errors: Only mark the specific Japanese chunk corresponding to the discrepancy as "err". Any Japanese chunk whose English meaning was accurately conveyed (like "何を言ったか" -> "what I said") MUST be marked "ok"!
 
 Translation Discrepancy & Issue Detection Rules:
 - Compare the student's translation strictly against the reference translation and the Japanese sentence.
@@ -499,6 +497,7 @@ Sentence Segmentation Rules:
 
 Respond ONLY with a valid JSON object matching this schema:
 {
+  "thought": "1-2 sentence alignment diffing student vs reference English and mapping diff to Japanese chunk",
   "card": {
     "score": number (0 to 10),
     "bracket": "Flawless" | "Minor Nuance" | "Moderate Error" | "Major Error" | "Fatal Error",
@@ -525,8 +524,12 @@ Target Vocabulary: ${cleanTarget}
 Dictionary Meanings: ${meaningsList || '(none)'}
 Reference Translation: ${info.sentenceEN || '(none)'}
 
+In the "thought" field:
+1. Identify the tested word's specific grammatical role (e.g. direct object, subject, topic).
+2. Identify what exact word/predicate it directly connects to or modifies.
+
 Sentence Segmentation Rules:
-- Divide the Japanese sentence into a few natural, multi-word grammatical chunks / bunsetsu.
+- Divide the Japanese sentence into a few natural, multi-word grammatical chunks / bunsetsu (e.g. "自分が", "何を", "言ったか", "わかってるよ").
 - Keep verb forms and conjugations intact as whole words (e.g. keep "何を" or "何", and "言った" or "言ったか" intact; never split single kanji like "言" + "った").
 - Mark the target vocabulary chunk with status "target".
 - Mark the specific complete predicate/word it directly modifies, attaches to, or governs with status "connected".
@@ -534,6 +537,7 @@ Sentence Segmentation Rules:
 
 Respond ONLY with a valid JSON object matching this schema:
 {
+  "thought": "1 sentence identifying role and connection",
   "card": {
     "role": "Concise grammatical role (e.g. Direct Object, Subject, Topic, Conditional Predicate, Time Adverbial, Quoted Speech)",
     "applied_sense": "The specific English sense that applies here (e.g. what)",
