@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      2.0.1
+// @version      2.0.2
 // @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with instant visual assessment and interactive chat.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -354,6 +354,9 @@
       if (!url.includes(':generateContent')) {
         url = url.replace(/\/+$/, '') + '/models/' + encodeURIComponent(model.replace(/^models\//, '')) + ':generateContent';
       }
+      if (key && !url.includes('key=')) {
+        url += (url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(key);
+      }
       const gHeaders = { 'Content-Type': 'application/json' };
       if (key) {
         gHeaders['x-goog-api-key'] = key;
@@ -590,10 +593,61 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
 
     const firstBrace = text.indexOf('{');
     const lastBrace = text.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-      try {
-        return JSON.parse(text.substring(firstBrace, lastBrace + 1));
-      } catch {}
+    let jsonCandidate = (firstBrace !== -1 && lastBrace > firstBrace)
+      ? text.substring(firstBrace, lastBrace + 1)
+      : (firstBrace !== -1 ? text.substring(firstBrace) : text);
+
+    try {
+      return JSON.parse(jsonCandidate);
+    } catch {}
+
+    // Resilient field-level extraction if overall JSON.parse fails (e.g. unescaped quotes in markdown)
+    let card = null;
+    let markdown = '';
+
+    const cardIdx = jsonCandidate.indexOf('"card"');
+    if (cardIdx !== -1) {
+      const start = jsonCandidate.indexOf('{', cardIdx);
+      if (start !== -1) {
+        let depth = 0;
+        let inStr = false;
+        let esc = false;
+        let end = -1;
+        for (let i = start; i < jsonCandidate.length; i++) {
+          const c = jsonCandidate[i];
+          if (esc) { esc = false; continue; }
+          if (c === '\\') { esc = true; continue; }
+          if (c === '"') { inStr = !inStr; continue; }
+          if (!inStr) {
+            if (c === '{') depth++;
+            else if (c === '}') {
+              depth--;
+              if (depth === 0) { end = i; break; }
+            }
+          }
+        }
+        if (end !== -1) {
+          try {
+            card = JSON.parse(jsonCandidate.substring(start, end + 1));
+          } catch {}
+        }
+      }
+    }
+
+    const mdMatch = jsonCandidate.match(/"markdown"\s*:\s*"([\s\S]*)/);
+    if (mdMatch) {
+      let md = mdMatch[1];
+      const lastQ = md.lastIndexOf('"');
+      if (lastQ !== -1) md = md.substring(0, lastQ);
+      markdown = md
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\\t/g, '\t')
+        .replace(/\\\\/g, '\\');
+    }
+
+    if (card) {
+      return { card, markdown };
     }
 
     return null;
@@ -1271,13 +1325,33 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
       const parsed = parseJsonResponse(rawResponse);
 
       let cardHtml = '';
-      let replyMarkdown = rawResponse;
+      let replyMarkdown = '';
 
       if (parsed && (parsed.card || parsed.markdown)) {
         if (parsed.card) {
           cardHtml = renderRatingCard(parsed.card, CFG.model);
         }
-        replyMarkdown = parsed.markdown || '';
+        if (parsed.markdown && typeof parsed.markdown === 'string' && !parsed.markdown.trim().startsWith('{')) {
+          replyMarkdown = parsed.markdown.trim();
+        } else if (parsed.card) {
+          const card = parsed.card;
+          const score = typeof card.score === 'number' ? card.score : 10;
+          const bracket = card.bracket || (score >= 9.5 ? 'Flawless' : 'Evaluation');
+          const lines = [`**Score: ${score}/10 (${bracket})**`];
+          if (card.summary) lines.push('', card.summary);
+          if (Array.isArray(card.mistakes) && card.mistakes.length) {
+            lines.push('', '### Issues:');
+            for (const m of card.mistakes) {
+              lines.push(`* **${m.word || ''}**: ${m.description || ''}`);
+            }
+          }
+          if (info.sentenceEN) {
+            lines.push('', `**Reference Translation:**\n${info.sentenceEN}`);
+          }
+          replyMarkdown = lines.join('\n');
+        }
+      } else {
+        replyMarkdown = rawResponse;
       }
 
       setMsgMarkdown(thinking, replyMarkdown, cardHtml);
@@ -1316,7 +1390,7 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
       const rawResponse = await callLLM(msgs, { json: isExplain });
 
       let cardHtml = '';
-      let replyMarkdown = rawResponse;
+      let replyMarkdown = '';
 
       if (isExplain) {
         const parsed = parseJsonResponse(rawResponse);
@@ -1324,8 +1398,20 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
           if (parsed.card) {
             cardHtml = renderVocabCard(parsed.card, CFG.model);
           }
-          replyMarkdown = parsed.markdown || '';
+          if (parsed.markdown && typeof parsed.markdown === 'string' && !parsed.markdown.trim().startsWith('{')) {
+            replyMarkdown = parsed.markdown.trim();
+          } else if (parsed.card) {
+            const card = parsed.card;
+            const lines = [`### Role of ${info.cleanVocab || info.vocab} in this Sentence`];
+            if (card.role) lines.push(`In this sentence, **${info.cleanVocab || info.vocab}** functions as **${card.role}**${card.applied_sense ? ` meaning "${card.applied_sense}"` : ''}.`);
+            if (card.connected_with) lines.push(`It connects directly with **${card.connected_with}**.`);
+            replyMarkdown = lines.join('\n\n');
+          }
+        } else {
+          replyMarkdown = rawResponse;
         }
+      } else {
+        replyMarkdown = rawResponse;
       }
 
       setMsgMarkdown(thinking, replyMarkdown, cardHtml);
