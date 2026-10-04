@@ -1,31 +1,29 @@
-# JPDB AI Vocab Explainer
+# JPDB AI Vocab Explainer (Gemini Edition)
 
-A power-user Tampermonkey script for [jpdb.io](https://jpdb.io) reviews that integrates a two-stage evaluation system:
-1. **System 1 (Jev-1.13):** Sub-500ms deterministic decision model evaluating vocabulary sense, grammatical morphology, modality, benefactives, and question type.
-2. **System 2 (LLM):** In-depth pedagogical feedback, conversational clarification, and full sentence breakdowns.
+A power-user Tampermonkey userscript for [jpdb.io](https://jpdb.io) reviews powered by a single Gemini call (e.g. `gemini-3.5-flash-lite` or `ag/gemini-3.8-flash-low`).
+
+## Overview
+This streamlined version eliminates dual-model routing, complex hand-coded decision tree schemas, and fragile verification heuristics. A single Gemini call evaluates translations and vocabulary in JSON mode, producing rich visual cards with token segmentation chips, followed by clean conversational chat.
 
 ## Features
-- **In-Place Card Progression:** Seamlessly advances reviews (`#show-answer`) without page reloads, preserving browser autofocus on `#grade-p` (Pass) so <kbd>Space</kbd> or <kbd>Enter</kbd> advances cards naturally.
-- **Two-Stage Grading Battery:**
-  - Independent sentence-level structural validation (interrogative scope, benefactive direction, passive/active voice, tense/aspect).
-  - Fine-grained token segmentation via `Intl.Segmenter` with particle and auxiliary verb disambiguation.
-  - Strict 10/10 invariant: Flawless translations receive 10/10 with no artificial deductions.
-  - Separate categorization for **advisory notes** (amber) vs **scoring errors** (red).
-- **Persistent Review Session:** Retains LLM context, chat log, and user translation drafts across card flips and browser reloads.
-- **Diagnostics Buffer:** In-memory circular buffer recording latency, Jev diagnostics, and LLM score comparisons, exportable via Blob JSON.
-- **Responsive Mobile UX:** Floating action button (FAB) toggle, collapsed view, and full-screen mobile panel support.
+- **Single-Call Gemini Architecture:** Only 1 API call per action (Translation Rating or Vocab Explanation).
+- **Rich Visual Cards:**
+  - **⚡ Instant Assessment:** Color-coded score pill (`10/10 (Flawless)`, `Minor Nuance`, `Moderate Error`, `Major Error`), flawless confirmation banner, structured mistake explanations, and sentence token chips (`.ok`, `.err`, `.advisory`).
+  - **⚡ Instant Vocab Explainer:** Grammatical role pill (e.g., `Direct Object`), applied sense, connected predicate attachment, and color-coded token chips (`.target` in purple, `.connected` in amber).
+- **Clean Conversational History:** For follow-up questions, the LLM response outside of the pill is preserved as clean markdown in the chat context, ensuring high-quality multi-turn tutoring.
+- **In-Place Card Progression:** Seamlessly advances reviews (`#show-answer`) without page reloads, preserving ongoing LLM streaming, chat history, and browser autofocus on `#grade-p` (Pass).
+- **Persistent Review Session:** Retains chat history, input drafts, and active context across card flips and browser reloads via `sessionStorage`.
+- **Responsive UX:** Floating Action Button (FAB), desktop side panel, wide mode, and mobile bottom sheet.
 
-## Installation
-Install via Tampermonkey or compatible userscript manager from `jpdb-ai.user.js`.
-
-### Configuration
+## Default Configuration
 Accessible via the `settings` link on the chat panel footer:
-- **API Base:** OpenAI-compatible API base URL (e.g. `http://<host>:20128/v1`)
-- **Model:** Primary generative model (e.g. `ag/gemini-3.8-flash-low` or `claude-sonnet-4-6`)
+- **API Base:** `http://100.117.72.11:20128/v1`
+- **Model:** `ag/gemini-3.8-flash-low` (or `gemini-3.5-flash-lite`)
 - **API Key:** Bearer authorization credential
 
 ## Shortcuts
-- <kbd>Alt</kbd> + <kbd>A</kbd>: Explain tested vocabulary role in sentence
-- <kbd>Alt</kbd> + <kbd>S</kbd>: Structural sentence breakdown
-- <kbd>Alt</kbd> + <kbd>T</kbd> / <kbd>Insert</kbd>: Rate proposed translation
+- <kbd>Alt</kbd> + <kbd>A</kbd> or <kbd>A</kbd> (when not in input): Explain tested vocabulary role in sentence
+- <kbd>Alt</kbd> + <kbd>S</kbd> or <kbd>S</kbd> (when not in input): Structural sentence breakdown
+- <kbd>Alt</kbd> + <kbd>T</kbd> / <kbd>Insert</kbd> / <kbd>T</kbd>: Focus translation input / rate translation
+- <kbd>Enter</kbd> (default): Rate translation (configurable in settings to Send chat)
 - <kbd>Escape</kbd>: Close / minimize AI panel
