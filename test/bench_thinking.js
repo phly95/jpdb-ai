@@ -1,4 +1,25 @@
+const fs = require('fs');
+const path = require('path');
+
+// Auto-load .env if present
+try {
+  const envPath = path.resolve(__dirname, '../.env');
+  if (fs.existsSync(envPath)) {
+    for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+      const m = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+      if (m && !process.env[m[1]]) {
+        process.env[m[1]] = (m[2] || '').trim().replace(/^['"]|['"]$/g, '');
+      }
+    }
+  }
+} catch {}
+
 const KEY = process.env.GEMINI_API_KEY || '';
+if (!KEY) {
+  console.error('Error: GEMINI_API_KEY is not set. Please set it in .env or your environment.');
+  process.exit(1);
+}
+
 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${KEY}`;
 
 const prompt = `Evaluate student Japanese-to-English translation.

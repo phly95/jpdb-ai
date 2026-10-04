@@ -13,3 +13,7 @@ Thumbs.db
 node_modules/
 prototype/config.local.json
 .env
+.env.*
+!.env.example
+*.secret
+*.key
