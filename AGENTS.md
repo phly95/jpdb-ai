@@ -27,4 +27,4 @@ tampermonkey_sync.sync_and_commit(
 ## Browser Debugging Environment
 - Browser (Thorium / Chromium) runs with remote debugging enabled on port `9223`.
 - Active JPDB review tab is at `https://jpdb.io/review`.
-- Primary AI backend router is at `http://100.117.72.11:20128/v1` (with `/v1/systemone` running `oc/jev-1.13-free`).
+- Primary AI backend is Google Gemini Native (`https://generativelanguage.googleapis.com/v1beta`) with `gemini-3.5-flash-lite`.

@@ -8,8 +8,8 @@ This streamlined version eliminates dual-model routing, complex hand-coded decis
 ## Features
 - **Single-Call Gemini Architecture:** Only 1 API call per action (Translation Rating or Vocab Explanation).
 - **Rich Visual Cards:**
-  - **⚡ Instant Assessment:** Color-coded score pill (`10/10 (Flawless)`, `Minor Nuance`, `Moderate Error`, `Major Error`), flawless confirmation banner, structured mistake explanations, and sentence token chips (`.ok`, `.err`, `.advisory`).
-  - **⚡ Instant Vocab Explainer:** Grammatical role pill (e.g., `Direct Object`), applied sense, connected predicate attachment, and color-coded token chips (`.target` in purple, `.connected` in amber).
+  - **Translation Assessment:** Color-coded score pill (`10/10 (Flawless)`, `Minor Nuance`, `Moderate Error`, `Major Error`), flawless confirmation banner, structured mistake explanations, and sentence token chips (`.ok`, `.err`, `.advisory`).
+  - **Vocab Explainer:** Grammatical role pill (e.g., `Direct Object`), applied sense, connected predicate attachment, and color-coded token chips (`.target` in purple, `.connected` in amber).
 - **Clean Conversational History:** For follow-up questions, the LLM response outside of the pill is preserved as clean markdown in the chat context, ensuring high-quality multi-turn tutoring.
 - **In-Place Card Progression:** Seamlessly advances reviews (`#show-answer`) without page reloads, preserving ongoing LLM streaming, chat history, and browser autofocus on `#grade-p` (Pass).
 - **Persistent Review Session:** Retains chat history, input drafts, and active context across card flips and browser reloads via `sessionStorage`.
@@ -17,9 +17,9 @@ This streamlined version eliminates dual-model routing, complex hand-coded decis
 
 ## Default Configuration
 Accessible via the `settings` link on the chat panel footer:
-- **API Base:** `http://100.117.72.11:20128/v1`
-- **Model:** `ag/gemini-3.8-flash-low` (or `gemini-3.5-flash-lite`)
-- **API Key:** Bearer authorization credential
+- **API Base:** `https://generativelanguage.googleapis.com/v1beta`
+- **Model:** `gemini-3.5-flash-lite`
+- **API Key:** Google AI Studio Gemini API Key (saved in browser `GM_setValue`)
 
 ## Shortcuts
 - <kbd>Alt</kbd> + <kbd>A</kbd> or <kbd>A</kbd> (when not in input): Explain tested vocabulary role in sentence

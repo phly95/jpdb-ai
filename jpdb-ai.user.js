@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      2.0.6
+// @version      2.0.7
 // @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with instant visual assessment and interactive chat.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -31,28 +31,27 @@
   let updateShortcutsUI = () => {};
   let updateDiagUI = () => {};
 
+  // Clean migration sentinel: ensures transition to native Google endpoint
+  try {
+    const cfgVer = GM_getValue('jpdb_ai_cfg_ver', 0);
+    if (cfgVer < 2) {
+      const existingBase = GM_getValue('jpdb_ai_base', '');
+      const existingKey = GM_getValue('jpdb_ai_key', '');
+      if (!existingBase || !existingBase.includes('googleapis.com')) {
+        GM_setValue('jpdb_ai_base', DEFAULT_API_BASE);
+        GM_setValue('jpdb_ai_model', DEFAULT_MODEL);
+        if (typeof existingKey === 'string' && existingKey.startsWith('sk-')) {
+          GM_setValue('jpdb_ai_key', DEFAULT_API_KEY);
+        }
+      }
+      GM_setValue('jpdb_ai_cfg_ver', 2);
+    }
+  } catch {}
+
   const CFG = {
-    get base() {
-      try {
-        const val = GM_getValue('jpdb_ai_base', DEFAULT_API_BASE);
-        if (!val || val === 'http://100.117.72.11:20128/v1') return DEFAULT_API_BASE;
-        return val.trim().replace(/\/+$/, '');
-      } catch { return DEFAULT_API_BASE; }
-    },
-    get model() {
-      try {
-        const val = GM_getValue('jpdb_ai_model', DEFAULT_MODEL);
-        if (!val || val === 'ag/gemini-3.8-flash-low') return DEFAULT_MODEL;
-        return val.trim();
-      } catch { return DEFAULT_MODEL; }
-    },
-    get key() {
-      try {
-        const val = GM_getValue('jpdb_ai_key', DEFAULT_API_KEY);
-        if (!val || val === 'sk-32c602f2a3bf0a64-sc09zk-98456489') return DEFAULT_API_KEY;
-        return val.trim();
-      } catch { return DEFAULT_API_KEY; }
-    },
+    get base() { try { return (GM_getValue('jpdb_ai_base', DEFAULT_API_BASE) || DEFAULT_API_BASE).trim().replace(/\/+$/, ''); } catch { return DEFAULT_API_BASE; } },
+    get model() { try { return (GM_getValue('jpdb_ai_model', DEFAULT_MODEL) || DEFAULT_MODEL).trim(); } catch { return DEFAULT_MODEL; } },
+    get key() { try { return (GM_getValue('jpdb_ai_key', DEFAULT_API_KEY) || DEFAULT_API_KEY).trim(); } catch { return DEFAULT_API_KEY; } },
     get invertEnter() { try { return !!GM_getValue('jpdb_ai_invert_enter', false); } catch { return false; } },
 
     set base(v) { GM_setValue('jpdb_ai_base', (v || '').trim().replace(/\/+$/, '')); },
@@ -377,9 +376,6 @@
       if (!url.includes(':generateContent')) {
         url = url.replace(/\/+$/, '') + '/models/' + encodeURIComponent(model.replace(/^models\//, '')) + ':generateContent';
       }
-      if (key && !url.includes('key=')) {
-        url += (url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(key);
-      }
       const gHeaders = { 'Content-Type': 'application/json' };
       if (key) {
         gHeaders['x-goog-api-key'] = key;
@@ -502,11 +498,15 @@
 
   function buildRateTranslationPrompt(info, userDraft) {
     const cleanJp = info.cleanSentenceJP || info.sentenceJP;
-    return `Evaluate student Japanese-to-English translation.
+    const cleanTarget = info.cleanVocab || info.vocab || '(unknown)';
+    const referenceEn = info.sentenceEN || '(none)';
+
+    if (userDraft) {
+      return `Evaluate student Japanese-to-English translation.
 Japanese Sentence: ${cleanJp}
-Target Vocab: ${info.cleanVocab || info.vocab || '(unknown)'}
-Reference Translation: ${info.sentenceEN || '(none)'}
-Student Translation: "${userDraft || info.sentenceEN || ''}"
+Target Vocab: ${cleanTarget}
+Reference Translation: ${referenceEn}
+Student Translation: "${userDraft}"
 
 In the "thought" field, perform this strict step-by-step diff before generating the card:
 1. English word-by-word diff:
@@ -545,6 +545,43 @@ Respond ONLY with a valid JSON object matching this schema:
     ]
   },
   "markdown": "Detailed critique leading with **Score: X/10 (Bracket)**, then clear breakdown of any issues, then the correct reference translation."
+}
+Tokens MUST cover the entire Japanese sentence in order without missing characters.`;
+    }
+
+    // Empty draft case: Evaluate the card's official translation against the Japanese sentence
+    return `Evaluate the card's English translation against the Japanese sentence (no student draft was submitted).
+Japanese Sentence: ${cleanJp}
+Target Vocab: ${cleanTarget}
+Card Reference Translation: ${referenceEn}
+
+In the "thought" field:
+1. Fidelity & nuance assessment:
+   - Check how faithfully and naturally the card's English translation represents the Japanese sentence.
+   - Identify any nuances, omitted particles/pronouns, conversational tone, or compromises made in the translation.
+2. Card scoring:
+   - Score the card's English translation out of 10 based on semantic fidelity and naturalness.
+   - If accurate, award 9.8-10/10. If there are minor compromises or dropped nuances, note them in advisories.
+
+Sentence Segmentation Rules:
+- Divide the Japanese sentence into a few natural, multi-word grammatical chunks (bunsetsu / clause chunks).
+- Keep verb forms and conjugations intact as whole chunks.
+- Mark chunks that have notable nuances or compromises as "advisory", and accurate chunks as "ok".
+
+Respond ONLY with a valid JSON object matching this schema:
+{
+  "thought": "Analysis of card translation fidelity, grammatical nuances, and naturalness",
+  "card": {
+    "score": number (0 to 10),
+    "bracket": "Flawless" | "Minor Nuance" | "Moderate Error" | "Major Error" | "Fatal Error",
+    "summary": "1 concise sentence summarizing the quality and fidelity of the card's translation",
+    "mistakes": [{"word": "Japanese phrase", "description": "Specific inaccuracy if any"}],
+    "advisories": [{"word": "Japanese phrase", "description": "Specific nuance note or translation compromise"}],
+    "tokens": [
+      {"text": "Natural phrase segment", "status": "ok" | "err" | "advisory"}
+    ]
+  },
+  "markdown": "Detailed review of the card's translation, including literal breakdown, grammatical nuances, and any alternative phrasing."
 }
 Tokens MUST cover the entire Japanese sentence in order without missing characters.`;
   }
@@ -693,12 +730,13 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
     return null;
   }
 
-  function renderRatingCard(card, modelName) {
+  function renderRatingCard(card, modelName, isCardReview = false) {
     if (!card) return '';
     const score = typeof card.score === 'number' ? Math.round(card.score * 10) / 10 : 10;
     const scoreClass = score >= 9.5 ? 'high' : (score >= 7 ? 'med' : 'low');
     const bracket = card.bracket || (score >= 9.5 ? 'Flawless' : (score >= 8 ? 'Minor Nuance' : (score >= 5 ? 'Moderate Error' : (score >= 3 ? 'Major Error' : 'Fatal Error'))));
     const tag = (modelName || CFG.model || '').split('/').pop() || 'gemini';
+    const cardTitle = isCardReview ? 'Card Translation Assessment' : 'Translation Assessment';
 
     const isFlawless = score >= 9.5;
     const isMinor = score >= 7 && score < 9.5;
@@ -707,44 +745,44 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
     const tokens = Array.isArray(card.tokens) ? card.tokens : [];
 
     return `
-      <details class="jpdb-ai-jev-card" open>
-        <summary class="jpdb-ai-jev-head" title="Click to collapse/expand assessment">
-          <span class="jpdb-ai-jev-title">⚡ Instant Assessment <span class="jpdb-ai-jev-tag">${escapeHtml(tag)}</span></span>
-          <span class="jpdb-ai-jev-score ${scoreClass}">${score}/10 (${escapeHtml(bracket)})</span>
+      <details class="jpdb-ai-card" open>
+        <summary class="jpdb-ai-card-head" title="Click to collapse/expand assessment">
+          <span class="jpdb-ai-card-title">${escapeHtml(cardTitle)} <span class="jpdb-ai-card-tag">${escapeHtml(tag)}</span></span>
+          <span class="jpdb-ai-card-score ${scoreClass}">${score}/10 (${escapeHtml(bracket)})</span>
         </summary>
-        <div class="jpdb-ai-jev-body">
+        <div class="jpdb-ai-card-body">
           ${isFlawless ? `
-            <div class="jpdb-ai-jev-flawless">
-              <span class="jpdb-ai-jev-check">✓</span> ${escapeHtml(card.summary || 'Flawless translation — all words & nuances accurately conveyed!')}
+            <div class="jpdb-ai-card-flawless">
+              <span class="jpdb-ai-card-check">✓</span> ${escapeHtml(card.summary || 'Flawless translation — all words & nuances accurately conveyed!')}
             </div>
           ` : `
             ${card.summary ? `
-              <div class="jpdb-ai-jev-summary ${isMinor ? 'minor' : ''}">
-                <span class="jpdb-ai-jev-summary-icon">⚠️</span>
+              <div class="jpdb-ai-card-summary ${isMinor ? 'minor' : ''}">
+                <span class="jpdb-ai-card-summary-icon">⚠️</span>
                 <div>${escapeHtml(card.summary)}</div>
               </div>
             ` : ''}
             ${mistakes.length > 0 ? `
-              <div class="jpdb-ai-jev-mistakes">
-                <div class="jpdb-ai-jev-mistakes-title">Detected Issues:</div>
-                <ul class="jpdb-ai-jev-mistakes-list">
+              <div class="jpdb-ai-card-mistakes">
+                <div class="jpdb-ai-card-mistakes-title">Detected Issues:</div>
+                <ul class="jpdb-ai-card-mistakes-list">
                   ${mistakes.map((m) => `
                     <li>
-                      <span class="jpdb-ai-jev-word">${escapeHtml(m.word || m.segment || '')}</span>: 
-                      <span class="jpdb-ai-jev-desc">${escapeHtml(m.description || '')}</span>
+                      <span class="jpdb-ai-card-word">${escapeHtml(m.word || m.segment || '')}</span>: 
+                      <span class="jpdb-ai-card-desc">${escapeHtml(m.description || '')}</span>
                     </li>
                   `).join('')}
                 </ul>
               </div>
             ` : ''}
             ${advisories.length > 0 ? `
-              <div class="jpdb-ai-jev-advisories" style="${mistakes.length > 0 ? 'margin-top:6px;' : ''}">
-                <div class="jpdb-ai-jev-advisories-title">Nuance Notes:</div>
-                <ul class="jpdb-ai-jev-advisories-list">
+              <div class="jpdb-ai-card-advisories" style="${mistakes.length > 0 ? 'margin-top:6px;' : ''}">
+                <div class="jpdb-ai-card-advisories-title">Nuance Notes:</div>
+                <ul class="jpdb-ai-card-advisories-list">
                   ${advisories.map((a) => `
                     <li>
-                      <span class="jpdb-ai-jev-word advisory">${escapeHtml(a.word || a.segment || '')}</span>: 
-                      <span class="jpdb-ai-jev-desc">${escapeHtml(a.description || '')}</span>
+                      <span class="jpdb-ai-card-word advisory">${escapeHtml(a.word || a.segment || '')}</span>: 
+                      <span class="jpdb-ai-card-desc">${escapeHtml(a.description || '')}</span>
                     </li>
                   `).join('')}
                 </ul>
@@ -753,11 +791,11 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
           `}
 
           ${tokens.length > 0 ? `
-            <div class="jpdb-ai-jev-tokens">
+            <div class="jpdb-ai-card-tokens">
               ${tokens.map((t) => {
                 const status = (t.status || 'ok').toLowerCase();
                 const cls = status === 'err' || status === 'mistake' ? 'err' : (status === 'advisory' || status === 'warn' ? 'advisory' : 'ok');
-                return `<span class="jpdb-ai-jev-token ${cls}">${escapeHtml(t.text)}</span>`;
+                return `<span class="jpdb-ai-card-token ${cls}">${escapeHtml(t.text)}</span>`;
               }).join(' ')}
             </div>
           ` : ''}
@@ -773,12 +811,12 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
     const tokens = Array.isArray(card.tokens) ? card.tokens : [];
 
     return `
-      <details class="jpdb-ai-jev-card" open>
-        <summary class="jpdb-ai-jev-head" title="Click to collapse/expand breakdown">
-          <span class="jpdb-ai-jev-title">⚡ Instant Vocab Explainer <span class="jpdb-ai-jev-tag">${escapeHtml(tag)}</span></span>
-          <span class="jpdb-ai-jev-score ok" style="background:#2b2250;color:#c4b5fd;border:1px solid #6366f1;text-transform:capitalize;">${escapeHtml(roleLabel)}</span>
+      <details class="jpdb-ai-card" open>
+        <summary class="jpdb-ai-card-head" title="Click to collapse/expand breakdown">
+          <span class="jpdb-ai-card-title">Vocab Explainer <span class="jpdb-ai-card-tag">${escapeHtml(tag)}</span></span>
+          <span class="jpdb-ai-card-score ok" style="background:#2b2250;color:#c4b5fd;border:1px solid #6366f1;text-transform:capitalize;">${escapeHtml(roleLabel)}</span>
         </summary>
-        <div class="jpdb-ai-jev-body">
+        <div class="jpdb-ai-card-body">
           ${card.applied_sense ? `
             <div style="font-size:12px;margin-bottom:4px;">
               <strong>Applied Sense:</strong> "${escapeHtml(card.applied_sense)}"
@@ -790,11 +828,11 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
             </div>
           ` : ''}
           ${tokens.length > 0 ? `
-            <div class="jpdb-ai-jev-tokens">
+            <div class="jpdb-ai-card-tokens">
               ${tokens.map((t) => {
                 const status = (t.status || 'ok').toLowerCase();
                 const cls = status === 'target' ? 'target' : (status === 'connected' || status === 'advisory' ? 'advisory' : 'ok');
-                return `<span class="jpdb-ai-jev-token ${cls}">${escapeHtml(t.text)}</span>`;
+                return `<span class="jpdb-ai-card-token ${cls}">${escapeHtml(t.text)}</span>`;
               }).join(' ')}
             </div>
           ` : ''}
@@ -1042,7 +1080,7 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
       const modelTag = (item.model || '').split('/').pop() || item.model || '';
 
       const scoreHtml = (item.parsed && typeof item.parsed.card?.score === 'number')
-        ? `<span class="jpdb-ai-jev-score ${item.parsed.card.score >= 9.5 ? 'high' : (item.parsed.card.score >= 7 ? 'med' : 'low')}" style="padding:1px 7px;font-size:10.5px">${item.parsed.card.score}/10 (${escapeHtml(item.parsed.card.bracket || '')})</span>`
+        ? `<span class="jpdb-ai-card-score ${item.parsed.card.score >= 9.5 ? 'high' : (item.parsed.card.score >= 7 ? 'med' : 'low')}" style="padding:1px 7px;font-size:10.5px">${item.parsed.card.score}/10 (${escapeHtml(item.parsed.card.bracket || '')})</span>`
         : '';
 
       const thoughtHtml = item.thought
@@ -1177,55 +1215,55 @@ html.dark-mode #jpdb-ai-rate{background:#0f766e;color:#ccfbf1}
 #jpdb-ai-foot a:hover{text-decoration:underline}
 .jpdb-ai-foot-links{display:flex;gap:6px;align-items:center}
 
-.jpdb-ai-jev-card{margin-bottom:12px;padding:10px 14px;background:rgba(37,99,235,.07);border:1px solid rgba(37,99,235,.2);border-radius:10px;font-size:12.5px;line-height:1.4;width:100%;box-sizing:border-box}
-html.dark-mode .jpdb-ai-jev-card{background:rgba(37,99,235,.15);border-color:rgba(147,197,253,.25)}
-.jpdb-ai-jev-head{display:flex;align-items:center;justify-content:space-between;font-weight:700;list-style:none;outline:none;user-select:none;cursor:pointer}
-.jpdb-ai-jev-head::-webkit-details-marker,
-.jpdb-ai-jev-head::marker{display:none;content:""}
-.jpdb-ai-jev-title{display:flex;align-items:center;gap:6px;color:#1d4ed8;font-size:13px}
-html.dark-mode .jpdb-ai-jev-title{color:#93c5fd}
-.jpdb-ai-jev-tag{opacity:.6;font-size:10px;font-weight:normal;background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px}
-html.dark-mode .jpdb-ai-jev-tag{background:rgba(255,255,255,.1)}
-.jpdb-ai-jev-score{font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;color:#fff;letter-spacing:.02em}
-.jpdb-ai-jev-score.high{background:#16a34a}
-.jpdb-ai-jev-score.med{background:#d97706}
-.jpdb-ai-jev-score.low{background:#dc2626}
-.jpdb-ai-jev-body{margin-top:8px;padding-top:8px;border-top:1px solid rgba(37,99,235,.15)}
-html.dark-mode .jpdb-ai-jev-body{border-color:rgba(147,197,253,.2)}
-.jpdb-ai-jev-flawless{font-size:12px;font-weight:600;color:#15803d;display:flex;align-items:center;gap:6px;margin:2px 0 6px}
-html.dark-mode .jpdb-ai-jev-flawless{color:#86efac}
-.jpdb-ai-jev-summary{font-size:12px;font-weight:600;line-height:1.45;padding:6px 10px;border-radius:6px;background:rgba(239,68,68,.08);color:#991b1b;border:1px solid rgba(239,68,68,.2);margin-bottom:8px;display:flex;align-items:flex-start;gap:6px}
-html.dark-mode .jpdb-ai-jev-summary{background:rgba(239,68,68,.18);color:#fca5a5;border-color:rgba(239,68,68,.3)}
-.jpdb-ai-jev-summary.minor{background:rgba(217,119,6,.08);color:#92400e;border-color:rgba(217,119,6,.2)}
-html.dark-mode .jpdb-ai-jev-summary.minor{background:rgba(217,119,6,.18);color:#fcd34d;border-color:rgba(217,119,6,.3)}
-.jpdb-ai-jev-summary-icon{font-size:13px;line-height:1.2;flex-shrink:0}
-.jpdb-ai-jev-check{font-size:13px;font-weight:800}
-.jpdb-ai-jev-advisories{font-size:12px}
-.jpdb-ai-jev-advisories-title{font-size:11px;font-weight:700;color:#d97706;margin-bottom:4px;text-transform:uppercase;letter-spacing:.03em}
-html.dark-mode .jpdb-ai-jev-advisories-title{color:#fbbf24}
-.jpdb-ai-jev-advisories-list{margin:0;padding-left:18px;list-style-type:disc}
-.jpdb-ai-jev-advisories-list li{margin:3px 0;font-size:12px;line-height:1.4}
-.jpdb-ai-jev-word.advisory{font-weight:700;color:#b45309;background:rgba(217,119,6,.12);padding:1px 6px;border-radius:4px}
-html.dark-mode .jpdb-ai-jev-word.advisory{color:#fde68a;background:rgba(217,119,6,.25)}
-.jpdb-ai-jev-mistakes{font-size:12px}
-.jpdb-ai-jev-mistakes-title{font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px;text-transform:uppercase;letter-spacing:.03em}
-html.dark-mode .jpdb-ai-jev-mistakes-title{color:#93c5fd}
-.jpdb-ai-jev-mistakes-list{margin:0;padding-left:18px;list-style-type:disc}
-.jpdb-ai-jev-mistakes-list li{margin:3px 0;font-size:12px;line-height:1.4}
-.jpdb-ai-jev-word{font-weight:700;color:#b91c1c;background:rgba(239,68,68,.12);padding:1px 6px;border-radius:4px}
-html.dark-mode .jpdb-ai-jev-word{color:#fca5a5;background:rgba(239,68,68,.25)}
-.jpdb-ai-jev-desc{color:#374151}
-html.dark-mode .jpdb-ai-jev-desc{color:#d1d5db}
-.jpdb-ai-jev-tokens{margin-top:8px;padding-top:6px;border-top:1px dashed rgba(37,99,235,.2);display:flex;flex-wrap:wrap;gap:4px}
-html.dark-mode .jpdb-ai-jev-tokens{border-color:rgba(147,197,253,.2)}
-.jpdb-ai-jev-token{font-size:10.5px;padding:1px 6px;border-radius:4px;font-family:inherit}
-.jpdb-ai-jev-token.ok{background:rgba(22,163,74,.1);color:#15803d}
-html.dark-mode .jpdb-ai-jev-token.ok{background:rgba(22,163,74,.2);color:#86efac}
-.jpdb-ai-jev-token.err{background:rgba(239,68,68,.12);color:#b91c1c;font-weight:700}
-.jpdb-ai-jev-token.advisory{background:rgba(217,119,6,.12);color:#b45309;font-weight:600}
-html.dark-mode .jpdb-ai-jev-token.advisory{background:rgba(217,119,6,.25);color:#fde68a}
-.jpdb-ai-jev-token.target{background:rgba(99,102,241,.18);color:#4338ca;font-weight:700;border:1px solid rgba(99,102,241,.35)}
-html.dark-mode .jpdb-ai-jev-token.target{background:rgba(129,140,248,.25);color:#c7d2fe;border-color:rgba(129,140,248,.45)}
+.jpdb-ai-card{margin-bottom:12px;padding:10px 14px;background:rgba(37,99,235,.07);border:1px solid rgba(37,99,235,.2);border-radius:10px;font-size:12.5px;line-height:1.4;width:100%;box-sizing:border-box}
+html.dark-mode .jpdb-ai-card{background:rgba(37,99,235,.15);border-color:rgba(147,197,253,.25)}
+.jpdb-ai-card-head{display:flex;align-items:center;justify-content:space-between;font-weight:700;list-style:none;outline:none;user-select:none;cursor:pointer}
+.jpdb-ai-card-head::-webkit-details-marker,
+.jpdb-ai-card-head::marker{display:none;content:""}
+.jpdb-ai-card-title{display:flex;align-items:center;gap:6px;color:#1d4ed8;font-size:13px}
+html.dark-mode .jpdb-ai-card-title{color:#93c5fd}
+.jpdb-ai-card-tag{opacity:.6;font-size:10px;font-weight:normal;background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px}
+html.dark-mode .jpdb-ai-card-tag{background:rgba(255,255,255,.1)}
+.jpdb-ai-card-score{font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;color:#fff;letter-spacing:.02em}
+.jpdb-ai-card-score.high{background:#16a34a}
+.jpdb-ai-card-score.med{background:#d97706}
+.jpdb-ai-card-score.low{background:#dc2626}
+.jpdb-ai-card-body{margin-top:8px;padding-top:8px;border-top:1px solid rgba(37,99,235,.15)}
+html.dark-mode .jpdb-ai-card-body{border-color:rgba(147,197,253,.2)}
+.jpdb-ai-card-flawless{font-size:12px;font-weight:600;color:#15803d;display:flex;align-items:center;gap:6px;margin:2px 0 6px}
+html.dark-mode .jpdb-ai-card-flawless{color:#86efac}
+.jpdb-ai-card-summary{font-size:12px;font-weight:600;line-height:1.45;padding:6px 10px;border-radius:6px;background:rgba(239,68,68,.08);color:#991b1b;border:1px solid rgba(239,68,68,.2);margin-bottom:8px;display:flex;align-items:flex-start;gap:6px}
+html.dark-mode .jpdb-ai-card-summary{background:rgba(239,68,68,.18);color:#fca5a5;border-color:rgba(239,68,68,.3)}
+.jpdb-ai-card-summary.minor{background:rgba(217,119,6,.08);color:#92400e;border-color:rgba(217,119,6,.2)}
+html.dark-mode .jpdb-ai-card-summary.minor{background:rgba(217,119,6,.18);color:#fcd34d;border-color:rgba(217,119,6,.3)}
+.jpdb-ai-card-summary-icon{font-size:13px;line-height:1.2;flex-shrink:0}
+.jpdb-ai-card-check{font-size:13px;font-weight:800}
+.jpdb-ai-card-advisories{font-size:12px}
+.jpdb-ai-card-advisories-title{font-size:11px;font-weight:700;color:#d97706;margin-bottom:4px;text-transform:uppercase;letter-spacing:.03em}
+html.dark-mode .jpdb-ai-card-advisories-title{color:#fbbf24}
+.jpdb-ai-card-advisories-list{margin:0;padding-left:18px;list-style-type:disc}
+.jpdb-ai-card-advisories-list li{margin:3px 0;font-size:12px;line-height:1.4}
+.jpdb-ai-card-word.advisory{font-weight:700;color:#b45309;background:rgba(217,119,6,.12);padding:1px 6px;border-radius:4px}
+html.dark-mode .jpdb-ai-card-word.advisory{color:#fde68a;background:rgba(217,119,6,.25)}
+.jpdb-ai-card-mistakes{font-size:12px}
+.jpdb-ai-card-mistakes-title{font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px;text-transform:uppercase;letter-spacing:.03em}
+html.dark-mode .jpdb-ai-card-mistakes-title{color:#93c5fd}
+.jpdb-ai-card-mistakes-list{margin:0;padding-left:18px;list-style-type:disc}
+.jpdb-ai-card-mistakes-list li{margin:3px 0;font-size:12px;line-height:1.4}
+.jpdb-ai-card-word{font-weight:700;color:#b91c1c;background:rgba(239,68,68,.12);padding:1px 6px;border-radius:4px}
+html.dark-mode .jpdb-ai-card-word{color:#fca5a5;background:rgba(239,68,68,.25)}
+.jpdb-ai-card-desc{color:#374151}
+html.dark-mode .jpdb-ai-card-desc{color:#d1d5db}
+.jpdb-ai-card-tokens{margin-top:8px;padding-top:6px;border-top:1px dashed rgba(37,99,235,.2);display:flex;flex-wrap:wrap;gap:4px}
+html.dark-mode .jpdb-ai-card-tokens{border-color:rgba(147,197,253,.2)}
+.jpdb-ai-card-token{font-size:10.5px;padding:1px 6px;border-radius:4px;font-family:inherit}
+.jpdb-ai-card-token.ok{background:rgba(22,163,74,.1);color:#15803d}
+html.dark-mode .jpdb-ai-card-token.ok{background:rgba(22,163,74,.2);color:#86efac}
+.jpdb-ai-card-token.err{background:rgba(239,68,68,.12);color:#b91c1c;font-weight:700}
+.jpdb-ai-card-token.advisory{background:rgba(217,119,6,.12);color:#b45309;font-weight:600}
+html.dark-mode .jpdb-ai-card-token.advisory{background:rgba(217,119,6,.25);color:#fde68a}
+.jpdb-ai-card-token.target{background:rgba(99,102,241,.18);color:#4338ca;font-weight:700;border:1px solid rgba(99,102,241,.35)}
+html.dark-mode .jpdb-ai-card-token.target{background:rgba(129,140,248,.25);color:#c7d2fe;border-color:rgba(129,140,248,.45)}
 
 .jpdb-ai-msg.md{white-space:normal}
 .jpdb-ai-msg.md p{margin:.35em 0}
@@ -1286,7 +1324,7 @@ html.dark-mode .jpdb-ai-msg.md a{color:#93c5fd}
   #jpdb-ai-foot{padding:3px 10px 6px!important;font-size:10px;gap:6px}
   #jpdb-ai-model{max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block}
   .jpdb-ai-foot-links{flex-shrink:0;gap:4px}
-  .jpdb-ai-jev-card{padding:8px 10px;font-size:12px}
+  .jpdb-ai-card{padding:8px 10px;font-size:12px}
 }
 
 #jpdb-ai-settings-view{display:none;flex:1;flex-direction:column;min-height:0;overflow-y:auto;background:inherit;padding:10px 14px;gap:10px}
@@ -1610,11 +1648,11 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
       draftInput = '';
       saveSession();
     }
-    const info = refreshCtx();
+    const isCardReview = !userDraft;
     const userPrompt = buildRateTranslationPrompt(info, userDraft);
-    const userLabel = userDraft ? `Rate my translation: "${userDraft}"` : `Rate translation for this sentence`;
+    const userLabel = userDraft ? `Rate my translation: "${userDraft}"` : `Review card's translation`;
     addMsg('user', userLabel);
-    const thinking = addMsg('assistant', 'Evaluating translation…', false, true);
+    const thinking = addMsg('assistant', userDraft ? 'Evaluating translation…' : 'Reviewing card translation…', false, true);
     busy = true;
     setBusy(true);
 
@@ -1655,7 +1693,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
 
       if (parsed && (parsed.card || parsed.markdown)) {
         if (parsed.card) {
-          cardHtml = renderRatingCard(parsed.card, CFG.model);
+          cardHtml = renderRatingCard(parsed.card, CFG.model, isCardReview);
         }
         if (parsed.markdown && typeof parsed.markdown === 'string' && !parsed.markdown.trim().startsWith('{')) {
           replyMarkdown = parsed.markdown.trim();
