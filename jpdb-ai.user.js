@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      2.0.0
+// @version      2.0.1
 // @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with instant visual assessment and interactive chat.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -208,7 +208,7 @@
       document.querySelector('.sentence:not(.blur)') ||
       document.querySelector('.sentence') ||
       document.querySelector('[class*="sentence"]');
-    let sentenceJP = sentEl ? sentEl.textContent.trim() : '';
+    let sentenceJP = sentEl ? getCleanDomText(sentEl) : '';
 
     const transEl =
       document.querySelector('.card-sentence .translation') ||
@@ -482,21 +482,29 @@ Evaluate strictly and accurately:
 - 3-4/10 (Major Error): Inverted subject/object, wrong tense reversing meaning, or misread core word.
 - 0-2/10 (Fatal Error): Completely unrelated or reversed meaning.
 
-Segment the Japanese sentence (NOT the English translation) into natural Japanese words/bunsetsu phrases in sequential order.
-For each segment of the Japanese sentence, set status:
-- "err" if it corresponds to a student translation mistake.
-- "advisory" if there is a minor nuance note.
-- "ok" if translated correctly.
+Translation Discrepancy & Issue Detection Rules:
+- Compare the student's translation strictly against the reference translation and the Japanese sentence.
+- Pinpoint the EXACT discrepancy. Be flexible and specific.
+- Avoid cascading, repetitive, or phantom issue bullets. If only one word, predicate, or grammatical role was mistranslated, output ONLY ONE issue specifically explaining that exact error. Do not flag other innocent parts of the sentence.
+- If there are no errors (10/10), "mistakes" and "advisories" MUST be empty arrays.
+
+Sentence Segmentation Rules:
+- Divide the Japanese sentence into a few natural, multi-word grammatical chunks (bunsetsu/clause chunks, e.g. "自分が", "何を言ったか", "わかってるよ").
+- NEVER split into individual characters or isolated kana (keep verb stems and conjugations intact as whole chunks).
+- Mark only the specific chunk that was mistranslated or omitted as "err" (or "advisory" for a minor nuance). Correct chunks must be "ok".
+- This should yield a clean presentation of coherent segments (e.g. green segment, red segment, green segment).
 
 Respond ONLY with a valid JSON object matching this schema:
 {
   "card": {
     "score": number (0 to 10),
     "bracket": "Flawless" | "Minor Nuance" | "Moderate Error" | "Major Error" | "Fatal Error",
-    "summary": "1 concise sentence summarizing the assessment",
-    "mistakes": [{"word": "Japanese segment", "description": "precise explanation of mistake"}],
-    "advisories": [{"word": "Japanese segment", "description": "precise nuance note"}],
-    "tokens": [{"text": "Japanese segment", "status": "ok" | "err" | "advisory"}]
+    "summary": "1 concise sentence specifically describing the assessment",
+    "mistakes": [{"word": "Japanese phrase", "description": "Specific explanation of the error"}],
+    "advisories": [{"word": "Japanese phrase", "description": "Specific nuance note"}],
+    "tokens": [
+      {"text": "Natural phrase segment", "status": "ok" | "err" | "advisory"}
+    ]
   },
   "markdown": "Detailed critique leading with **Score: X/10 (Bracket)**, then clear breakdown of any issues, then the correct reference translation."
 }
@@ -514,10 +522,12 @@ Target Vocabulary: ${cleanTarget}
 Dictionary Meanings: ${meaningsList || '(none)'}
 Reference Translation: ${info.sentenceEN || '(none)'}
 
-Segment the Japanese sentence into natural sequential phrases/words.
-Mark the target vocabulary segment with status "target".
-Mark the specific predicate or word it directly modifies, attaches to, or governs with status "connected".
-Mark all other segments with status "ok".
+Sentence Segmentation Rules:
+- Divide the Japanese sentence into a few natural, multi-word grammatical chunks / bunsetsu.
+- Keep verb forms and conjugations intact as whole words (e.g. keep "何を" or "何", and "言った" or "言ったか" intact; never split single kanji like "言" + "った").
+- Mark the target vocabulary chunk with status "target".
+- Mark the specific complete predicate/word it directly modifies, attaches to, or governs with status "connected".
+- Mark all other chunks with status "ok".
 
 Respond ONLY with a valid JSON object matching this schema:
 {
@@ -526,7 +536,7 @@ Respond ONLY with a valid JSON object matching this schema:
     "applied_sense": "The specific English sense that applies here (e.g. what)",
     "connected_with": "The Japanese word/predicate it attaches to or modifies (or null)",
     "tokens": [
-      {"text": "Japanese segment", "status": "ok" | "target" | "connected"}
+      {"text": "Natural phrase segment", "status": "ok" | "target" | "connected"}
     ]
   },
   "markdown": "### Role of ${cleanTarget} in this Sentence\\nIn this sentence, **${cleanTarget}** means \\\"...\\\", functioning as ...\\n\\n💡 **Key Nuance:** Concise practical note on how the attached particle or conjugation connects this word to the predicate."
