@@ -933,9 +933,15 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
   }
 
   try {
-    window.__jpdbAiExportDiagnostics = downloadDiagnosticsJson;
-    window.__jpdbAiGetDiagnostics = getDiagnostics;
-    window.__jpdbAiClearDiagnostics = clearDiagnostics;
+    const win = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
+    win.__jpdbAiExportDiagnostics = downloadDiagnosticsJson;
+    win.__jpdbAiGetDiagnostics = getDiagnostics;
+    win.__jpdbAiClearDiagnostics = clearDiagnostics;
+    if (typeof window !== 'undefined' && window !== win) {
+      window.__jpdbAiExportDiagnostics = downloadDiagnosticsJson;
+      window.__jpdbAiGetDiagnostics = getDiagnostics;
+      window.__jpdbAiClearDiagnostics = clearDiagnostics;
+    }
   } catch {}
 
   // ---------- UI Styles ----------
