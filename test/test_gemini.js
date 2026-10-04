@@ -135,6 +135,44 @@ function renderVocabCard(card, modelName) {
 </details>`.trim();
 }
 
+function extractStreamingText(accumulatedText) {
+  if (!accumulatedText) return '';
+  const events = accumulatedText.split(/\r?\n\r?\n/);
+  let fullText = '';
+  for (const ev of events) {
+    const lines = ev.split(/\r?\n/);
+    for (const l of lines) {
+      const trimmed = l.trim();
+      if (trimmed.startsWith('data:')) {
+        const payload = trimmed.slice(5).trim();
+        if (payload === '[DONE]') continue;
+        try {
+          const obj = JSON.parse(payload);
+          const delta = obj.choices?.[0]?.delta?.content || '';
+          if (delta) fullText += delta;
+        } catch {}
+      }
+    }
+  }
+  return fullText;
+}
+
+function parseResponseText(responseText) {
+  const raw = String(responseText || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('{') || raw.startsWith('[')) {
+    try {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.choices) && data.choices[0]?.message?.content) {
+        return data.choices[0].message.content;
+      }
+    } catch {}
+  }
+  const streamed = extractStreamingText(raw);
+  if (streamed) return streamed.trim();
+  return raw;
+}
+
 async function callGemini(messages, isJson = false) {
   const payload = {
     model: MODEL,
@@ -157,8 +195,8 @@ async function callGemini(messages, isJson = false) {
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}: ${await res.text()}`);
   }
-  const data = await res.json();
-  return data.choices[0].message.content;
+  const textRaw = await res.text();
+  return parseResponseText(textRaw);
 }
 
 async function runTests() {
@@ -176,31 +214,45 @@ Target Vocab: 何
 Reference Translation: I know what I said.
 Student Translation: "I throw what I said."
 
+In the "thought" field, perform this strict step-by-step diff before generating the card:
+1. English word-by-word diff:
+   - Identify every English word/phrase in the student translation that accurately matches the meaning of the reference translation.
+   - Pinpoint the exact English word or concept that was changed, replaced, or missing.
+2. Japanese meaning mapping:
+   - Trace the accurately translated English words back to their Japanese source. Those Japanese words MUST NOT be blamed or marked as errors!
+   - Trace the single missing or replaced English concept back to the specific Japanese word/predicate that actually expresses it.
+3. Verification:
+   - Isolate the error exclusively to the Japanese word/predicate that expresses the missed concept.
+   - Do NOT assume the tested target vocab is the error if the student successfully translated that word in English.
+
 Translation Discrepancy & Issue Detection Rules:
 - Compare the student's translation strictly against the reference translation and the Japanese sentence.
 - Pinpoint the EXACT discrepancy. Be flexible and specific.
 - Avoid cascading, repetitive, or phantom issue bullets. If only one word, predicate, or grammatical role was mistranslated, output ONLY ONE issue specifically explaining that exact error. Do not flag other innocent parts of the sentence.
+- If there are no errors (10/10), "mistakes" and "advisories" MUST be empty arrays.
 
 Sentence Segmentation Rules:
-- Divide the Japanese sentence into a few natural, multi-word grammatical chunks (bunsetsu/clause chunks, e.g. "自分が", "何を言ったか", "わかってるよ").
+- Divide the Japanese sentence into a few natural, multi-word grammatical chunks (bunsetsu / clause chunks).
 - NEVER split into individual characters or isolated kana (keep verb stems and conjugations intact as whole chunks).
 - Mark only the specific chunk that was mistranslated or omitted as "err" (or "advisory" for a minor nuance). Correct chunks must be "ok".
 - This should yield a clean presentation of coherent segments (e.g. green segment, red segment, green segment).
 
-Respond ONLY with valid JSON:
+Respond ONLY with a valid JSON object matching this schema:
 {
+  "thought": "Step-by-step English diff, Japanese mapping, and error isolation",
   "card": {
-    "score": 4,
-    "bracket": "Major Error",
+    "score": number (0 to 10),
+    "bracket": "Flawless" | "Minor Nuance" | "Moderate Error" | "Major Error" | "Fatal Error",
     "summary": "1 concise sentence specifically describing the assessment",
     "mistakes": [{"word": "Japanese phrase", "description": "Specific explanation of the error"}],
-    "advisories": [],
+    "advisories": [{"word": "Japanese phrase", "description": "Specific nuance note"}],
     "tokens": [
       {"text": "Natural phrase segment", "status": "ok" | "err" | "advisory"}
     ]
   },
   "markdown": "Detailed critique leading with **Score: X/10 (Bracket)**, then clear breakdown of any issues, then the correct reference translation."
-}`
+}
+Tokens MUST cover the entire Japanese sentence in order without missing characters.`
     }
   ], true);
   const parsed1 = parseJsonResponse(raw1);

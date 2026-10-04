@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      2.0.3
+// @version      2.0.4
 // @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with instant visual assessment and interactive chat.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -29,6 +29,7 @@
 
   let updateFoot = () => {};
   let updateShortcutsUI = () => {};
+  let updateDiagUI = () => {};
 
   const CFG = {
     get base() { try { return (GM_getValue('jpdb_ai_base', DEFAULT_API_BASE) || DEFAULT_API_BASE).trim().replace(/\/+$/, ''); } catch { return DEFAULT_API_BASE; } },
@@ -478,10 +479,16 @@ Target Vocab: ${info.cleanVocab || info.vocab || '(unknown)'}
 Reference Translation: ${info.sentenceEN || '(none)'}
 Student Translation: "${userDraft || info.sentenceEN || ''}"
 
-In the "thought" field, perform this step-by-step alignment before generating the card:
-1. Diff student vs reference English: Which specific word/phrase was changed or missing? (e.g. if student wrote "I throw what I said", "what I said" is identical and correct; only "know" was replaced with "throw").
-2. Trace to Japanese: Which specific Japanese chunk corresponds to the changed word? (e.g. "know" corresponds to "わかってるよ", while "what I said" corresponds to "何を言ったか").
-3. Determine errors: Only mark the specific Japanese chunk corresponding to the discrepancy as "err". Any Japanese chunk whose English meaning was accurately conveyed (like "何を言ったか" -> "what I said") MUST be marked "ok"!
+In the "thought" field, perform this strict step-by-step diff before generating the card:
+1. English word-by-word diff:
+   - Identify every English word/phrase in the student translation that accurately matches the meaning of the reference translation.
+   - Pinpoint the exact English word or concept that was changed, replaced, or missing.
+2. Japanese meaning mapping:
+   - Trace the accurately translated English words back to their Japanese source. Those Japanese words MUST NOT be blamed or marked as errors!
+   - Trace the single missing or replaced English concept back to the specific Japanese word/predicate that actually expresses it.
+3. Verification:
+   - Isolate the error exclusively to the Japanese word/predicate that expresses the missed concept.
+   - Do NOT assume the tested target vocab is the error if the student successfully translated that word in English.
 
 Translation Discrepancy & Issue Detection Rules:
 - Compare the student's translation strictly against the reference translation and the Japanese sentence.
@@ -490,14 +497,14 @@ Translation Discrepancy & Issue Detection Rules:
 - If there are no errors (10/10), "mistakes" and "advisories" MUST be empty arrays.
 
 Sentence Segmentation Rules:
-- Divide the Japanese sentence into a few natural, multi-word grammatical chunks (bunsetsu/clause chunks, e.g. "自分が", "何を言ったか", "わかってるよ").
+- Divide the Japanese sentence into a few natural, multi-word grammatical chunks (bunsetsu / clause chunks).
 - NEVER split into individual characters or isolated kana (keep verb stems and conjugations intact as whole chunks).
 - Mark only the specific chunk that was mistranslated or omitted as "err" (or "advisory" for a minor nuance). Correct chunks must be "ok".
 - This should yield a clean presentation of coherent segments (e.g. green segment, red segment, green segment).
 
 Respond ONLY with a valid JSON object matching this schema:
 {
-  "thought": "1-2 sentence alignment diffing student vs reference English and mapping diff to Japanese chunk",
+  "thought": "Step-by-step English diff, Japanese mapping, and error isolation",
   "card": {
     "score": number (0 to 10),
     "bracket": "Flawless" | "Minor Nuance" | "Moderate Error" | "Major Error" | "Fatal Error",
@@ -529,8 +536,8 @@ In the "thought" field:
 2. Identify what exact word/predicate it directly connects to or modifies.
 
 Sentence Segmentation Rules:
-- Divide the Japanese sentence into a few natural, multi-word grammatical chunks / bunsetsu (e.g. "自分が", "何を", "言ったか", "わかってるよ").
-- Keep verb forms and conjugations intact as whole words (e.g. keep "何を" or "何", and "言った" or "言ったか" intact; never split single kanji like "言" + "った").
+- Divide the Japanese sentence into a few natural, multi-word grammatical chunks / bunsetsu.
+- Keep verb forms and conjugations intact as whole words (keep particles with their nouns and inflected auxiliary verbs intact; never split single kanji from its okurigana stem).
 - Mark the target vocabulary chunk with status "target".
 - Mark the specific complete predicate/word it directly modifies, attaches to, or governs with status "connected".
 - Mark all other chunks with status "ok".
@@ -862,6 +869,74 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
       setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 2500);
     }
   }
+
+  // ---------- Diagnostics & Raw LLM Logging ----------
+  const DIAG_STORAGE_KEY = 'jpdb_ai_diagnostics_log';
+  const MAX_DIAG_ENTRIES = 100;
+
+  function getDiagnostics() {
+    try {
+      const raw = GM_getValue(DIAG_STORAGE_KEY, '[]');
+      if (typeof raw === 'string') {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      }
+      return Array.isArray(raw) ? raw : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function recordDiagnostic(entry) {
+    try {
+      const list = getDiagnostics();
+      entry.id = 'diag-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+      entry.timestamp = new Date().toISOString();
+      list.unshift(entry);
+      if (list.length > MAX_DIAG_ENTRIES) list.length = MAX_DIAG_ENTRIES;
+      GM_setValue(DIAG_STORAGE_KEY, JSON.stringify(list));
+      if (typeof updateDiagUI === 'function') updateDiagUI();
+    } catch (err) {
+      console.warn('[JPDB AI] Failed to record diagnostic:', err);
+    }
+  }
+
+  function clearDiagnostics() {
+    try {
+      GM_setValue(DIAG_STORAGE_KEY, JSON.stringify([]));
+      if (typeof updateDiagUI === 'function') updateDiagUI();
+    } catch {}
+  }
+
+  function downloadDiagnosticsJson() {
+    const logs = getDiagnostics();
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      totalEntries: logs.length,
+      currentConfig: {
+        base: CFG.base,
+        model: CFG.model,
+      },
+      entries: logs,
+    };
+    const jsonStr = JSON.stringify(payload, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    a.download = `jpdb-ai-diagnostics-${ts}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  try {
+    window.__jpdbAiExportDiagnostics = downloadDiagnosticsJson;
+    window.__jpdbAiGetDiagnostics = getDiagnostics;
+    window.__jpdbAiClearDiagnostics = clearDiagnostics;
+  } catch {}
 
   // ---------- UI Styles ----------
   const STYLE = `
@@ -1320,13 +1395,37 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     busy = true;
     setBusy(true);
 
+    const startTime = Date.now();
+    let rawResponse = '';
+    const msgs = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt }
+    ];
+
     try {
-      const msgs = [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt }
-      ];
-      const rawResponse = await callLLM(msgs, { json: true });
+      rawResponse = await callLLM(msgs, { json: true });
+      const elapsedMs = Date.now() - startTime;
       const parsed = parseJsonResponse(rawResponse);
+
+      recordDiagnostic({
+        action: 'rate',
+        model: CFG.model,
+        endpoint: CFG.base,
+        cardInfo: {
+          vocab: info.vocab,
+          cleanVocab: info.cleanVocab,
+          sentenceJP: info.sentenceJP,
+          sentenceEN: info.sentenceEN,
+          meanings: info.meanings,
+        },
+        userDraft,
+        promptMessages: msgs,
+        rawResponse,
+        thought: parsed?.thought || null,
+        parsed,
+        elapsedMs,
+        error: null,
+      });
 
       let cardHtml = '';
       let replyMarkdown = '';
@@ -1364,6 +1463,26 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
       history.push({ role: 'assistant', content: replyMarkdown });
       saveSession();
     } catch (e) {
+      const elapsedMs = Date.now() - startTime;
+      recordDiagnostic({
+        action: 'rate',
+        model: CFG.model,
+        endpoint: CFG.base,
+        cardInfo: {
+          vocab: info.vocab,
+          cleanVocab: info.cleanVocab,
+          sentenceJP: info.sentenceJP,
+          sentenceEN: info.sentenceEN,
+        },
+        userDraft,
+        promptMessages: msgs,
+        rawResponse: rawResponse || null,
+        thought: null,
+        parsed: null,
+        elapsedMs,
+        error: e.message || String(e),
+      });
+
       msgLog.push({ role: 'assistant', text: 'Error: ' + (e.message || e), isErr: true });
       thinking.textContent = 'Error: ' + (e.message || e);
       thinking.classList.add('jpdb-ai-err');
@@ -1386,18 +1505,23 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     busy = true;
     setBusy(true);
 
+    const startTime = Date.now();
+    let rawResponse = '';
+    const msgs = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt }
+    ];
+
     try {
-      const msgs = [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt }
-      ];
-      const rawResponse = await callLLM(msgs, { json: isExplain });
+      rawResponse = await callLLM(msgs, { json: isExplain });
+      const elapsedMs = Date.now() - startTime;
 
       let cardHtml = '';
       let replyMarkdown = '';
+      let parsed = null;
 
       if (isExplain) {
-        const parsed = parseJsonResponse(rawResponse);
+        parsed = parseJsonResponse(rawResponse);
         if (parsed && (parsed.card || parsed.markdown)) {
           if (parsed.card) {
             cardHtml = renderVocabCard(parsed.card, CFG.model);
@@ -1418,12 +1542,50 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         replyMarkdown = rawResponse;
       }
 
+      recordDiagnostic({
+        action: kind,
+        model: CFG.model,
+        endpoint: CFG.base,
+        cardInfo: {
+          vocab: info.vocab,
+          cleanVocab: info.cleanVocab,
+          sentenceJP: info.sentenceJP,
+          sentenceEN: info.sentenceEN,
+          meanings: info.meanings,
+        },
+        promptMessages: msgs,
+        rawResponse,
+        thought: parsed?.thought || null,
+        parsed,
+        elapsedMs,
+        error: null,
+      });
+
       setMsgMarkdown(thinking, replyMarkdown, cardHtml);
       msgLog.push({ role: 'assistant', text: replyMarkdown, jevHtml: cardHtml, isErr: false });
       history.push({ role: 'user', content: userLabel });
       history.push({ role: 'assistant', content: replyMarkdown });
       saveSession();
     } catch (e) {
+      const elapsedMs = Date.now() - startTime;
+      recordDiagnostic({
+        action: kind,
+        model: CFG.model,
+        endpoint: CFG.base,
+        cardInfo: {
+          vocab: info.vocab,
+          cleanVocab: info.cleanVocab,
+          sentenceJP: info.sentenceJP,
+          sentenceEN: info.sentenceEN,
+        },
+        promptMessages: msgs,
+        rawResponse: rawResponse || null,
+        thought: null,
+        parsed: null,
+        elapsedMs,
+        error: e.message || String(e),
+      });
+
       msgLog.push({ role: 'assistant', text: 'Error: ' + (e.message || e), isErr: true });
       thinking.textContent = 'Error: ' + (e.message || e);
       thinking.classList.add('jpdb-ai-err');
@@ -1451,15 +1613,55 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     busy = true;
     setBusy(true);
 
+    const startTime = Date.now();
+    let rawResponse = '';
+    const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: prompt }];
+
     try {
-      const msgs = [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: prompt }];
-      const reply = await callLLM(msgs);
-      setMsgMarkdown(thinking, reply);
-      msgLog.push({ role: 'assistant', text: reply, isErr: false });
+      rawResponse = await callLLM(msgs);
+      const elapsedMs = Date.now() - startTime;
+
+      recordDiagnostic({
+        action: 'chat',
+        model: CFG.model,
+        endpoint: CFG.base,
+        cardInfo: {
+          vocab: info.vocab,
+          sentenceJP: info.sentenceJP,
+          sentenceEN: info.sentenceEN,
+        },
+        promptMessages: msgs,
+        rawResponse,
+        thought: null,
+        parsed: null,
+        elapsedMs,
+        error: null,
+      });
+
+      setMsgMarkdown(thinking, rawResponse);
+      msgLog.push({ role: 'assistant', text: rawResponse, isErr: false });
       history.push({ role: 'user', content: prompt });
-      history.push({ role: 'assistant', content: reply });
+      history.push({ role: 'assistant', content: rawResponse });
       saveSession();
     } catch (e) {
+      const elapsedMs = Date.now() - startTime;
+      recordDiagnostic({
+        action: 'chat',
+        model: CFG.model,
+        endpoint: CFG.base,
+        cardInfo: {
+          vocab: info.vocab,
+          sentenceJP: info.sentenceJP,
+          sentenceEN: info.sentenceEN,
+        },
+        promptMessages: msgs,
+        rawResponse: rawResponse || null,
+        thought: null,
+        parsed: null,
+        elapsedMs,
+        error: e.message || String(e),
+      });
+
       msgLog.push({ role: 'assistant', text: 'Error: ' + (e.message || e), isErr: true });
       thinking.textContent = 'Error: ' + (e.message || e);
       thinking.classList.add('jpdb-ai-err');
@@ -1576,6 +1778,18 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
             </label>
           </div>
 
+          <div class="jpdb-ai-settings-group">
+            <div class="jpdb-ai-settings-group-title">Diagnostics &amp; Raw LLM Responses</div>
+            <div style="font-size:11.5px;opacity:.85;margin-bottom:6px;">
+              Raw LLM responses, prompts, and alignment thoughts are logged locally.
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <button type="button" id="jpdb-ai-settings-download-diag" class="jpdb-ai-settings-btn-secondary" style="font-weight:600;">📥 Download Diag JSON</button>
+              <button type="button" id="jpdb-ai-settings-clear-diag" class="jpdb-ai-settings-btn-secondary">Clear</button>
+              <span id="jpdb-ai-settings-diag-count" style="font-size:11px;opacity:.7;">0 recorded</span>
+            </div>
+          </div>
+
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
             <div style="display:flex;gap:6px;">
               <button type="button" id="jpdb-ai-settings-import" class="jpdb-ai-settings-btn-secondary">Import</button>
@@ -1600,6 +1814,8 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         <span id="jpdb-ai-model">gemini</span>
         <div class="jpdb-ai-foot-links">
           <a href="#" id="jpdb-ai-invert-toggle" title="Toggle default Enter shortcut between Rate and Send">Enter: Rate</a>
+          <span>·</span>
+          <a href="#" id="jpdb-ai-diag" title="Download raw LLM diagnostic responses (JSON)">diag (0)</a>
           <span>·</span>
           <a href="#" id="jpdb-ai-cfg">settings</a>
         </div>
@@ -1794,6 +2010,46 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
       });
     }
 
+    const diagLink = panel.querySelector('#jpdb-ai-diag');
+    if (diagLink) {
+      diagLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        downloadDiagnosticsJson();
+      });
+    }
+
+    const downloadDiagBtn = panel.querySelector('#jpdb-ai-settings-download-diag');
+    if (downloadDiagBtn) {
+      downloadDiagBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        downloadDiagnosticsJson();
+      });
+    }
+
+    const clearDiagBtn = panel.querySelector('#jpdb-ai-settings-clear-diag');
+    if (clearDiagBtn) {
+      clearDiagBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (confirm('Clear all recorded diagnostic responses?')) {
+          clearDiagnostics();
+        }
+      });
+    }
+
+    updateDiagUI = function () {
+      const logs = getDiagnostics();
+      const count = logs.length;
+      const diagEl = document.getElementById('jpdb-ai-diag');
+      if (diagEl) {
+        diagEl.textContent = `diag (${count})`;
+        diagEl.title = `Download ${count} raw LLM diagnostic response${count === 1 ? '' : 's'} (JSON)`;
+      }
+      const countEl = document.getElementById('jpdb-ai-settings-diag-count');
+      if (countEl) {
+        countEl.textContent = `${count} recorded`;
+      }
+    };
+
     updateFoot = function () {
       const el = document.getElementById('jpdb-ai-model');
       if (el) {
@@ -1801,6 +2057,7 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         el.textContent = shortModel;
         el.title = `Model: ${CFG.model}\nEndpoint: ${CFG.base}`;
       }
+      updateDiagUI();
     };
     updateFoot();
     updateShortcutsUI();
