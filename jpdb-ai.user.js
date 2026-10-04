@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      2.0.8
+// @version      2.0.9
 // @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with visual assessment cards and interactive chat.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -354,6 +354,20 @@
 
   let lastCallUsage = null;
 
+  // Normalised token usage across providers. outputTokens = visible output + thinking, which is what
+  // drives latency. (Gemini's candidatesTokenCount excludes thoughts; OpenAI-style completion/output
+  // tokens already include reasoning, so callers pass visible = total_output - reasoning.)
+  function makeUsage(prompt, visible, thoughts, total) {
+    const p = prompt || 0, v = visible || 0, th = thoughts || 0;
+    return {
+      promptTokens: p,
+      candidateTokens: v,
+      thoughtsTokens: th,
+      outputTokens: v + th,
+      totalTokens: total || (p + v + th),
+    };
+  }
+
   async function callLLM(messages, options = {}) {
     lastCallUsage = null;
     const base = CFG.base;
@@ -417,12 +431,8 @@
           try {
             const rawObj = JSON.parse(res.responseText);
             if (rawObj.usageMetadata) {
-              lastCallUsage = {
-                promptTokens: rawObj.usageMetadata.promptTokenCount || 0,
-                candidateTokens: rawObj.usageMetadata.candidatesTokenCount || 0,
-                totalTokens: rawObj.usageMetadata.totalTokenCount || 0,
-                thoughtsTokens: rawObj.usageMetadata.thoughtsTokenCount || 0,
-              };
+              const um = rawObj.usageMetadata;
+              lastCallUsage = makeUsage(um.promptTokenCount, um.candidatesTokenCount, um.thoughtsTokenCount, um.totalTokenCount);
             }
           } catch {}
           const text = parseResponseText(res.responseText);
@@ -462,12 +472,9 @@
         try {
           const rawObj = JSON.parse(res.responseText);
           if (rawObj.usage) {
-            lastCallUsage = {
-              promptTokens: rawObj.usage.prompt_tokens || 0,
-              candidateTokens: rawObj.usage.completion_tokens || 0,
-              totalTokens: rawObj.usage.total_tokens || 0,
-              thoughtsTokens: rawObj.usage.completion_tokens_details?.reasoning_tokens || 0,
-            };
+            const u = rawObj.usage;
+            const think = u.completion_tokens_details?.reasoning_tokens || 0;
+            lastCallUsage = makeUsage(u.prompt_tokens, Math.max(0, (u.completion_tokens || 0) - think), think, u.total_tokens);
           }
         } catch {}
         const text = parseResponseText(res.responseText);
@@ -504,6 +511,13 @@
       const respUrl = base.endsWith('/responses') ? base : (base.replace(/\/+$/, '') + '/responses');
       const res2 = await gmPost(respUrl, headers, rBody);
       if (res2.status >= 200 && res2.status < 300) {
+        try {
+          const u2 = JSON.parse(res2.responseText).usage;
+          if (u2) {
+            const think2 = u2.output_tokens_details?.reasoning_tokens || 0;
+            lastCallUsage = makeUsage(u2.input_tokens, Math.max(0, (u2.output_tokens || 0) - think2), think2, u2.total_tokens);
+          }
+        } catch {}
         const text2 = parseResponseText(res2.responseText);
         if (text2) return text2.trim();
         throw new Error('Empty response from model');
@@ -511,7 +525,9 @@
         throw new Error('Responses API (' + res2.status + '): ' + String(res2.responseText || '').slice(0, 200));
       }
     } catch (e2) {
-      throw new Error(`Model API request failed: [Chat completions: ${firstErr?.message || 'unknown'}] | [Responses: ${e2?.message || 'unknown'}]`);
+      // Non-destructive hint for stale/misconfigured settings (e.g. an old proxy URL still saved in storage).
+      const where = base.includes('generativelanguage.googleapis.com') ? '' : ` (endpoint: ${base}, model: ${model}; check Settings ⚙️)`;
+      throw new Error(`Model API request failed: [Chat completions: ${firstErr?.message || 'unknown'}] | [Responses: ${e2?.message || 'unknown'}]${where}`);
     }
   }
 
@@ -767,7 +783,16 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
     return null;
   }
 
-  function normalizeBracket(score, rawBracket) {
+  // ---------- Score / bracket / token helpers ----------
+  // Coerce the model's score to a number in [0,10], or null if unusable.
+  // (Previously a missing or string-typed score silently rendered as 10/10 "Flawless".)
+  function coerceScore(raw) {
+    const n = typeof raw === 'number' ? raw : (typeof raw === 'string' ? parseFloat(raw) : NaN);
+    if (!Number.isFinite(n)) return null;
+    return Math.round(Math.min(10, Math.max(0, n)) * 10) / 10;
+  }
+
+  function normalizeBracket(score) {
     if (score >= 9.5) return 'Flawless';
     if (score >= 8) return 'Minor Nuance';
     if (score >= 5) return 'Moderate Error';
@@ -775,16 +800,86 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
     return 'Fatal Error';
   }
 
+  // The card header derives its bracket from the score in code; make the markdown's leading
+  // "**Score: X/10 (Bracket)**" agree with it. Only the matched prefix is replaced, so any text
+  // the model put after it on the same line survives. With ensure=true a missing line is prepended.
+  const SCORE_LINE_RE = /^(\s*(?:#{1,6}\s*)?)\*{0,2}\s*Score\s*:?\s*[\d.]+\s*\/\s*10\s*\*{0,2}\s*(?:\([^)]*\))?\s*\*{0,2}/i;
+  function canonicalizeScoreLine(md, score, ensure) {
+    if (score === null || typeof md !== 'string') return md;
+    const line = `**Score: ${score}/10 (${normalizeBracket(score)})**`;
+    const lines = md.split('\n');
+    const first = lines.findIndex((l) => l.trim() !== '');
+    if (first !== -1 && SCORE_LINE_RE.test(lines[first])) {
+      lines[first] = lines[first].replace(SCORE_LINE_RE, line);
+      return lines.join('\n');
+    }
+    return ensure ? `${line}\n\n${md}` : md;
+  }
+
+  // The prompts require the chunk list to cover the Japanese sentence exactly, in order, but nothing
+  // enforced it. Re-anchor each chunk to the real sentence: uncovered text becomes an "ok" chunk
+  // (bare punctuation is merged into the previous chunk), chunks that don't occur in the sentence
+  // are dropped, and if most chunks are bogus the chips are hidden rather than shown wrong.
+  const JP_PUNCT_RE = /^[\s、。，．！？!?…・「」『』（）()［］\[\]【】"'“”‘’：:；;]+$/;
+  function repairTokens(tokens, sentence) {
+    const stats = { repaired: false, filled: 0, dropped: 0, unusable: false };
+    const list = Array.isArray(tokens) ? tokens : [];
+    const norm = (s) => String(s || '').replace(/\s+/g, '');
+    const src = norm(sentence);
+    if (!list.length || !src) return { tokens: list, stats };
+
+    const toks = list
+      .filter((t) => t && typeof t.text === 'string' && norm(t.text))
+      .map((t) => ({ ...t, text: norm(t.text) }));
+    if (toks.map((t) => t.text).join('') === src) return { tokens: toks, stats };
+
+    stats.repaired = true;
+    const out = [];
+    const pushGap = (gap) => {
+      if (JP_PUNCT_RE.test(gap) && out.length) {
+        out[out.length - 1].text += gap;
+      } else {
+        out.push({ text: gap, status: 'ok' });
+        if (!JP_PUNCT_RE.test(gap)) stats.filled++;
+      }
+    };
+    let pos = 0;
+    for (const t of toks) {
+      const idx = src.indexOf(t.text, pos);
+      if (idx === -1) { stats.dropped++; continue; }
+      if (idx > pos) pushGap(src.slice(pos, idx));
+      out.push(t);
+      pos = idx + t.text.length;
+    }
+    if (pos < src.length) pushGap(src.slice(pos));
+
+    if (toks.length === 0 || stats.dropped > toks.length / 2) {
+      stats.unusable = true;
+      return { tokens: [], stats };
+    }
+    return { tokens: out, stats };
+  }
+
+  // Repairs card.tokens in place; returns repair stats (for diagnostics) or null if nothing was needed.
+  function applyTokenRepair(card, sentence) {
+    if (!card || !Array.isArray(card.tokens)) return null;
+    const r = repairTokens(card.tokens, sentence);
+    card.tokens = r.tokens;
+    return r.stats.repaired ? r.stats : null;
+  }
+
   function renderRatingCard(card, modelName, isCardReview = false) {
     if (!card) return '';
-    const score = typeof card.score === 'number' ? Math.round(card.score * 10) / 10 : 10;
-    const scoreClass = score >= 9.5 ? 'high' : (score >= 7 ? 'med' : 'low');
-    const bracket = normalizeBracket(score, card.bracket);
+    const score = coerceScore(card.score);
+    const hasScore = score !== null;
+    const scoreClass = !hasScore ? 'med' : (score >= 9.5 ? 'high' : (score >= 7 ? 'med' : 'low'));
+    const bracket = hasScore ? normalizeBracket(score) : (card.bracket || 'Unscored');
+    const scoreText = hasScore ? `${score}/10` : '?/10';
     const tag = (modelName || CFG.model || '').split('/').pop() || 'gemini';
     const cardTitle = isCardReview ? 'Card Translation Assessment' : 'Translation Assessment';
 
-    const isFlawless = score >= 9.5;
-    const isMinor = score >= 7 && score < 9.5;
+    const isFlawless = hasScore && score >= 9.5;
+    const isMinor = hasScore && score >= 7 && score < 9.5;
     const mistakes = Array.isArray(card.mistakes) ? card.mistakes : (Array.isArray(card.issues) ? card.issues.filter((i) => i.type === 'mistake') : []);
     const advisories = Array.isArray(card.advisories) ? card.advisories : (Array.isArray(card.issues) ? card.issues.filter((i) => i.type === 'advisory') : []);
     const tokens = Array.isArray(card.tokens) ? card.tokens : [];
@@ -793,7 +888,7 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
       <details class="jpdb-ai-card" open>
         <summary class="jpdb-ai-card-head" title="Click to collapse/expand assessment">
           <span class="jpdb-ai-card-title">${escapeHtml(cardTitle)} <span class="jpdb-ai-card-tag">${escapeHtml(tag)}</span></span>
-          <span class="jpdb-ai-card-score ${scoreClass}">${score}/10 (${escapeHtml(bracket)})</span>
+          <span class="jpdb-ai-card-score ${scoreClass}">${scoreText} (${escapeHtml(bracket)})</span>
         </summary>
         <div class="jpdb-ai-card-body">
           ${isFlawless ? `
@@ -1124,11 +1219,16 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
       const latencyStr = typeof item.elapsedMs === 'number' ? `${item.elapsedMs}ms` : '';
       const modelTag = (item.model || '').split('/').pop() || item.model || '';
 
-      const scoreHtml = (item.parsed && typeof item.parsed.card?.score === 'number')
-        ? `<span class="jpdb-ai-card-score ${item.parsed.card.score >= 9.5 ? 'high' : (item.parsed.card.score >= 7 ? 'med' : 'low')}" style="padding:1px 7px;font-size:10.5px">${item.parsed.card.score}/10 (${escapeHtml(normalizeBracket(item.parsed.card.score, item.parsed.card.bracket))})</span>`
+      const dScore = coerceScore(item.parsed?.card?.score);
+      const scoreHtml = (dScore !== null)
+        ? `<span class="jpdb-ai-card-score ${dScore >= 9.5 ? 'high' : (dScore >= 7 ? 'med' : 'low')}" style="padding:1px 7px;font-size:10.5px">${dScore}/10 (${escapeHtml(normalizeBracket(dScore))})</span>`
         : '';
 
-      const usageStr = item.usage ? `${item.usage.totalTokens || 0} tok${item.usage.thoughtsTokens ? ` (${item.usage.thoughtsTokens} think)` : ''}` : '';
+      const u = item.usage;
+      const outTok = u ? (typeof u.outputTokens === 'number' ? u.outputTokens : (u.candidateTokens || 0) + (u.thoughtsTokens || 0)) : 0;
+      const usageStr = u ? `${outTok} out${u.thoughtsTokens ? ` (${u.thoughtsTokens} think)` : ''}` : '';
+      const usageTitle = u ? `Output tokens incl. thinking (thinking only). Prompt ${u.promptTokens || 0}, total ${u.totalTokens || 0}.` : '';
+      const repairStr = item.tokenRepair ? (item.tokenRepair.unusable ? 'chunks hidden' : `chunks repaired (+${item.tokenRepair.filled} filled, -${item.tokenRepair.dropped} dropped)`) : '';
 
       const thoughtHtml = item.thought
         ? `<div style="margin-top:5px;font-size:11.5px;color:#1e40af;background:rgba(37,99,235,.06);padding:4px 8px;border-radius:5px;line-height:1.35;"><strong>Thought:</strong> ${escapeHtml(item.thought)}</div>`
@@ -1155,7 +1255,8 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
           <div style="display:flex;align-items:center;gap:8px;margin-top:5px;font-size:11.5px">
             ${scoreHtml}
             ${latencyStr ? `<span style="opacity:.7;font-size:10.5px">${latencyStr}</span>` : ''}
-            ${usageStr ? `<span style="opacity:.7;font-size:10.5px;background:rgba(128,128,128,.15);padding:1px 5px;border-radius:4px" title="Total tokens (thinking tokens)">${escapeHtml(usageStr)}</span>` : ''}
+            ${usageStr ? `<span style="opacity:.7;font-size:10.5px;background:rgba(128,128,128,.15);padding:1px 5px;border-radius:4px" title="${escapeHtml(usageTitle)}">${escapeHtml(usageStr)}</span>` : ''}
+            ${repairStr ? `<span style="opacity:.8;font-size:10.5px;background:rgba(217,119,6,.15);padding:1px 5px;border-radius:4px" title="The model's Japanese chunks did not match the sentence exactly and were re-anchored in code">${escapeHtml(repairStr)}</span>` : ''}
             ${modelTag ? `<span style="opacity:.6;font-size:10.5px">(${escapeHtml(modelTag)})</span>` : ''}
             ${item.error ? `<span style="color:#dc2626;font-weight:700">Error: ${escapeHtml(item.error)}</span>` : ''}
           </div>
@@ -1716,6 +1817,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
       rawResponse = await callLLM(msgs, { json: true });
       const elapsedMs = Date.now() - startTime;
       const parsed = parseJsonResponse(rawResponse);
+      const tokenRepair = parsed && parsed.card ? applyTokenRepair(parsed.card, info.cleanSentenceJP || info.sentenceJP) : null;
 
       recordDiagnostic({
         action: 'rate',
@@ -1733,6 +1835,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
         rawResponse,
         thought: parsed?.thought || null,
         parsed,
+        tokenRepair,
         usage: lastCallUsage,
         elapsedMs,
         error: null,
@@ -1742,16 +1845,16 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
       let replyMarkdown = '';
 
       if (parsed && (parsed.card || parsed.markdown)) {
+        const cardScore = parsed.card ? coerceScore(parsed.card.score) : null;
         if (parsed.card) {
           cardHtml = renderRatingCard(parsed.card, CFG.model, isCardReview);
         }
         if (parsed.markdown && typeof parsed.markdown === 'string' && !parsed.markdown.trim().startsWith('{')) {
-          replyMarkdown = parsed.markdown.trim();
+          // Code owns the score/bracket line so the markdown (and chat history) always agrees with the card.
+          replyMarkdown = canonicalizeScoreLine(parsed.markdown.trim(), cardScore, !isCardReview);
         } else if (parsed.card) {
           const card = parsed.card;
-          const score = typeof card.score === 'number' ? card.score : 10;
-          const bracket = card.bracket || (score >= 9.5 ? 'Flawless' : 'Evaluation');
-          const lines = [`**Score: ${score}/10 (${bracket})**`];
+          const lines = [cardScore === null ? '**Score: unavailable**' : `**Score: ${cardScore}/10 (${normalizeBracket(cardScore)})**`];
           if (card.summary) lines.push('', card.summary);
           if (Array.isArray(card.mistakes) && card.mistakes.length) {
             lines.push('', '### Issues:');
@@ -1831,9 +1934,11 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
       let cardHtml = '';
       let replyMarkdown = '';
       let parsed = null;
+      let tokenRepair = null;
 
       if (isExplain) {
         parsed = parseJsonResponse(rawResponse);
+        if (parsed && parsed.card) tokenRepair = applyTokenRepair(parsed.card, info.cleanSentenceJP || info.sentenceJP);
         if (parsed && (parsed.card || parsed.markdown)) {
           if (parsed.card) {
             cardHtml = renderVocabCard(parsed.card, CFG.model);
@@ -1869,6 +1974,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
         rawResponse,
         thought: parsed?.thought || null,
         parsed,
+        tokenRepair,
         usage: lastCallUsage,
         elapsedMs,
         error: null,
