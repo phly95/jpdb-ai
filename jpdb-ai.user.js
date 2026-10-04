@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      2.0.9
+// @version      2.0.10
 // @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with visual assessment cards and interactive chat.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -75,6 +75,8 @@
   // Get a unique token for the current card
   function getCardToken() {
     try {
+      const inputC = document.querySelector('input[name="c"]')?.value;
+      if (inputC) return inputC.trim();
       const params = new URLSearchParams(location.search);
       const paramC = params.get('c');
       if (paramC) return paramC.trim();
@@ -99,7 +101,7 @@
     if (cardDataCache[cToken]) return cardDataCache[cToken];
     try {
       const rEl = document.querySelector('input[name="r"]');
-      const r = rEl ? rEl.value : '5';
+      const r = rEl ? rEl.value : '2';
       const url = '/review?c=' + encodeURIComponent(cToken) + '&r=' + encodeURIComponent(r);
       const res = await fetch(url);
       if (!res.ok) return null;
@@ -642,17 +644,21 @@ Tokens MUST cover the entire Japanese sentence in order without missing characte
   function buildVocabExplanationPrompt(info) {
     const cleanJp = info.cleanSentenceJP || info.sentenceJP;
     const cleanTarget = info.cleanVocab || info.vocab;
-    const meaningsList = (info.meanings || []).slice(0, 8).join(', ');
+    const meaningsList = (info.meanings && info.meanings.length)
+      ? info.meanings.slice(0, 10).join('\n')
+      : '(none)';
 
     return `Explain the grammatical role and meaning of the tested vocabulary in this specific Japanese sentence.
 Japanese Sentence: ${cleanJp}
 Target Vocabulary: ${cleanTarget}
-Dictionary Meanings: ${meaningsList || '(none)'}
+Dictionary Meanings:
+${meaningsList}
 Reference Translation: ${info.sentenceEN || '(none)'}
 
 In the "thought" field:
-1. Identify the tested word's specific grammatical role (e.g. direct object, subject, topic).
+1. Identify the tested word's specific grammatical role (e.g. direct object, subject, topic, time adverbial).
 2. Identify what exact word/predicate it directly connects to or modifies.
+3. If Dictionary Meanings are listed above, determine which specific numbered dictionary sense (e.g. Sense 1, Sense 2) applies in this sentence, or explain why none of the listed senses cleanly fit.
 
 Sentence Segmentation Rules:
 - Divide the Japanese sentence into a few natural, multi-word grammatical chunks / bunsetsu.
@@ -663,16 +669,16 @@ Sentence Segmentation Rules:
 
 Respond ONLY with a valid JSON object matching this schema:
 {
-  "thought": "1 sentence identifying role and connection",
+  "thought": "1 sentence identifying role, connection, and which dictionary sense applies",
   "card": {
     "role": "Concise grammatical role (e.g. Direct Object, Subject, Topic, Conditional Predicate, Time Adverbial, Quoted Speech)",
-    "applied_sense": "The specific English sense that applies here (e.g. what)",
+    "applied_sense": "The specific numbered dictionary sense and definition that applies here (e.g. 'Sense 1: inside' or 'Sense 2: among')",
     "connected_with": "The Japanese word/predicate it attaches to or modifies (or null)",
     "tokens": [
       {"text": "Natural phrase segment", "status": "ok" | "target" | "connected"}
     ]
   },
-  "markdown": "### Role of ${cleanTarget} in this Sentence\\nIn this sentence, **${cleanTarget}** means \\\"...\\\", functioning as ...\\n\\n💡 **Key Nuance:** Concise practical note on how the attached particle or conjugation connects this word to the predicate."
+  "markdown": "### Role of ${cleanTarget} in this Sentence\\nIn this sentence, **${cleanTarget}** is used in **Sense X ([definition])**, functioning as ...\\n\\n💡 **Key Nuance:** Concise practical note on how the attached particle or conjugation connects this word to the predicate."
 }
 Tokens MUST cover the entire Japanese sentence in order without missing characters.`;
   }
