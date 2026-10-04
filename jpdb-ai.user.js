@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      2.0.4
+// @version      2.0.5
 // @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with instant visual assessment and interactive chat.
 // @author       you
 // @match        https://jpdb.io/review*
@@ -789,6 +789,7 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
 
   function toggleSettingsView(forceOpen) {
     const settingsView = document.getElementById('jpdb-ai-settings-view');
+    const diagView = document.getElementById('jpdb-ai-diag-view');
     const msgsView = document.getElementById('jpdb-ai-msgs');
     const rowView = document.getElementById('jpdb-ai-row');
     const btnsView = document.getElementById('jpdb-ai-btns');
@@ -797,6 +798,7 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
     const isOpening = typeof forceOpen === 'boolean' ? forceOpen : settingsView.style.display !== 'flex';
 
     if (isOpening) {
+      if (diagView) diagView.style.display = 'none';
       loadSettingsToUI();
       if (msgsView) msgsView.style.display = 'none';
       if (rowView) rowView.style.display = 'none';
@@ -804,9 +806,12 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
       settingsView.style.display = 'flex';
     } else {
       settingsView.style.display = 'none';
-      if (msgsView) msgsView.style.display = 'flex';
-      if (rowView) rowView.style.display = 'flex';
-      if (btnsView) btnsView.style.display = 'flex';
+      if (!diagView || diagView.style.display !== 'flex') {
+        if (msgsView) msgsView.style.display = 'flex';
+        if (rowView) rowView.style.display = 'flex';
+        if (btnsView) btnsView.style.display = 'flex';
+        if (msgsView) msgsView.scrollTop = msgsView.scrollHeight;
+      }
     }
   }
 
@@ -896,6 +901,10 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
       if (list.length > MAX_DIAG_ENTRIES) list.length = MAX_DIAG_ENTRIES;
       GM_setValue(DIAG_STORAGE_KEY, JSON.stringify(list));
       if (typeof updateDiagUI === 'function') updateDiagUI();
+      const diagView = document.getElementById('jpdb-ai-diag-view');
+      if (diagView && diagView.style.display === 'flex') {
+        renderDiagList();
+      }
     } catch (err) {
       console.warn('[JPDB AI] Failed to record diagnostic:', err);
     }
@@ -905,6 +914,10 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
     try {
       GM_setValue(DIAG_STORAGE_KEY, JSON.stringify([]));
       if (typeof updateDiagUI === 'function') updateDiagUI();
+      const diagView = document.getElementById('jpdb-ai-diag-view');
+      if (diagView && diagView.style.display === 'flex') {
+        renderDiagList();
+      }
     } catch {}
   }
 
@@ -932,15 +945,167 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
     URL.revokeObjectURL(url);
   }
 
+  function downloadSpecificDiagnostic(entry) {
+    if (!entry) return;
+    const json = JSON.stringify(entry, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const vocabSafe = (entry.cardInfo?.cleanVocab || entry.cardInfo?.vocab || entry.action || 'item').replace(/[^a-zA-Z0-9_\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/g, '_');
+    const timeSafe = (entry.timestamp || new Date().toISOString()).replace(/[:.]/g, '-').slice(0, 19);
+    a.download = `jpdb_diag_${vocabSafe}_${timeSafe}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function toggleDiagView(forceOpen) {
+    const diagView = document.getElementById('jpdb-ai-diag-view');
+    const settingsView = document.getElementById('jpdb-ai-settings-view');
+    const msgsView = document.getElementById('jpdb-ai-msgs');
+    const rowView = document.getElementById('jpdb-ai-row');
+    const btnsView = document.getElementById('jpdb-ai-btns');
+    if (!diagView) return;
+
+    const isOpening = typeof forceOpen === 'boolean' ? forceOpen : diagView.style.display !== 'flex';
+
+    if (isOpening) {
+      if (settingsView) settingsView.style.display = 'none';
+      if (msgsView) msgsView.style.display = 'none';
+      if (rowView) rowView.style.display = 'none';
+      if (btnsView) btnsView.style.display = 'none';
+      diagView.style.display = 'flex';
+      renderDiagList();
+    } else {
+      diagView.style.display = 'none';
+      if (!settingsView || settingsView.style.display !== 'flex') {
+        if (msgsView) msgsView.style.display = 'flex';
+        if (rowView) rowView.style.display = 'flex';
+        if (btnsView) btnsView.style.display = 'flex';
+        if (msgsView) msgsView.scrollTop = msgsView.scrollHeight;
+      }
+    }
+  }
+
+  function renderDiagList() {
+    const listEl = document.getElementById('jpdb-ai-diag-list');
+    const statEl = document.getElementById('jpdb-ai-diag-stat');
+    if (!listEl) return;
+
+    const list = getDiagnostics();
+    if (statEl) {
+      statEl.textContent = `${list.length}`;
+    }
+
+    if (list.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center;padding:32px 10px;opacity:.6;font-size:12px">No diagnostics recorded yet. Rate translations or ask for explanations to log raw responses!</div>`;
+      return;
+    }
+
+    listEl.innerHTML = list.map((item) => {
+      const timeStr = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+      const actionName = (item.action || 'chat').toUpperCase();
+      const vocabLabel = item.cardInfo?.cleanVocab || item.cardInfo?.vocab || item.action || 'Entry';
+      const itemId = item.id || ('diag_' + (item.timestamp || ''));
+      const latencyStr = typeof item.elapsedMs === 'number' ? `${item.elapsedMs}ms` : '';
+      const modelTag = (item.model || '').split('/').pop() || item.model || '';
+
+      const scoreHtml = (item.parsed && typeof item.parsed.card?.score === 'number')
+        ? `<span class="jpdb-ai-jev-score ${item.parsed.card.score >= 9.5 ? 'high' : (item.parsed.card.score >= 7 ? 'med' : 'low')}" style="padding:1px 7px;font-size:10.5px">${item.parsed.card.score}/10 (${escapeHtml(item.parsed.card.bracket || '')})</span>`
+        : '';
+
+      const thoughtHtml = item.thought
+        ? `<div style="margin-top:5px;font-size:11.5px;color:#1e40af;background:rgba(37,99,235,.06);padding:4px 8px;border-radius:5px;line-height:1.35;"><strong>Thought:</strong> ${escapeHtml(item.thought)}</div>`
+        : '';
+
+      return `
+        <div class="jpdb-ai-diag-item" data-id="${escapeHtml(itemId)}">
+          <div class="jpdb-ai-diag-item-top">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="jpdb-ai-diag-action-badge">${escapeHtml(actionName)}</span>
+              <span style="font-weight:700;color:#2563eb;font-size:13px">${escapeHtml(vocabLabel)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <span class="jpdb-ai-diag-time">${escapeHtml(timeStr)}</span>
+              <button type="button" class="jpdb-ai-diag-btn-action jpdb-ai-diag-btn-copy" data-id="${escapeHtml(itemId)}" title="Copy diagnostic JSON to clipboard">📋 Copy</button>
+              <button type="button" class="jpdb-ai-diag-btn-action jpdb-ai-diag-btn-dl" data-id="${escapeHtml(itemId)}" title="Download diagnostic JSON file">💾 JSON</button>
+            </div>
+          </div>
+
+          ${item.cardInfo?.sentenceJP ? `<div style="margin:2px 0;font-size:11.5px"><strong>JP:</strong> ${escapeHtml(item.cardInfo.sentenceJP)}</div>` : ''}
+          ${item.userDraft ? `<div style="margin:2px 0;font-size:11.5px"><strong>Student:</strong> "${escapeHtml(item.userDraft)}"</div>` : ''}
+          ${item.cardInfo?.sentenceEN ? `<div style="margin:2px 0;font-size:11.5px"><strong>Reference:</strong> "${escapeHtml(item.cardInfo.sentenceEN)}"</div>` : ''}
+
+          <div style="display:flex;align-items:center;gap:8px;margin-top:5px;font-size:11.5px">
+            ${scoreHtml}
+            ${latencyStr ? `<span style="opacity:.7;font-size:10.5px">${latencyStr}</span>` : ''}
+            ${modelTag ? `<span style="opacity:.6;font-size:10.5px">(${escapeHtml(modelTag)})</span>` : ''}
+            ${item.error ? `<span style="color:#dc2626;font-weight:700">Error: ${escapeHtml(item.error)}</span>` : ''}
+          </div>
+
+          ${thoughtHtml}
+
+          <details class="jpdb-ai-diag-details">
+            <summary style="cursor:pointer;font-weight:600;font-size:11px;color:#2563eb;margin-top:4px;user-select:none;">View Raw LLM Response</summary>
+            <div class="jpdb-ai-diag-critique">${escapeHtml(item.rawResponse || '(no response text)')}</div>
+          </details>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('.jpdb-ai-diag-btn-copy').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        const entry = getDiagnostics().find((x) => (x.id || ('diag_' + (x.timestamp || ''))) === id);
+        if (!entry) return;
+        const text = JSON.stringify(entry, null, 2);
+        const orig = btn.textContent;
+        const done = () => {
+          btn.textContent = '✓ Copied!';
+          setTimeout(() => { btn.textContent = orig; }, 1500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(() => {
+            prompt('Copy Diagnostic JSON:', text);
+          });
+        } else {
+          prompt('Copy Diagnostic JSON:', text);
+        }
+      });
+    });
+
+    listEl.querySelectorAll('.jpdb-ai-diag-btn-dl').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        const entry = getDiagnostics().find((x) => (x.id || ('diag_' + (x.timestamp || ''))) === id);
+        if (!entry) return;
+        downloadSpecificDiagnostic(entry);
+        const orig = btn.textContent;
+        btn.textContent = '✓ Saved!';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      });
+    });
+  }
+
   try {
     const win = (typeof unsafeWindow !== 'undefined' && unsafeWindow) ? unsafeWindow : window;
     win.__jpdbAiExportDiagnostics = downloadDiagnosticsJson;
     win.__jpdbAiGetDiagnostics = getDiagnostics;
     win.__jpdbAiClearDiagnostics = clearDiagnostics;
+    win.__jpdbAiDownloadSpecificDiagnostic = downloadSpecificDiagnostic;
+    win.__jpdbAiToggleDiagView = toggleDiagView;
     if (typeof window !== 'undefined' && window !== win) {
       window.__jpdbAiExportDiagnostics = downloadDiagnosticsJson;
       window.__jpdbAiGetDiagnostics = getDiagnostics;
       window.__jpdbAiClearDiagnostics = clearDiagnostics;
+      window.__jpdbAiDownloadSpecificDiagnostic = downloadSpecificDiagnostic;
+      window.__jpdbAiToggleDiagView = toggleDiagView;
     }
   } catch {}
 
@@ -1118,6 +1283,29 @@ html.dark-mode .jpdb-ai-settings-btn-toggle{border-color:#555;background:#333}
 .jpdb-ai-settings-btn-primary:hover{background:#1d4ed8}
 .jpdb-ai-settings-btn-secondary{padding:6px 12px;font-size:11.5px;font-weight:500;border-radius:6px;border:1px solid #d1d5db;background:transparent;color:inherit!important;cursor:pointer}
 html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
+
+#jpdb-ai-diag-view{display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden;background:inherit;padding:8px 12px;gap:8px}
+.jpdb-ai-diag-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,.1);font-weight:700;font-size:12px;gap:6px}
+html.dark-mode .jpdb-ai-diag-head{border-color:rgba(255,255,255,.15)}
+.jpdb-ai-diag-actions{display:flex;gap:4px;flex-wrap:wrap}
+.jpdb-ai-diag-actions button{padding:4px 8px;font-size:11px;font-weight:600;line-height:1.2;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#1f2937!important;cursor:pointer;transition:all .15s}
+.jpdb-ai-diag-actions button:hover{background:#eff6ff;color:#1d4ed8!important;border-color:#3b82f6}
+html.dark-mode .jpdb-ai-diag-actions button{background:#2a2a2a;color:#f3f4f6!important;border-color:#555}
+html.dark-mode .jpdb-ai-diag-actions button:hover{background:#1e3a5f;color:#93c5fd!important;border-color:#60a5fa}
+#jpdb-ai-diag-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:2px}
+.jpdb-ai-diag-item{padding:9px 11px;border-radius:8px;border:1px solid #e5e7eb;background:rgba(0,0,0,.02);font-size:12px;line-height:1.4}
+html.dark-mode .jpdb-ai-diag-item{border-color:#444;background:rgba(255,255,255,.03)}
+.jpdb-ai-diag-item-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.jpdb-ai-diag-time{opacity:.6;font-size:10.5px}
+.jpdb-ai-diag-btn-action{padding:2px 7px;font-size:10.5px;font-weight:600;border-radius:4px;border:1px solid #d1d5db;background:#fff;color:#374151!important;cursor:pointer;line-height:1.2;transition:all .15s}
+.jpdb-ai-diag-btn-action:hover{background:#eff6ff;color:#1d4ed8!important;border-color:#3b82f6}
+html.dark-mode .jpdb-ai-diag-btn-action{background:#2a2a2a;color:#d1d5db!important;border-color:#555}
+html.dark-mode .jpdb-ai-diag-btn-action:hover{background:#1e3a5f;color:#93c5fd!important;border-color:#60a5fa}
+.jpdb-ai-diag-action-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:rgba(37,99,235,.1);color:#1d4ed8;border:1px solid rgba(37,99,235,.25);text-transform:uppercase}
+html.dark-mode .jpdb-ai-diag-action-badge{background:rgba(59,130,246,.15);color:#93c5fd;border-color:rgba(59,130,246,.3)}
+.jpdb-ai-diag-critique{margin-top:6px;padding:6px 8px;background:rgba(0,0,0,.03);border-radius:6px;font-family:monospace;font-size:11px;white-space:pre-wrap;max-height:180px;overflow-y:auto;border:1px solid rgba(0,0,0,.08)}
+html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)}
+.jpdb-ai-diag-details{margin-top:6px;font-size:11.5px}
 `;
 
   function injectStyle() {
@@ -1789,8 +1977,9 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
             <div style="font-size:11.5px;opacity:.85;margin-bottom:6px;">
               Raw LLM responses, prompts, and alignment thoughts are logged locally.
             </div>
-            <div style="display:flex;gap:6px;align-items:center;">
-              <button type="button" id="jpdb-ai-settings-download-diag" class="jpdb-ai-settings-btn-secondary" style="font-weight:600;">📥 Download Diag JSON</button>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <button type="button" id="jpdb-ai-settings-inspect-diag" class="jpdb-ai-settings-btn-secondary" style="font-weight:600;">🔍 Inspect Diagnostics</button>
+              <button type="button" id="jpdb-ai-settings-download-diag" class="jpdb-ai-settings-btn-secondary">📥 Download All JSON</button>
               <button type="button" id="jpdb-ai-settings-clear-diag" class="jpdb-ai-settings-btn-secondary">Clear</button>
               <span id="jpdb-ai-settings-diag-count" style="font-size:11px;opacity:.7;">0 recorded</span>
             </div>
@@ -1810,6 +1999,18 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         </form>
       </div>
 
+      <div id="jpdb-ai-diag-view">
+        <div class="jpdb-ai-diag-head">
+          <span>Diagnostics (<span id="jpdb-ai-diag-stat">0</span>)</span>
+          <div class="jpdb-ai-diag-actions">
+            <button type="button" id="jpdb-ai-diag-export" title="Export all diagnostics as JSON file">Export JSON</button>
+            <button type="button" id="jpdb-ai-diag-clear" title="Clear recorded diagnostics">Clear</button>
+            <button type="button" id="jpdb-ai-diag-close" title="Back to review chat">✕</button>
+          </div>
+        </div>
+        <div id="jpdb-ai-diag-list"></div>
+      </div>
+
       <div id="jpdb-ai-msgs"></div>
       <div id="jpdb-ai-row">
         <input type="text" id="jpdb-ai-input" placeholder="Rate translation (Enter or Insert) · Send (Ctrl+Enter)…" />
@@ -1821,7 +2022,7 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
         <div class="jpdb-ai-foot-links">
           <a href="#" id="jpdb-ai-invert-toggle" title="Toggle default Enter shortcut between Rate and Send">Enter: Rate</a>
           <span>·</span>
-          <a href="#" id="jpdb-ai-diag" title="Download raw LLM diagnostic responses (JSON)">diag (0)</a>
+          <a href="#" id="jpdb-ai-diag" title="Translation diagnostics and raw LLM responses">Diag (0)</a>
           <span>·</span>
           <a href="#" id="jpdb-ai-cfg">settings</a>
         </div>
@@ -2020,7 +2221,41 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
     if (diagLink) {
       diagLink.addEventListener('click', (e) => {
         e.preventDefault();
+        toggleDiagView();
+      });
+    }
+
+    const inspectDiagBtn = panel.querySelector('#jpdb-ai-settings-inspect-diag');
+    if (inspectDiagBtn) {
+      inspectDiagBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleDiagView(true);
+      });
+    }
+
+    const closeDiagBtn = panel.querySelector('#jpdb-ai-diag-close');
+    if (closeDiagBtn) {
+      closeDiagBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleDiagView(false);
+      });
+    }
+
+    const exportDiagBtn = panel.querySelector('#jpdb-ai-diag-export');
+    if (exportDiagBtn) {
+      exportDiagBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         downloadDiagnosticsJson();
+      });
+    }
+
+    const clearDiagPanelBtn = panel.querySelector('#jpdb-ai-diag-clear');
+    if (clearDiagPanelBtn) {
+      clearDiagPanelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (confirm('Clear all recorded diagnostics?')) {
+          clearDiagnostics();
+        }
       });
     }
 
@@ -2047,12 +2282,16 @@ html.dark-mode .jpdb-ai-settings-btn-secondary{border-color:#555}
       const count = logs.length;
       const diagEl = document.getElementById('jpdb-ai-diag');
       if (diagEl) {
-        diagEl.textContent = `diag (${count})`;
-        diagEl.title = `Download ${count} raw LLM diagnostic response${count === 1 ? '' : 's'} (JSON)`;
+        diagEl.textContent = `Diag (${count})`;
+        diagEl.title = `${count} diagnostic response${count === 1 ? '' : 's'} recorded. Click to inspect, copy, or download.`;
       }
       const countEl = document.getElementById('jpdb-ai-settings-diag-count');
       if (countEl) {
         countEl.textContent = `${count} recorded`;
+      }
+      const statEl = document.getElementById('jpdb-ai-diag-stat');
+      if (statEl) {
+        statEl.textContent = `${count}`;
       }
     };
 
