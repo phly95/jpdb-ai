@@ -2098,6 +2098,18 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
     `;
     document.body.appendChild(panel);
 
+    ['keydown', 'keypress', 'keyup'].forEach((eventName) => {
+      panel.addEventListener(eventName, (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          toggle(false);
+          return;
+        }
+        e.stopPropagation();
+      });
+    });
+
     if (panelWide) panel.classList.add('jpdb-ai-wide');
 
     panel.querySelector('#jpdb-ai-head').addEventListener('click', (e) => {
