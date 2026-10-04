@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         JPDB AI Vocab Explainer
 // @namespace    https://github.com/jpdb-ai/
-// @version      2.0.7
-// @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with instant visual assessment and interactive chat.
+// @version      2.0.8
+// @description  Single-model Gemini-powered Japanese tutor for jpdb.io reviews with visual assessment cards and interactive chat.
 // @author       you
 // @match        https://jpdb.io/review*
 // @grant        GM_xmlhttpRequest
@@ -31,18 +31,15 @@
   let updateShortcutsUI = () => {};
   let updateDiagUI = () => {};
 
-  // Clean migration sentinel: ensures transition to native Google endpoint
+  // Initialize clean defaults on first install without overwriting custom proxies
   try {
     const cfgVer = GM_getValue('jpdb_ai_cfg_ver', 0);
     if (cfgVer < 2) {
-      const existingBase = GM_getValue('jpdb_ai_base', '');
-      const existingKey = GM_getValue('jpdb_ai_key', '');
-      if (!existingBase || !existingBase.includes('googleapis.com')) {
+      if (GM_getValue('jpdb_ai_base') === undefined) {
         GM_setValue('jpdb_ai_base', DEFAULT_API_BASE);
+      }
+      if (GM_getValue('jpdb_ai_model') === undefined) {
         GM_setValue('jpdb_ai_model', DEFAULT_MODEL);
-        if (typeof existingKey === 'string' && existingKey.startsWith('sk-')) {
-          GM_setValue('jpdb_ai_key', DEFAULT_API_KEY);
-        }
       }
       GM_setValue('jpdb_ai_cfg_ver', 2);
     }
@@ -355,7 +352,10 @@
     return '';
   }
 
+  let lastCallUsage = null;
+
   async function callLLM(messages, options = {}) {
+    lastCallUsage = null;
     const base = CFG.base;
     let model = CFG.model;
     const key = CFG.key;
@@ -414,6 +414,17 @@
       try {
         const res = await gmPost(url, gHeaders, gBody, 60000);
         if (res.status >= 200 && res.status < 300) {
+          try {
+            const rawObj = JSON.parse(res.responseText);
+            if (rawObj.usageMetadata) {
+              lastCallUsage = {
+                promptTokens: rawObj.usageMetadata.promptTokenCount || 0,
+                candidateTokens: rawObj.usageMetadata.candidatesTokenCount || 0,
+                totalTokens: rawObj.usageMetadata.totalTokenCount || 0,
+                thoughtsTokens: rawObj.usageMetadata.thoughtsTokenCount || 0,
+              };
+            }
+          } catch {}
           const text = parseResponseText(res.responseText);
           if (text) return text.trim();
           throw new Error('Empty response from Gemini API');
@@ -448,6 +459,17 @@
       const chatUrl = base.endsWith('/chat/completions') ? base : (base.replace(/\/+$/, '') + '/chat/completions');
       const res = await gmPost(chatUrl, headers, cBody, 60000);
       if (res.status >= 200 && res.status < 300) {
+        try {
+          const rawObj = JSON.parse(res.responseText);
+          if (rawObj.usage) {
+            lastCallUsage = {
+              promptTokens: rawObj.usage.prompt_tokens || 0,
+              candidateTokens: rawObj.usage.completion_tokens || 0,
+              totalTokens: rawObj.usage.total_tokens || 0,
+              thoughtsTokens: rawObj.usage.completion_tokens_details?.reasoning_tokens || 0,
+            };
+          }
+        } catch {}
         const text = parseResponseText(res.responseText);
         if (text) return text.trim();
         throw new Error('Empty response from model');
@@ -525,6 +547,14 @@ Translation Discrepancy & Issue Detection Rules:
 - Avoid cascading, repetitive, or phantom issue bullets. If only one word, predicate, or grammatical role was mistranslated, output ONLY ONE issue specifically explaining that exact error. Do not flag other innocent parts of the sentence.
 - If there are no errors (10/10), "mistakes" and "advisories" MUST be empty arrays.
 
+Scoring Scale & Bracket Rubric:
+- 10/10: "Flawless" (Completely accurate meaning and nuance. Zero errors.)
+- 8-9/10: "Minor Nuance" (Core meaning correct; minor phrasing nuance or slight secondary omission.)
+- 5-7/10: "Moderate Error" (Partial comprehension, wrong sense of a word, or missed clause.)
+- 3-4/10: "Major Error" (Major mistranslation or key predicate inverted/omitted.)
+- 0-2/10: "Fatal Error" (Complete misunderstanding or opposite meaning.)
+The "bracket" field in the card MUST strictly match the score bracket above.
+
 Sentence Segmentation Rules:
 - Divide the Japanese sentence into a few natural, multi-word grammatical chunks (bunsetsu / clause chunks).
 - NEVER split into individual characters or isolated kana (keep verb stems and conjugations intact as whole chunks).
@@ -562,6 +592,13 @@ In the "thought" field:
 2. Card scoring:
    - Score the card's English translation out of 10 based on semantic fidelity and naturalness.
    - If accurate, award 9.8-10/10. If there are minor compromises or dropped nuances, note them in advisories.
+
+Scoring Scale & Bracket Rubric:
+- 10/10: "Flawless" (Faithful, natural translation capturing the full Japanese meaning.)
+- 8-9/10: "Minor Nuance" (Minor tone compromise, slightly loose translation, or dropped subtle nuance.)
+- 5-7/10: "Moderate Error" (Noticeable semantic compromise or missing key clause.)
+- 0-4/10: "Major Error" / "Fatal Error" (Inaccurate translation.)
+The "bracket" field in the card MUST strictly match the score bracket above.
 
 Sentence Segmentation Rules:
 - Divide the Japanese sentence into a few natural, multi-word grammatical chunks (bunsetsu / clause chunks).
@@ -730,11 +767,19 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
     return null;
   }
 
+  function normalizeBracket(score, rawBracket) {
+    if (score >= 9.5) return 'Flawless';
+    if (score >= 8) return 'Minor Nuance';
+    if (score >= 5) return 'Moderate Error';
+    if (score >= 3) return 'Major Error';
+    return 'Fatal Error';
+  }
+
   function renderRatingCard(card, modelName, isCardReview = false) {
     if (!card) return '';
     const score = typeof card.score === 'number' ? Math.round(card.score * 10) / 10 : 10;
     const scoreClass = score >= 9.5 ? 'high' : (score >= 7 ? 'med' : 'low');
-    const bracket = card.bracket || (score >= 9.5 ? 'Flawless' : (score >= 8 ? 'Minor Nuance' : (score >= 5 ? 'Moderate Error' : (score >= 3 ? 'Major Error' : 'Fatal Error'))));
+    const bracket = normalizeBracket(score, card.bracket);
     const tag = (modelName || CFG.model || '').split('/').pop() || 'gemini';
     const cardTitle = isCardReview ? 'Card Translation Assessment' : 'Translation Assessment';
 
@@ -1080,8 +1125,10 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
       const modelTag = (item.model || '').split('/').pop() || item.model || '';
 
       const scoreHtml = (item.parsed && typeof item.parsed.card?.score === 'number')
-        ? `<span class="jpdb-ai-card-score ${item.parsed.card.score >= 9.5 ? 'high' : (item.parsed.card.score >= 7 ? 'med' : 'low')}" style="padding:1px 7px;font-size:10.5px">${item.parsed.card.score}/10 (${escapeHtml(item.parsed.card.bracket || '')})</span>`
+        ? `<span class="jpdb-ai-card-score ${item.parsed.card.score >= 9.5 ? 'high' : (item.parsed.card.score >= 7 ? 'med' : 'low')}" style="padding:1px 7px;font-size:10.5px">${item.parsed.card.score}/10 (${escapeHtml(normalizeBracket(item.parsed.card.score, item.parsed.card.bracket))})</span>`
         : '';
+
+      const usageStr = item.usage ? `${item.usage.totalTokens || 0} tok${item.usage.thoughtsTokens ? ` (${item.usage.thoughtsTokens} think)` : ''}` : '';
 
       const thoughtHtml = item.thought
         ? `<div style="margin-top:5px;font-size:11.5px;color:#1e40af;background:rgba(37,99,235,.06);padding:4px 8px;border-radius:5px;line-height:1.35;"><strong>Thought:</strong> ${escapeHtml(item.thought)}</div>`
@@ -1108,6 +1155,7 @@ Build the sentence up in two to four numbered stages, showing how each chunk com
           <div style="display:flex;align-items:center;gap:8px;margin-top:5px;font-size:11.5px">
             ${scoreHtml}
             ${latencyStr ? `<span style="opacity:.7;font-size:10.5px">${latencyStr}</span>` : ''}
+            ${usageStr ? `<span style="opacity:.7;font-size:10.5px;background:rgba(128,128,128,.15);padding:1px 5px;border-radius:4px" title="Total tokens (thinking tokens)">${escapeHtml(usageStr)}</span>` : ''}
             ${modelTag ? `<span style="opacity:.6;font-size:10.5px">(${escapeHtml(modelTag)})</span>` : ''}
             ${item.error ? `<span style="color:#dc2626;font-weight:700">Error: ${escapeHtml(item.error)}</span>` : ''}
           </div>
@@ -1585,7 +1633,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
     d.className = 'jpdb-ai-msg ' + (entry.role === 'user' ? 'jpdb-ai-user' : 'jpdb-ai-ai');
     if (entry.isErr) d.classList.add('jpdb-ai-err');
     if (entry.role === 'assistant') {
-      setMsgMarkdown(d, entry.text, entry.jevHtml);
+      setMsgMarkdown(d, entry.text, entry.cardHtml || entry.jevHtml);
     } else {
       d.textContent = entry.text;
     }
@@ -1603,7 +1651,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
   }
 
   function addMsg(role, text, isErr, transient) {
-    const entry = { role, text, isErr: !!isErr, jevHtml: '' };
+    const entry = { role, text, isErr: !!isErr, cardHtml: '' };
     if (!transient) {
       msgLog.push(entry);
       saveSession();
@@ -1685,6 +1733,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
         rawResponse,
         thought: parsed?.thought || null,
         parsed,
+        usage: lastCallUsage,
         elapsedMs,
         error: null,
       });
@@ -1720,7 +1769,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
       }
 
       setMsgMarkdown(thinking, replyMarkdown, cardHtml);
-      msgLog.push({ role: 'assistant', text: replyMarkdown, jevHtml: cardHtml, isErr: false });
+      msgLog.push({ role: 'assistant', text: replyMarkdown, cardHtml, isErr: false });
       history.push({ role: 'user', content: userLabel });
       history.push({ role: 'assistant', content: replyMarkdown });
       saveSession();
@@ -1741,6 +1790,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
         rawResponse: rawResponse || null,
         thought: null,
         parsed: null,
+        usage: lastCallUsage,
         elapsedMs,
         error: e.message || String(e),
       });
@@ -1819,12 +1869,13 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
         rawResponse,
         thought: parsed?.thought || null,
         parsed,
+        usage: lastCallUsage,
         elapsedMs,
         error: null,
       });
 
       setMsgMarkdown(thinking, replyMarkdown, cardHtml);
-      msgLog.push({ role: 'assistant', text: replyMarkdown, jevHtml: cardHtml, isErr: false });
+      msgLog.push({ role: 'assistant', text: replyMarkdown, cardHtml, isErr: false });
       history.push({ role: 'user', content: userLabel });
       history.push({ role: 'assistant', content: replyMarkdown });
       saveSession();
@@ -1844,6 +1895,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
         rawResponse: rawResponse || null,
         thought: null,
         parsed: null,
+        usage: lastCallUsage,
         elapsedMs,
         error: e.message || String(e),
       });
@@ -1896,6 +1948,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
         rawResponse,
         thought: null,
         parsed: null,
+        usage: lastCallUsage,
         elapsedMs,
         error: null,
       });
@@ -1920,6 +1973,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
         rawResponse: rawResponse || null,
         thought: null,
         parsed: null,
+        usage: lastCallUsage,
         elapsedMs,
         error: e.message || String(e),
       });
@@ -1987,6 +2041,17 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
     });
     document.body.appendChild(fab);
     syncFab();
+  }
+
+  function isTypingElement(el) {
+    if (!el) return false;
+    const tag = el.tagName ? el.tagName.toLowerCase() : '';
+    if (tag === 'textarea' || el.isContentEditable) return true;
+    if (tag === 'input') {
+      const type = (el.type || 'text').toLowerCase();
+      return !['button', 'submit', 'reset', 'checkbox', 'radio', 'file', 'image'].includes(type);
+    }
+    return false;
   }
 
   function ensurePanel() {
@@ -2100,10 +2165,14 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
 
     ['keydown', 'keypress', 'keyup'].forEach((eventName) => {
       panel.addEventListener(eventName, (e) => {
+        if (e.altKey) return;
         if (e.key === 'Escape') {
           e.preventDefault();
           e.stopPropagation();
           toggle(false);
+          return;
+        }
+        if (!isTypingElement(e.target) && !e.ctrlKey && !e.metaKey && ['a', 'A', 's', 'S', 'd', 'D', 't', 'T'].includes(e.key)) {
           return;
         }
         e.stopPropagation();
@@ -2167,12 +2236,12 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
       if (CFG.invertEnter) {
         if (input) input.placeholder = isNarrow ? 'Rate (Enter) · Send (Ctrl+Enter)…' : 'Rate translation (Enter or Insert) · Send (Ctrl+Enter)…';
         if (sendBtn) sendBtn.title = 'Send follow-up message (Ctrl+Enter)';
-        if (rateBtn) rateBtn.title = 'Rate translation (Enter, Insert, or T)';
+        if (rateBtn) rateBtn.title = 'Rate translation (Enter, Insert, or D/T)';
         if (toggleLink) toggleLink.textContent = 'Enter: Rate';
       } else {
         if (input) input.placeholder = isNarrow ? 'Ask AI (Enter) · Rate (Ctrl+Enter)…' : 'Ask follow-up (Enter) · Rate translation (Ctrl+Enter or Insert)…';
         if (sendBtn) sendBtn.title = 'Send message (Enter)';
-        if (rateBtn) rateBtn.title = 'Rate sentence translation (Insert, Ctrl+Enter, or T)';
+        if (rateBtn) rateBtn.title = 'Rate sentence translation (Insert, Ctrl+Enter, or D/T)';
         if (toggleLink) toggleLink.textContent = 'Enter: Send';
       }
     };
@@ -2203,7 +2272,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
       } else if (e.key === 'Escape') {
         e.preventDefault();
         toggle(false);
-      } else if (e.altKey && (e.key === 't' || e.key === 'T')) {
+      } else if (e.altKey && (e.key === 't' || e.key === 'T' || e.key === 'd' || e.key === 'D')) {
         e.preventDefault();
         runRateTranslation();
       } else if (e.altKey && (e.key === 'a' || e.key === 'A')) {
@@ -2416,8 +2485,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
 
   function bindGlobalKeys() {
     window.addEventListener('keydown', (e) => {
-      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-      const isInput = activeTag === 'input' || activeTag === 'textarea' || document.activeElement?.isContentEditable;
+      const isInput = isTypingElement(document.activeElement);
 
       if (e.key === 'Escape') {
         if (isPanelOpen()) {
@@ -2446,7 +2514,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
             return;
           }
         }
-        if (e.key === 't' || e.key === 'T' || e.key === 'Insert') {
+        if (e.key === 'd' || e.key === 'D' || e.key === 't' || e.key === 'T' || e.key === 'Insert') {
           if (!e.ctrlKey && !e.metaKey) {
             e.preventDefault();
             openAndFocusInput();
@@ -2465,7 +2533,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
         ensureUI();
         toggle(true);
         runExplain('breakdown');
-      } else if (e.altKey && (e.key === 't' || e.key === 'T')) {
+      } else if (e.altKey && (e.key === 't' || e.key === 'T' || e.key === 'd' || e.key === 'D')) {
         e.preventDefault();
         openAndFocusInput();
       }
