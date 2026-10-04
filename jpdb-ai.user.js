@@ -385,8 +385,12 @@
       if (sysInstruction) {
         gBody.systemInstruction = { parts: [{ text: sysInstruction }] };
       }
+      gBody.generationConfig = {};
       if (isJson) {
-        gBody.generationConfig = { responseMimeType: 'application/json' };
+        gBody.generationConfig.responseMimeType = 'application/json';
+      }
+      if (REASONING_EFFORT) {
+        gBody.generationConfig.thinkingConfig = { thinkingLevel: REASONING_EFFORT };
       }
 
       try {
