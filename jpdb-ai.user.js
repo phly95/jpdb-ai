@@ -1648,6 +1648,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
       draftInput = '';
       saveSession();
     }
+    const info = refreshCtx();
     const isCardReview = !userDraft;
     const userPrompt = buildRateTranslationPrompt(info, userDraft);
     const userLabel = userDraft ? `Rate my translation: "${userDraft}"` : `Review card's translation`;
