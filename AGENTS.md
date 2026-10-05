@@ -6,6 +6,9 @@ This repository contains the source code for the **JPDB AI Vocab Explainer** Tam
 - The main userscript source file is `jpdb-ai.user.js`.
 - Always validate JavaScript syntax before deploying: `node --check jpdb-ai.user.js`.
 - Follow the versioning scheme in `// @version <semver>` at the top of `jpdb-ai.user.js`.
+- Test scripts and latency benchmarks are in `test/`:
+  - `node test/test_gemini.js`: End-to-end API and card rendering validation.
+  - `node test/bench_thinking.js`: Thinking level latency benchmarks.
 
 ## How to Test & Deploy Changes to Tampermonkey
 A Python skill is globally installed at `/home/philip/.agents/skills/tampermonkey/tampermonkey_sync.py`.
@@ -20,7 +23,7 @@ import tampermonkey_sync
 tampermonkey_sync.sync_and_commit(
     commit_message="describe your change here",
     push=False, # set to True when pushing to GitHub
-    version="1.0.71"
+    version="2.0.10" # match version in jpdb-ai.user.js
 )
 ```
 
