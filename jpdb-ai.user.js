@@ -1740,7 +1740,7 @@ html.dark-mode .jpdb-ai-diag-critique{background:rgba(255,255,255,.04);border-co
     d.className = 'jpdb-ai-msg ' + (entry.role === 'user' ? 'jpdb-ai-user' : 'jpdb-ai-ai');
     if (entry.isErr) d.classList.add('jpdb-ai-err');
     if (entry.role === 'assistant') {
-      setMsgMarkdown(d, entry.text, entry.cardHtml || entry.jevHtml);
+      setMsgMarkdown(d, entry.text, entry.cardHtml);
     } else {
       d.textContent = entry.text;
     }
